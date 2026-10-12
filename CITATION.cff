@@ -10,6 +10,7 @@ authors:
 license:
   - GPL-2.0-only
   - GPL-3.0-only
+doi: "10.5281/zenodo.23309028"
 repository-code: "https://github.com/Sparky-OS/flat-headset"
 keywords:
   - "stereoscopic 3D"
