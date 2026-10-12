@@ -1,5 +1,7 @@
 # Flat Headset
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23309028.svg)](https://doi.org/10.5281/zenodo.23309028)
+
 Flat Headset is a planned way to use a phone in a Cardboard-style viewer as a 3D screen for a Linux desktop. It shows the desktop in stereo without head tracking.
 
 ## How it works
