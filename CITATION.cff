@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+message: "If you use this work, please cite it as below."
+type: software
+title: "Flat Headset: a phone in a Cardboard-style viewer as a 3D screen for the Linux desktop"
+abstract: "Flat Headset is a planned way to use a phone in a Cardboard-style viewer as a 3D screen for the Linux desktop, without head tracking, through KDE Connect, KRdp and KWin's stereo outputs. Part of Sparky Stereo OS. This snapshot is the design; nothing is built yet. Licence: GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted-GPL, the licence of KDE Connect for Android."
+authors:
+  - family-names: "Ramos"
+    given-names: "Daniel Campos"
+    orcid: "https://orcid.org/0009-0001-4546-8673"
+license:
+  - GPL-2.0-only
+  - GPL-3.0-only
+repository-code: "https://github.com/Sparky-OS/flat-headset"
+keywords:
+  - "stereoscopic 3D"
+  - "Cardboard"
+  - "KDE Connect"
+  - "KRdp"
+  - "KWin"
+  - "Android"
+  - "Linux desktop"
