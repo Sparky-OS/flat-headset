@@ -26,7 +26,17 @@ The full VR mode with head tracking is a separate project.
 
 ## Status
 
-Flat Headset is in development as part of Sparky Stereo OS. The name was reserved on 2026-10-10. There is nothing to install yet.
+Flat Headset is in development as part of Sparky Stereo OS. There is nothing to install yet.
+On 12 October 2026 the first test passed on Daniel's phone (a Xiaomi Redmi Note 9 Pro) in a VR Shinecon viewer: movie mode, and a desktop test chart streamed to the phone, each eye on its own half with the lens correction fitted for that viewer.
+On 13 October the phone mirrored the real 3D desktop for the first time; the stream stopped refreshing after half a minute, and that fix is in progress.
+
+## The first test, 12 October 2026
+
+<a href="docs/photos/phone-test-chart-left-right.jpg"><img src="docs/photos/phone-test-chart-left-right.jpg" width="99%" alt="The phone's screen showing the streamed test chart: LEFT and RIGHT halves, each with its own view of a stereo rectangle"></a>
+
+<a href="docs/photos/through-the-lenses.jpg"><img src="docs/photos/through-the-lenses.jpg" width="49%" alt="The same chart seen through the viewer's two lenses"></a> <a href="docs/photos/phone-in-vr-shinecon.jpg"><img src="docs/photos/phone-in-vr-shinecon.jpg" width="49%" alt="The phone mounted in a VR Shinecon viewer"></a>
+
+*The streamed chart on the phone, the same chart through the lenses, and the phone in the VR Shinecon viewer. Photos by Daniel Ramos, CC BY 4.0.*
 
 ## Sparky Stereo OS
 
