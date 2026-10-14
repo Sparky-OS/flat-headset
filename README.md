@@ -38,6 +38,15 @@ On 13 October the phone mirrored the real 3D desktop for the first time; the str
 
 *The streamed chart on the phone, the same chart through the lenses, and the phone in the VR Shinecon viewer. Photos by Daniel Ramos, CC BY 4.0.*
 
+
+## The desktop on the phone, 14 October 2026
+
+<a href="docs/photos/desktop-thrown-to-phone.jpg"><img src="docs/photos/desktop-thrown-to-phone.jpg" width="99%" alt="The phone held in front of the PC monitor, showing the same desktop, the edition's GitHub page and a system monitor, as two views side by side"></a>
+
+<a href="docs/photos/desktop-through-both-lenses.jpg"><img src="docs/photos/desktop-through-both-lenses.jpg" width="49%" alt="The desktop seen through the viewer's two lenses, photographed from between them"></a> <a href="docs/photos/desktop-through-one-lens.jpg"><img src="docs/photos/desktop-through-one-lens.jpg" width="49%" alt="The desktop seen through one lens of the viewer, up close: the GitHub page and the system monitor are readable"></a>
+
+*The PC's desktop thrown to the phone: the phone in front of the monitor it mirrors, both lenses photographed from between them (one camera there sees the outer side of each view, while each eye sees its whole view), and one lens up close. Photos by Daniel Ramos, CC BY 4.0.*
+
 ## Sparky Stereo OS
 
 Flat Headset is part of [Sparky Stereo OS](https://github.com/Sparky-OS/sparky-stereo-os). Its design follows the [house formats](https://github.com/Sparky-OS/sparky-stereo-os/blob/main/docs/house-formats.md) used by that project.
