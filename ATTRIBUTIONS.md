@@ -41,3 +41,11 @@ The phone's DLNA renderer is planned to use [jUPnP](https://github.com/jupnp/jup
 FFmpeg, VA-API, and NVIDIA NVENC are credited only if the implementation uses them. KRdp's README describes H.264 encoding with VA-API where supported and software fallback; it does not describe NVENC support. No use of FFmpeg or NVENC in Flat Headset has been verified.
 
 Sparky Stereo OS's credits are in its [ATTRIBUTIONS.md](https://github.com/Sparky-OS/sparky-stereo-os/blob/main/ATTRIBUTIONS.md).
+
+## Launcher icon
+
+The Flat Headset icon is original vector artwork by Sparky Stereo, by Daniel Ramos and partners.
+Daniel Ramos directs the work; OpenAI GPT-6 Astra, through Codex, drew it, and Anthropic's Claude Sonnet, through Claude Code, integrated it (2026-10-14).
+It carries no KDE Connect badge and no Sparky logo.
+The Oxygen icon theme (David Miller, David Vignoni, Johann Ollivier Lapeyre, Kenneth Wimer, Nuno Pinheiro and Riccardo Iaconelli, per Debian's copyright record) was a style reference only; no Oxygen artwork was copied.
+The artwork is licensed CC-BY-SA-4.0 (Daniel's decision, 2026-10-14).
