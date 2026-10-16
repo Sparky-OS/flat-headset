@@ -2,33 +2,39 @@
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23309028.svg)](https://doi.org/10.5281/zenodo.23309028)
 
-Flat Headset is a planned way to use a phone in a Cardboard-style viewer as a 3D screen for a Linux desktop. It shows the desktop in stereo without head tracking.
+Flat Headset turns a phone in a Cardboard-style viewer into a 3D screen for a Linux desktop. It shows the desktop in stereo without head tracking.
+It is the phone side of Sparky Stereo OS's Throw and Catch: the PC throws its picture, and the phone catches it.
 
 ## How it works
 
-KWin, KDE Plasma's compositor, as built for Sparky Stereo OS, will add a virtual output in the headset's mode: each eye is drawn at full sharpness on its own half of the phone screen, at the panel's native resolution. Programs continue to provide full side-by-side images, as they do elsewhere in Sparky Stereo OS.
+When the phone connects, KWin, KDE Plasma's compositor as built for Sparky Stereo OS, adds a monitor in the viewer's mode and at the phone's resolution, like a 3D TV when it is plugged in. Each eye is drawn at full sharpness on its own half of the phone screen. Programs keep handing the desktop full side-by-side pictures, as they do everywhere in Sparky Stereo OS.
 
-KRdp, KDE's RDP server, will stream that output, with hardware video encoding where available. It already creates virtual monitors (`krdpserver --virtual-monitor`).
+KRdp, KDE's RDP server, streams that monitor. H.264 is the default and HEVC is used where the phone can decode it (a third less data at the same quality, measured), with hardware encoding where available. The link can carry the phone's native picture, full side by side at 720p, half side by side or half top and bottom.
 
-KDE Connect can pair the phone, find its address and hand it the stream, building on its virtual monitor plugin and on Fabian Druschke's remote desktop work for KDE Connect on the desktop and on Android. The viewer will also accept an address entered by the user.
+KDE Connect pairs the phone and hands it the stream, building on Fabian Druschke's remote desktop work for KDE Connect on the desktop and on Android. The phone can also be found on the local network, or reached by an address typed in.
 
-A small phone viewer, built on FreeRDP's Android library and the open Cardboard SDK, will show the stream with lens correction. It will read the lens profile from the viewer's QR code.
+On Android, the viewer is part of our KDE Connect build. It shows the stream with the viewer's lens correction, read from the viewer's QR code.
 
-When the phone connects, the desktop is planned to add a monitor in the viewer's mode and at the phone's resolution, like a 3D TV when it is plugged in.
+On a phone running Plasma Mobile, Catch is a receiver built into KRDC, KDE's remote desktop client. It fits each eye to the phone's panel and pins the PC's certificate, so the picture only comes from the PC it was approved for.
 
-Sound stays on the PC by default and plays through the PC's headphones or speakers. A setting will let the user stream sound to the phone.
+Movies need no PC at all on the way: the phone is also a DLNA renderer. Universal Media Server or another DLNA server sends it a film, the phone decodes it, and a stereo film shows split per eye while a 2D film shows as one flat screen to both eyes.
 
-The viewer is also planned to act as a DLNA renderer. Universal Media Server or another DLNA server can send it a movie for decoding on the phone: a stereo movie shows split per eye, a 2D movie as one flat screen to both eyes.
+Sound stays on the PC by default and plays through its headphones or speakers.
 
-KDE Connect is optional: the phone can also be found on the local network through UPnP, or connected by USB.
-
-The full VR mode with head tracking is a separate project.
+The full VR mode with head tracking is a separate project, [StereoDroid](https://github.com/Sparky-OS/stereodroid).
 
 ## Status
 
-Flat Headset is in development as part of Sparky Stereo OS. There is nothing to install yet.
-On 12 October 2026 the first test passed on Daniel's phone (a Xiaomi Redmi Note 9 Pro) in a VR Shinecon viewer: movie mode, and a desktop test chart streamed to the phone, each eye on its own half with the lens correction fitted for that viewer.
-On 13 October the phone mirrored the real 3D desktop for the first time; the stream stopped refreshing after half a minute, and that fix is in progress.
+Throw and Catch work, and the PC side ships in Sparky Stereo OS beta 1: KWin's phone monitor, KRdp, KPipeWire, KDE Connect, and KRDC with Catch, built for amd64, and Catch for arm64 too.
+The Android viewer runs as test builds on Daniel's phone (a Xiaomi Redmi Note 9 Pro) in a VR Shinecon viewer, and comes out with the first release.
+Work going on now:
+- the delay, about 3 seconds on Daniel's phone on 15 October, which comes from how the phone acknowledges frames;
+- reading the viewer's QR code without Google Play services;
+- an option to send the sound to the phone too;
+- KWin's own 3D output on a Plasma Mobile phone, beside Catch.
+
+On 12 October the first test passed on that phone: movie mode, and a desktop test chart streamed to it, each eye on its own half with the lens correction fitted for that viewer.
+On 14 October the real desktop was thrown to it, as the photos below show.
 
 ## The first test, 12 October 2026
 
