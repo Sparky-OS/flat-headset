@@ -2,16 +2,20 @@
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23309028.svg)](https://doi.org/10.5281/zenodo.23309028)
 
-Flat Headset turns a phone in a Cardboard-style viewer into a 3D screen for a Linux desktop. It shows the desktop in stereo without head tracking.
+Flat Headset turns a compatible Android phone in an inexpensive Cardboard-style viewer into a 3D screen for a Linux desktop.
+The stereo desktop is now usable on our tested older phone, with responsive mouse control over USB ([19 October test](docs/usb-desktop-2026-10-19.md)).
+It shows the desktop in stereo without head tracking.
 It is the phone side of Sparky Stereo OS's Throw and Catch: the PC throws its picture, and the phone catches it.
 
 ## How it works
 
-When the phone connects, KWin, KDE Plasma's compositor as built for Sparky Stereo OS, adds a monitor in the viewer's mode and at the phone's resolution, like a 3D TV when it is plugged in. Each eye is drawn at full sharpness on its own half of the phone screen. Programs keep handing the desktop full side-by-side pictures, as they do everywhere in Sparky Stereo OS.
+When the phone connects, KWin, KDE Plasma's compositor as built for Sparky Stereo OS, adds a monitor in the viewer's mode and at the phone's resolution, like a 3D TV when it is plugged in. Each eye is drawn on its own half of the phone screen, with detail determined by the selected link resolution. Programs keep handing the desktop full side-by-side pictures, as they do everywhere in Sparky Stereo OS.
 
-KRdp, KDE's RDP server, streams that monitor. H.264 is the default and HEVC is used where the phone can decode it (a third less data at the same quality, measured), with hardware encoding where available. The link can carry the phone's native picture, full side by side at 720p, half side by side or half top and bottom.
+KRdp, KDE's RDP server, streams that monitor. H.264 is the default and HEVC is used where the phone can decode it (a third less data at the same quality, measured), with hardware encoding where available. The link can carry the phone's native picture, full side by side or full top and bottom at 720p, half side by side or half top and bottom.
+Lower-resolution link options trade detail for less decoding work on older phones.
 
-KDE Connect pairs the phone and hands it the stream, building on Fabian Druschke's remote desktop work for KDE Connect on the desktop and on Android. The phone can also be found on the local network, or reached by an address typed in.
+KDE Connect pairs the phone and hands it the stream, building on Fabian Druschke's remote desktop work for KDE Connect on the desktop and on Android. The phone can also be found on the local network, reached by an address typed in, connected through USB tethering, or paired directly through Wi-Fi Direct without a router.
+Direct Wi-Fi is an additional connection option; it uses the same Throw and Catch stream.
 
 On Android, the viewer is part of our KDE Connect build. It shows the stream with the viewer's lens correction, read from the viewer's QR code.
 
@@ -26,9 +30,15 @@ The full VR mode with head tracking is a separate project, [StereoDroid](https:/
 ## Status
 
 Throw and Catch work, and the PC side ships in Sparky Stereo OS beta 1: KWin's phone monitor, KRdp, KPipeWire, KDE Connect, and KRDC with Catch, built for amd64, and Catch for arm64 too.
-The Android viewer runs as test builds on Daniel's phone (a Xiaomi Redmi Note 9 Pro) in a VR Shinecon viewer, and comes out with the first release.
+The Android viewer runs as test builds, including on a Xiaomi Redmi Note 7 in a VR Shinecon viewer.
+On 19 October Daniel accepted the USB half top-and-bottom path as the first usable desktop baseline: the mouse is responsive and the desktop is usable.
+Video is much improved but still somewhat choppy; full resolution, heavier videos and Wi-Fi performance need separate testing.
+The [test report](docs/usb-desktop-2026-10-19.md) records the hardware, measurements and limits.
+The Android viewer remains a test build; this milestone is not a general compatibility or final-release claim.
 Work going on now:
-- the delay, about 3 seconds on Daniel's phone on 15 October, which comes from how the phone acknowledges frames;
+
+- remaining frame drops and uneven video cadence, including phone bitmap conversion and PC graphics load;
+- comparing the accepted USB setup with Direct Wi-Fi and the home network;
 - reading the viewer's QR code without Google Play services;
 - an option to send the sound to the phone too;
 - KWin's own 3D output on a Plasma Mobile phone, beside Catch.
