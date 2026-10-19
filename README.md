@@ -32,13 +32,15 @@ The full VR mode with head tracking is a separate project, [StereoDroid](https:/
 Throw and Catch work, and the PC side ships in Sparky Stereo OS beta 1: KWin's phone monitor, KRdp, KPipeWire, KDE Connect, and KRDC with Catch, built for amd64, and Catch for arm64 too.
 The Android viewer runs as test builds, including on a Xiaomi Redmi Note 7 in a VR Shinecon viewer.
 On 19 October Daniel accepted the USB half top-and-bottom path as the first usable desktop baseline: the mouse is responsive and the desktop is usable.
-Video is much improved but still somewhat choppy; full resolution, heavier videos and Wi-Fi performance need separate testing.
+Video is much improved but still somewhat choppy.
+In the first wireless comparison, home Wi-Fi feels closer to USB; Direct Wi-Fi has longer stalls.
+Full resolution, heavier videos and more devices still need testing.
 The [test report](docs/usb-desktop-2026-10-19.md) records the hardware, measurements and limits.
 The Android viewer remains a test build; this milestone is not a general compatibility or final-release claim.
 Work going on now:
 
 - remaining frame drops and uneven video cadence, including phone bitmap conversion and PC graphics load;
-- comparing the accepted USB setup with Direct Wi-Fi and the home network;
+- improving wireless cadence, especially the longer stalls on Direct Wi-Fi;
 - reading the viewer's QR code without Google Play services;
 - an option to send the sound to the phone too;
 - KWin's own 3D output on a Plasma Mobile phone, beside Catch.

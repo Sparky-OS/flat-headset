@@ -40,9 +40,25 @@ A low-cost viewer can give a compatible phone a second use as a 3D screen.
 It does not establish support for every Android phone, smooth playback of every video, or acceptance of all resolution choices.
 The half-resolution link trades image detail for lower decoding cost.
 
-Direct Wi-Fi already connected successfully in an earlier physical test.
-The next comparison repeats the same content and link format over Direct Wi-Fi, then the home network, with the current optimized app.
-Keeping the USB cable for diagnostics does not mean the picture travels over it; that comparison must verify the stream's actual network route.
+## First wireless comparison, later the same day
+
+The same lighter video and half top-and-bottom choice were then tested over Direct Wi-Fi and the home network.
+The active stream sockets confirmed each route, with the USB cable retained for diagnostics.
+
+| Link | GL submissions per second in short samples | Observed cadence |
+| --- | ---: | --- |
+| USB, earlier accepted samples | 19.78 and 20.38 | Some unevenness remains |
+| Direct Wi-Fi | 7.47, 7.14 and 12.58 | Gaps longer than one second in all three samples |
+| Home Wi-Fi, PC on Ethernet | 12.03 and 14.55 | Longest observed gaps about 0.27 and 0.41 seconds |
+
+Daniel reports that Direct Wi-Fi is very choppy and home Wi-Fi feels closer to USB.
+The direct link used 5 GHz with a strong signal; these readings do not identify its root cause.
+Its delivery and pacing need further investigation.
+The first home-network sample still had the unused direct group active; it was disconnected before the second sample, while the home-network stream continued.
+
+These are preliminary physical comparisons, not a controlled benchmark across identical frames and thermal conditions.
+The video loops, scenes and device load can vary between samples.
+The numbers are phone render submissions, not end-to-end latency or a guarantee for other devices.
 
 ## Remaining work
 
