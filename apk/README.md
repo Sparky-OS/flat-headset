@@ -30,9 +30,11 @@ gpg --show-keys --with-fingerprint /tmp/sparky-stereo-android.asc
 # Expected fingerprint: 10DF D38D AD1E 4808 BC68 8E5A 945E 5D07 9A2A 0B9C
 sudo install -m 0644 /tmp/sparky-stereo-android.asc /usr/share/keyrings/sparky-stereo-android.asc
 printf '%s\n' 'deb [arch=amd64 signed-by=/usr/share/keyrings/sparky-stereo-android.asc] https://repo.sparkyos.org/android-test mashtabba main' 'deb-src [signed-by=/usr/share/keyrings/sparky-stereo-android.asc] https://repo.sparkyos.org/android-test mashtabba main' | sudo tee /etc/apt/sources.list.d/sparky-stereo-android.list
-sudo apt update
+sudo apt update -o Dir::Etc::sourcelist="sources.list.d/sparky-stereo-android.list" -o Dir::Etc::sourceparts="-"
 sudo apt install krdp libkpipewire6 libkpipewiredmabuf6 libkpipewirerecord6 qml6-module-org-kde-pipewire dpkg-stereo
 ```
+
+The scoped refresh reads this development channel while the main repository awaits the ISO launch. An ordinary full `apt update` may still report a missing Release file for that main placeholder on older development images. Keep the full edition baseline installed; this channel supplies only the components listed below.
 
 Check candidates before testing:
 
