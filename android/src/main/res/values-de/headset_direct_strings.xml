@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted-GPL -->
+<resources>
+    <string name="headset_transport_title">Verbindung</string>
+    <string name="headset_transport_network">Aktuelles Netzwerk / USB-Tethering</string>
+    <string name="headset_transport_direct">Direktes WLAN zum Computer</string>
+    <string name="headset_direct_creating">Direktes WLAN wird gestartet…</string>
+    <string name="headset_direct_waiting">Öffnen Sie auf dem Computer Throw über direktes WLAN, suchen Sie und wählen Sie dieses Telefon aus. Bestätigen Sie die Verbindung auf dem Telefon und anschließend Throw auf dem Computer.</string>
+    <string name="headset_direct_unavailable">Direktes WLAN ist nicht verfügbar. Prüfen Sie, ob WLAN aktiviert ist, oder verwenden Sie das aktuelle Netzwerk.</string>
+    <string name="headset_direct_permission">Direktes WLAN benötigt die Berechtigung für WLAN-Geräte in der Nähe (Standortberechtigung bei älteren Android-Versionen).</string>
+    <string name="headset_direct_busy">Eine andere Wi-Fi-Direct-Sitzung ist aktiv oder wird gestartet. Beenden Sie diese zuerst.</string>
+    <string name="headset_direct_timeout">Direktes WLAN wurde nicht bereit. Prüfen Sie WLAN und versuchen Sie es erneut.</string>
+    <string name="headset_direct_lost">Die direkte WLAN-Verbindung wurde beendet. Starten Sie erneut, um sich zu verbinden.</string>
+    <string name="headset_direct_status">Direktes WLAN · Verbindungsmesswerte nicht verfügbar</string>
+    <string name="headset_direct_connected">Direktes WLAN verbunden. Bestätigen Sie dieses Telefon in Throw auf dem Computer und wählen Sie die Freigabe.</string>
+</resources>

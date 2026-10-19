@@ -1,0 +1,55 @@
+From dd4072276e392cfb625a4d900fe91f4f8a396d74 Mon Sep 17 00:00:00 2001
+From: Fabian Druschke <fdruschke@outlook.com>
+Date: Sat, 11 Jul 2026 15:36:35 +0200
+Subject: [PATCH 9/9] android: keep button releases distinct from pointer moves
+
+---
+ .../presentation/SessionInputManager.java     | 20 +++++++++----------
+ 1 file changed, 10 insertions(+), 10 deletions(-)
+
+diff --git a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionInputManager.java b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionInputManager.java
+index 9df15fc..0919d00 100644
+--- a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionInputManager.java
++++ b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionInputManager.java
+@@ -428,10 +428,10 @@ public class SessionInputManager
+ 			return;
+ 		}
+ 
+-		/* A tap is one logical operation. Flush a pending relative movement first, then
+-		 * explicitly synchronize the server-side pointer position with both button PDUs.
+-		 * Some RDP input backends otherwise retain the last processed position when a
+-		 * down/up pair follows a throttled move. */
++		/* A tap is one logical operation. Flush a pending relative movement first and
++		 * explicitly synchronize the server-side pointer position before the button PDUs.
++		 * Keep PTR_FLAGS_MOVE out of down/up: RDP servers commonly dispatch a PDU with
++		 * MOVE as mouse motion before considering it a button release. */
+ 		cancelDelayedMoveEvent();
+ 		final int moveFlags = Mouse.getMoveEvent();
+ 		final int downFlags;
+@@ -439,17 +439,17 @@ public class SessionInputManager
+ 		switch (button)
+ 		{
+ 			case SessionView.SessionViewListener.BUTTON_RIGHT:
+-				downFlags = Mouse.getRightButtonEvent(context, true) | moveFlags;
+-				upFlags = Mouse.getRightButtonEvent(context, false) | moveFlags;
++				downFlags = Mouse.getRightButtonEvent(context, true);
++				upFlags = Mouse.getRightButtonEvent(context, false);
+ 				break;
+ 			case SessionView.SessionViewListener.BUTTON_MIDDLE:
+-				downFlags = Mouse.getMiddleButtonEvent(true) | moveFlags;
+-				upFlags = Mouse.getMiddleButtonEvent(false) | moveFlags;
++				downFlags = Mouse.getMiddleButtonEvent(true);
++				upFlags = Mouse.getMiddleButtonEvent(false);
+ 				break;
+ 			case SessionView.SessionViewListener.BUTTON_LEFT:
+ 			default:
+-				downFlags = Mouse.getLeftButtonEvent(context, true) | moveFlags;
+-				upFlags = Mouse.getLeftButtonEvent(context, false) | moveFlags;
++				downFlags = Mouse.getLeftButtonEvent(context, true);
++				upFlags = Mouse.getLeftButtonEvent(context, false);
+ 				break;
+ 		}
+ 
+-- 
+2.55.0
+

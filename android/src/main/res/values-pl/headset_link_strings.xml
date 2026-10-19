@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted-GPL -->
+<resources>
+    <string name="headset_link_title">Rozmiar obrazu do przerzucenia</string>
+    <string name="headset_link_sbs720">Profil do czytania 720p: pełny obraz obok siebie</string>
+    <string name="headset_link_tb720">Pół góra–dół: zachowuje szczegóły poziome</string>
+    <string name="headset_link_native">Natywna rozdzielczość panelu (obecna domyślna)</string>
+    <string name="headset_link_hint">Profil do czytania 720p: osobny pulpit 1280×720 ma większy tekst niż dopasowany pulpit Full HD. Sama zmiana łącza nie powiększa tekstu w kopii ekranu. Połówkowe formaty przesyłają 1280×720, a telefon odtwarza oba oczy, kosztem szczegółów. Te opcje wymagają H.264 i nowych składników komputera. Tryb natywny zachowuje opcjonalne HEVC. Przed zmianą zatrzymaj przerzucanie.</string>
+    <string name="headset_link_halfsbs720">Pół obok siebie: zachowuje szczegóły pionowe</string>
+    <string name="headset_link_fulltb720">Pełne TB 720p · pełne szczegóły, wysoka klatka (1280×1440)</string>
+</resources>

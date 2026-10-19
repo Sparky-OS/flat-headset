@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: BSD-2-Clause
+cmake_minimum_required(VERSION 3.22)
+project(cardboard_viewer LANGUAGES CXX)
+set(CARDBOARDSDK_UNITY_PLUGIN OFF CACHE BOOL "" FORCE)
+set(CARDBOARDSDK_RENDERING_VULKAN OFF CACHE BOOL "" FORCE)
+set(CARDBOARDSDK_RENDERING_GLESv3 OFF CACHE BOOL "" FORCE)
+add_subdirectory(${CARDBOARD_SOURCE_DIR}/sdk sdk)
+# The SDK export map includes two entry points supplied only by the disabled plugins.
+file(READ "${CARDBOARD_SOURCE_DIR}/sdk/cardboard_api.lds" native_exports)
+string(REPLACE "JNI_OnLoad;" "" native_exports "${native_exports}")
+string(REPLACE "RenderAPI_Vulkan_OnPluginLoad;" "" native_exports "${native_exports}")
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/native_api.lds" "${native_exports}")
+set_property(TARGET GfxPluginCardboard PROPERTY LINK_FLAGS "-Wl,--version-script=${CMAKE_CURRENT_BINARY_DIR}/native_api.lds")
+add_library(cardboard_sdk_jni SHARED ${CARDBOARD_SOURCE_DIR}/sdk/jni_utils/android/jni_utils.cc ${CARDBOARD_SOURCE_DIR}/java_api/src/main/jni/cardboard_jni.cc)
+target_include_directories(cardboard_sdk_jni PRIVATE ${CARDBOARD_SOURCE_DIR}/sdk)
+target_link_libraries(cardboard_sdk_jni PRIVATE GfxPluginCardboard android log GLESv2)

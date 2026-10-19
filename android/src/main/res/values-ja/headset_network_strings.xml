@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="headset_link_automatic">自動 · 接続時に選択</string>
+    <string name="headset_show_link_status">両目にリンク状態を表示</string>
+    <string name="headset_wifi_status">%1$s · %2$s (%3$d MHz) · Tx/Rx %4$s/%5$s Mbit/s · %6$s dBm</string>
+    <string name="headset_wifi_unavailable">Wi-Fi 情報なし（有線または不明）</string>
+    <string name="headset_link_current">リンク: %1$s</string>
+    <string name="headset_auto_next">次の接続: %1$s · %2$s</string>
+    <string name="headset_auto_unknown">リンク不明、ネイティブを維持</string>
+    <string name="headset_auto_phy">Wi-Fi の公称速度、実測帯域ではありません</string>
+    <string name="headset_auto_limited">Wi-Fi 制限、文字の水平方向の詳細を維持</string>
+    <string name="headset_auto_measured">実測の描画遅延とフレーム間隔が最小</string>
+</resources>

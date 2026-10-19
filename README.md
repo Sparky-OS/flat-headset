@@ -7,6 +7,8 @@ The stereo desktop is now usable on our tested older phone, with responsive mous
 It shows the desktop in stereo without head tracking.
 It is the phone side of Sparky Stereo OS's Throw and Catch: the PC throws its picture, and the phone catches it.
 
+[Download the development APK and update the PC](apk/README.md) · [Android source](android/) · [Build it](android/BUILDING.md)
+
 ## How it works
 
 When the phone connects, KWin, KDE Plasma's compositor as built for Sparky Stereo OS, adds a monitor in the viewer's mode and at the phone's resolution, like a 3D TV when it is plugged in. Each eye is drawn on its own half of the phone screen, with detail determined by the selected link resolution. Programs keep handing the desktop full side-by-side pictures, as they do everywhere in Sparky Stereo OS.
@@ -41,7 +43,6 @@ Work going on now:
 
 - remaining frame drops and uneven video cadence, including phone bitmap conversion and PC graphics load;
 - improving wireless cadence, especially the longer stalls on Direct Wi-Fi;
-- reading the viewer's QR code without Google Play services;
 - an option to send the sound to the phone too;
 - KWin's own 3D output on a Plasma Mobile phone, beside Catch.
 

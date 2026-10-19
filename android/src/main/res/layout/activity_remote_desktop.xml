@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
+SPDX-FileCopyrightText: 2026 KDE Connect Developers
+
+SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted-GPL
+-->
+
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="org.kde.kdeconnect.plugins.remotedesktop.RemoteDesktopActivity">
+
+    <include
+        android:id="@+id/toolbar_layout"
+        layout="@layout/toolbar" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="@dimen/activity_horizontal_margin">
+
+            <TextView
+                android:id="@+id/status_text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/remote_desktop_status_waiting"
+                android:textAppearance="?attr/textAppearanceTitleMedium" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/remote_desktop_description"
+                android:textAppearance="?attr/textAppearanceBodyMedium" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:labelFor="@id/mode_spinner"
+                android:text="@string/remote_desktop_mode"
+                android:textAppearance="?attr/textAppearanceLabelLarge" />
+
+            <Spinner
+                android:id="@+id/mode_spinner"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp" />
+
+            <TextView
+                android:id="@+id/monitor_label"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:labelFor="@id/monitor_spinner"
+                android:text="@string/remote_desktop_monitor"
+                android:textAppearance="?attr/textAppearanceLabelLarge" />
+
+            <Spinner
+                android:id="@+id/monitor_spinner"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:labelFor="@id/quality_slider"
+                    android:text="@string/remote_desktop_quality"
+                    android:textAppearance="?attr/textAppearanceLabelLarge" />
+
+                <TextView
+                    android:id="@+id/quality_value"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/remote_desktop_quality_default"
+                    android:textAppearance="?attr/textAppearanceBodyMedium" />
+            </LinearLayout>
+
+            <com.google.android.material.slider.Slider
+                android:id="@+id/quality_slider"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:stepSize="1"
+                android:valueFrom="0"
+                android:valueTo="100" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/remote_desktop_codec_details"
+                android:textAppearance="?attr/textAppearanceBodySmall" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:gravity="end"
+                android:orientation="horizontal">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/button_stop"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:enabled="false"
+                    android:text="@string/remote_desktop_stop"
+                    app:icon="@drawable/ic_stop" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/button_start"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:enabled="false"
+                    android:text="@string/remote_desktop_start"
+                    app:icon="@drawable/ic_play_white" />
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:text="@string/remote_desktop_diagnostics"
+                android:textAppearance="?attr/textAppearanceTitleMedium" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/remote_desktop_diagnostics_description"
+                android:textAppearance="?attr/textAppearanceBodySmall" />
+
+            <TextView
+                android:id="@+id/diagnostics_text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:background="?attr/colorSurfaceVariant"
+                android:fontFamily="monospace"
+                android:padding="12dp"
+                android:text="@string/remote_desktop_diagnostics_empty"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textIsSelectable="true" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="16dp"
+                android:gravity="end"
+                android:orientation="vertical">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/button_clear_diagnostics"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/remote_desktop_diagnostics_clear" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/button_copy_diagnostics"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="@string/remote_desktop_diagnostics_copy" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/button_send_diagnostics"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="@string/remote_desktop_diagnostics_send" />
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

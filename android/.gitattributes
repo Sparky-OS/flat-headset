@@ -1,0 +1,2 @@
+*.bat text eol=crlf
+freerdp-core/patches/*.patch whitespace=-trailing-space,-space-before-tab

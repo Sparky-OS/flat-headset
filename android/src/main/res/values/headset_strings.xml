@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted-GPL -->
+<resources>
+    <string name="headset_title">Flat Headset</string>
+    <string name="headset_discovery_description">Connect this phone and your computer to the same Wi-Fi, the computer’s hotspot, or USB tethering. Get ready here, then approve Throw on the computer. Sound and input stay on the computer; the phone’s volume keys set brightness.</string>
+    <string name="headset_wait_for_computer">Get ready for Throw</string>
+    <string name="headset_waiting">Ready for Throw. Approve this headset on your computer.</string>
+    <string name="headset_stop">Stop Throwing</string>
+    <string name="headset_upnp_android_version">Independent discovery requires Android 7 or later. The paired RDP receiver remains available.</string>
+    <string name="headset_discovery_failed">Could not start discovery on this network. Check the connection and try again.</string>
+    <string name="headset_scan_viewer">Scan viewer QR code</string>
+    <string name="headset_profile_default">Lens profile: Cardboard default</string>
+    <string name="headset_profile_saved">Lens profile: saved viewer</string>
+    <string name="headset_correction_title">Lens correction</string>
+    <string name="headset_correction_off">Uncorrected</string>
+    <string name="headset_correction_fitted">Shinecon fitted (D)</string>
+    <string name="headset_correction_profile">Viewer QR profile</string>
+    <string name="headset_correction_hint">The fitted setting matches the D viewing test. Keep the same phone placement, lens spacing and focus. Use an ordinary, uncorrected movie or stream.</string>
+    <string name="headset_hevc">HEVC when supported (H.264 is the default and fallback)</string>
+    <string name="headset_link_title">Throw picture size</string>
+    <string name="headset_link_sbs720">720p reading preset: full side by side</string>
+    <string name="headset_link_tb720">Half top-and-bottom: keeps horizontal detail</string>
+    <string name="headset_link_native">Native panel resolution (current default)</string>
+    <string name="headset_link_hint">720p is the reading preset: a separate 1280×720 desktop makes text larger than a fitted Full HD desktop. Changing only the link does not enlarge mirrored text. Half formats send 1280×720 and restore both eyes on the phone, trading detail for fewer pixels. These options use H.264 and need the updated computer components. Native keeps optional HEVC. Stop Throwing before changing this choice.</string>
+    <string name="headset_link_halfsbs720">Half side by side: keeps vertical detail</string>
+    <string name="headset_link_fulltb720">Full TB 720p · full detail, tall frame (1280×1440)</string>
+</resources>

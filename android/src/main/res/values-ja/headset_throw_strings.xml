@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted-GPL -->
+<resources>
+    <string name="remote_desktop_mode_headset">Flat Headset（Cardboard レンズ）</string>
+    <string name="remote_desktop_mode_headset_no_lenses">Flat Headset（レンズなし）</string>
+    <string name="remote_desktop_native_panel_unavailable">要求されたヘッドセットのネイティブ画面をコンピューターで作成できません。</string>
+    <string name="headset_notch_warning">カメラの切り欠きで画像の一部が隠れます。左右の目で同じ端を隠す余白にすると、画像を引き伸ばさずに見え方を揃えられます。</string>
+    <string name="headset_symmetric_notch">カメラの切り欠きに合わせて左右の余白を揃える</string>
+    <string name="headset_alignment">中央の位置合わせ線と下向き矢印を表示</string>
+    <string name="headset_title">Flat Headset</string>
+    <string name="headset_discovery_description">電話とコンピューターを同じ Wi-Fi、コンピューターのホットスポット、または USB テザリングで接続してください。ここで受信の準備をして、コンピューターでスローを許可します。音声と操作はコンピューター側に残り、電話の音量キーで明るさを調整します。</string>
+    <string name="headset_wait_for_computer">スローの受信を準備</string>
+    <string name="headset_waiting">スローを受信できます。コンピューターでこのヘッドセットを許可してください。</string>
+    <string name="headset_stop">スローを停止</string>
+    <string name="headset_upnp_android_version">単独での検出には Android 7 以降が必要です。ペア設定済みの RDP 受信機は引き続き使用できます。</string>
+    <string name="headset_discovery_failed">このネットワークで検出を開始できませんでした。接続を確認して再試行してください。</string>
+    <string name="headset_scan_viewer">ビューアーの QR コードをスキャン</string>
+    <string name="headset_profile_default">レンズプロファイル：Cardboard の標準</string>
+    <string name="headset_profile_saved">レンズプロファイル：保存済みビューアー</string>
+    <string name="headset_correction_title">レンズ補正</string>
+    <string name="headset_correction_off">補正なし</string>
+    <string name="headset_correction_fitted">Shinecon 調整済み（D）</string>
+    <string name="headset_correction_profile">ビューアーの QR プロファイル</string>
+    <string name="headset_correction_hint">この調整は表示テスト D に対応します。電話の位置、レンズ間隔、ピントを同じにしてください。補正されていない通常の動画やストリームを使用してください。</string>
+    <string name="headset_hevc">対応時に HEVC を使用（標準と代替は H.264）</string>
+    <string name="headset_throw_connecting">スローを待っています…</string>
+    <string name="headset_throw_reconnecting">次のスローを待っています…</string>
+    <string name="headset_wait_reduce_motion">待機中の動きを減らす</string>
+</resources>

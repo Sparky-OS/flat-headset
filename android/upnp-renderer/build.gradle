@@ -1,0 +1,20 @@
+/* SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted-GPL */
+plugins { id 'com.android.library' }
+def pupnp = rootProject.file(providers.gradleProperty('pupnpSourceDir').getOrElse('../pupnp'))
+android {
+    namespace 'org.kde.kdeconnect.headset.upnp'
+    compileSdk 37
+    ndkVersion '29.0.13113456'
+    defaultConfig {
+        minSdk 23
+        ndk { abiFilters 'arm64-v8a', 'armeabi-v7a', 'x86_64' }
+        externalNativeBuild.cmake {
+            arguments "-DPUPNP_SOURCE_DIR=${pupnp}", '-DANDROID_STL=c++_shared', '-DANDROID_PLATFORM=android-24'
+        }
+    }
+    externalNativeBuild.cmake { path 'CMakeLists.txt'; version '4.1.2' }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}

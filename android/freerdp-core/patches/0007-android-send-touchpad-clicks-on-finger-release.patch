@@ -1,0 +1,47 @@
+From 8d26bdf94726800433cf2dac809de99510d7c536 Mon Sep 17 00:00:00 2001
+From: Fabian Druschke <fdruschke@outlook.com>
+Date: Sat, 11 Jul 2026 14:58:38 +0200
+Subject: [PATCH 7/9] android: send touchpad clicks on finger release
+
+---
+ .../freerdpcore/presentation/SessionView.java       | 13 +++++--------
+ 1 file changed, 5 insertions(+), 8 deletions(-)
+
+diff --git a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionView.java b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionView.java
+index 1119854..4304e76 100644
+--- a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionView.java
++++ b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionView.java
+@@ -670,25 +670,22 @@ public class SessionView extends View
+ 				dragging = true;
+ 			}
+ 			else
+-			{
+-				sendLeftClick(position);
+ 				sendLeftClick(position);
+-			}
+ 			return true;
+ 		}
+ 
+ 		public boolean onSingleTapUp(MotionEvent e)
+-		{
+-			return false;
+-		}
+-
+-		public boolean onSingleTapConfirmed(MotionEvent e)
+ 		{
+ 			if (e.getButtonState() != 0 || maximumPointerCount > 1)
+ 				return false;
+ 			performConfiguredClick(singleTapAction);
+ 			return true;
+ 		}
++
++		public boolean onSingleTapConfirmed(MotionEvent e)
++		{
++			return false;
++		}
+ 	}
+ 
+ 	private class SessionDoubleGestureListener
+-- 
+2.55.0
+

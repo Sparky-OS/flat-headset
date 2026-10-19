@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='utf-8'?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <path android:name="phone" android:pathData="M35 30 H73 Q78 30 78 35 V37 H74 V35 Q74 33 72 33 H36 Q34 33 34 35 V37 H30 V35 Q30 30 35 30Z" android:fillColor="#000000" />
+    <path android:name="viewer" android:fillColor="#000000" android:fillType="evenOdd" android:pathData="M31 40 H77 Q83 40 83 46 L81 62 Q80 69 73 69 H63 L59 63 Q54 57 49 63 L45 69 H35 Q28 69 27 62 L25 46 Q25 40 31 40Z M48 53 A8 8 0 1 1 32 53 A8 8 0 1 1 48 53Z M76 53 A8 8 0 1 1 60 53 A8 8 0 1 1 76 53Z" />
+    <path android:name="level-cue" android:pathData="M37 77 H59" android:fillColor="#00000000" android:strokeColor="#000000" android:strokeWidth="2.6" android:strokeLineCap="round" />
+</vector>

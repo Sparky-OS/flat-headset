@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted-GPL -->
+<resources>
+    <string name="remote_desktop_mode_headset">Flat Headset (lentilles Cardboard)</string>
+    <string name="remote_desktop_mode_headset_no_lenses">Flat Headset (sans lentilles)</string>
+    <string name="remote_desktop_native_panel_unavailable">L’ordinateur ne peut pas créer l’écran natif demandé pour le casque.</string>
+    <string name="headset_notch_warning">Les encoches de la caméra masquent une partie de l’image. Des marges égales masquent les mêmes bords pour chaque œil, sans étirer l’image.</string>
+    <string name="headset_symmetric_notch">Marges égales pour les encoches de la caméra</string>
+    <string name="headset_alignment">Afficher la ligne centrale d’alignement et la flèche vers le bas</string>
+    <string name="headset_title">Flat Headset</string>
+    <string name="headset_discovery_description">Connectez le téléphone et l’ordinateur au même Wi-Fi, au point d’accès de l’ordinateur ou par partage USB. Préparez le téléphone ici, puis autorisez le lancer sur l’ordinateur. Le son et les commandes restent sur l’ordinateur ; les touches de volume du téléphone règlent la luminosité.</string>
+    <string name="headset_wait_for_computer">Préparer la réception du lancer</string>
+    <string name="headset_waiting">Prêt pour le lancer. Autorisez ce casque sur l’ordinateur.</string>
+    <string name="headset_stop">Arrêter le lancer</string>
+    <string name="headset_upnp_android_version">La découverte autonome nécessite Android 7 ou ultérieur. Le récepteur RDP associé reste disponible.</string>
+    <string name="headset_discovery_failed">Impossible de démarrer la découverte sur ce réseau. Vérifiez la connexion et réessayez.</string>
+    <string name="headset_scan_viewer">Scanner le code QR du casque</string>
+    <string name="headset_profile_default">Profil des lentilles : Cardboard par défaut</string>
+    <string name="headset_profile_saved">Profil des lentilles : casque enregistré</string>
+    <string name="headset_correction_title">Correction des lentilles</string>
+    <string name="headset_correction_off">Sans correction</string>
+    <string name="headset_correction_fitted">Shinecon ajusté (D)</string>
+    <string name="headset_correction_profile">Profil QR du casque</string>
+    <string name="headset_correction_hint">Le réglage correspond au test D. Gardez la même position du téléphone, le même écartement des lentilles et la même mise au point. Utilisez un film ou un flux ordinaire sans correction.</string>
+    <string name="headset_hevc">HEVC si pris en charge (H.264 par défaut et en secours)</string>
+    <string name="headset_throw_connecting">En attente du lancer…</string>
+    <string name="headset_throw_reconnecting">En attente du prochain lancer…</string>
+    <string name="headset_wait_reduce_motion">Réduire les mouvements pendant l’attente</string>
+</resources>

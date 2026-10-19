@@ -1,0 +1,175 @@
+From 295f1b2e075ba353f587727be1863dcf10a20855 Mon Sep 17 00:00:00 2001
+From: Fabian Druschke <fdruschke@outlook.com>
+Date: Sat, 11 Jul 2026 15:15:49 +0200
+Subject: [PATCH 8/9] android: synchronize touchpad click events
+
+---
+ .../presentation/SessionActivity.java         |  6 ++
+ .../presentation/SessionInputManager.java     | 62 +++++++++++++++++++
+ .../freerdpcore/presentation/SessionView.java | 26 ++++----
+ 3 files changed, 81 insertions(+), 13 deletions(-)
+
+diff --git a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionActivity.java b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionActivity.java
+index 9a53279..ef8bbea 100644
+--- a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionActivity.java
++++ b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionActivity.java
+@@ -74,6 +74,7 @@ public class SessionActivity extends AppCompatActivity
+ 	public static final int CONNECTION_STATE_CONNECTED = 1;
+ 	public static final int CONNECTION_STATE_FAILED = 2;
+ 	public static final int CONNECTION_STATE_DISCONNECTED = 3;
++	public static final int CONNECTION_STATE_INPUT_DIAGNOSTIC = 4;
+ 	private static final String TAG = "FreeRDP.SessionActivity";
+ 	static volatile SessionActivity activeSession;
+ 	private Bitmap bitmap;
+@@ -1055,6 +1056,11 @@ public class SessionActivity extends AppCompatActivity
+ 		receiver.send(state, result);
+ 	}
+ 
++	void reportInputDiagnostic(String detail)
++	{
++		reportConnectionState(CONNECTION_STATE_INPUT_DIAGNOSTIC, detail);
++	}
++
+ 	private void onSessionDisconnected()
+ 	{
+ 		Log.v(TAG, "onSessionDisconnected");
+diff --git a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionInputManager.java b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionInputManager.java
+index d7ba0db..9df15fc 100644
+--- a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionInputManager.java
++++ b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionInputManager.java
+@@ -420,6 +420,68 @@ public class SessionInputManager
+ 		LibFreeRDP.sendCursorEvent(instance, x, y, Mouse.getRightButtonEvent(context, down));
+ 	}
+ 
++	@Override public void onSessionViewClick(int x, int y, int button)
++	{
++		if (instance == 0)
++		{
++			reportPointerClick("ignored", x, y, button, false, false, false);
++			return;
++		}
++
++		/* A tap is one logical operation. Flush a pending relative movement first, then
++		 * explicitly synchronize the server-side pointer position with both button PDUs.
++		 * Some RDP input backends otherwise retain the last processed position when a
++		 * down/up pair follows a throttled move. */
++		cancelDelayedMoveEvent();
++		final int moveFlags = Mouse.getMoveEvent();
++		final int downFlags;
++		final int upFlags;
++		switch (button)
++		{
++			case SessionView.SessionViewListener.BUTTON_RIGHT:
++				downFlags = Mouse.getRightButtonEvent(context, true) | moveFlags;
++				upFlags = Mouse.getRightButtonEvent(context, false) | moveFlags;
++				break;
++			case SessionView.SessionViewListener.BUTTON_MIDDLE:
++				downFlags = Mouse.getMiddleButtonEvent(true) | moveFlags;
++				upFlags = Mouse.getMiddleButtonEvent(false) | moveFlags;
++				break;
++			case SessionView.SessionViewListener.BUTTON_LEFT:
++			default:
++				downFlags = Mouse.getLeftButtonEvent(context, true) | moveFlags;
++				upFlags = Mouse.getLeftButtonEvent(context, false) | moveFlags;
++				break;
++		}
++
++		boolean moveQueued = LibFreeRDP.sendCursorEvent(instance, x, y, moveFlags);
++		boolean downQueued = LibFreeRDP.sendCursorEvent(instance, x, y, downFlags);
++		boolean upQueued = LibFreeRDP.sendCursorEvent(instance, x, y, upFlags);
++		reportPointerClick("queued", x, y, button, moveQueued, downQueued, upQueued);
++	}
++
++	private void reportPointerClick(String state, int x, int y, int button, boolean move,
++	                                boolean down, boolean up)
++	{
++		String buttonName;
++		switch (button)
++		{
++			case SessionView.SessionViewListener.BUTTON_RIGHT:
++				buttonName = "right";
++				break;
++			case SessionView.SessionViewListener.BUTTON_MIDDLE:
++				buttonName = "middle";
++				break;
++			default:
++				buttonName = "left";
++				break;
++		}
++		String detail = "RDP pointer click " + state + ": button=" + buttonName + " x=" + x +
++		                " y=" + y + " move=" + move + " down=" + down + " up=" + up;
++		Log.i(TAG, detail);
++		if (context instanceof SessionActivity)
++			((SessionActivity)context).reportInputDiagnostic(detail);
++	}
++
+ 	@Override public void onSessionViewMove(int x, int y)
+ 	{
+ 		if (instance == 0)
+diff --git a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionView.java b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionView.java
+index 4304e76..2e2b4e4 100644
+--- a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionView.java
++++ b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionView.java
+@@ -462,24 +462,18 @@ public class SessionView extends View
+ 				sessionViewListener.onSessionViewEndTouch();
+ 			}
+ 			else
+-				sendLeftClick(position);
++				sendClick(position, SessionViewListener.BUTTON_LEFT);
+ 		}
+ 		else if ("right".equals(action))
+-		{
+-			sessionViewListener.onSessionViewRightTouch(position.x, position.y, true);
+-			sessionViewListener.onSessionViewRightTouch(position.x, position.y, false);
+-		}
++			sendClick(position, SessionViewListener.BUTTON_RIGHT);
+ 		else if ("middle".equals(action))
+-		{
+-			sessionViewListener.onSessionViewMiddleTouch(position.x, position.y, true);
+-			sessionViewListener.onSessionViewMiddleTouch(position.x, position.y, false);
+-		}
++			sendClick(position, SessionViewListener.BUTTON_MIDDLE);
+ 	}
+ 
+-	private void sendLeftClick(TouchpadPointerController.Position position)
++	private void sendClick(TouchpadPointerController.Position position, int button)
+ 	{
+-		sessionViewListener.onSessionViewLeftTouch(position.x, position.y, true);
+-		sessionViewListener.onSessionViewLeftTouch(position.x, position.y, false);
++		performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY);
++		sessionViewListener.onSessionViewClick(position.x, position.y, button);
+ 	}
+ 
+ 	// Handle all physical mouse buttons here; finger taps come via onSingleTapUp.
+@@ -542,6 +536,10 @@ public class SessionView extends View
+ 
+ 	public interface SessionViewListener
+ 	{
++		int BUTTON_LEFT = 1;
++		int BUTTON_MIDDLE = 2;
++		int BUTTON_RIGHT = 3;
++
+ 		void onSessionViewBeginTouch();
+ 
+ 		void onSessionViewEndTouch();
+@@ -552,6 +550,8 @@ public class SessionView extends View
+ 
+ 		void onSessionViewRightTouch(int x, int y, boolean down);
+ 
++		void onSessionViewClick(int x, int y, int button);
++
+ 		void onSessionViewMove(int x, int y);
+ 
+ 		void onSessionViewMouseMove(int x, int y);
+@@ -670,7 +670,7 @@ public class SessionView extends View
+ 				dragging = true;
+ 			}
+ 			else
+-				sendLeftClick(position);
++				sendClick(position, SessionViewListener.BUTTON_LEFT);
+ 			return true;
+ 		}
+ 
+-- 
+2.55.0
+

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted-GPL -->
+<resources>
+    <string name="remote_desktop_mode_headset">Flat Headset (Cardboard 렌즈)</string>
+    <string name="remote_desktop_mode_headset_no_lenses">Flat Headset (렌즈 없음)</string>
+    <string name="remote_desktop_native_panel_unavailable">컴퓨터에서 요청한 헤드셋 기본 해상도 화면을 만들 수 없습니다.</string>
+    <string name="headset_notch_warning">카메라 노치와 구멍이 그림 일부를 가립니다. 양쪽 눈의 같은 가장자리를 가리면 그림을 늘리지 않고 균형을 맞출 수 있습니다.</string>
+    <string name="headset_symmetric_notch">카메라 구멍에 맞춰 양쪽 눈의 여백 통일</string>
+    <string name="headset_alignment">가운데 정렬선과 아래쪽 화살표 표시</string>
+    <string name="headset_title">Flat Headset</string>
+    <string name="headset_discovery_description">휴대전화와 컴퓨터를 같은 Wi-Fi, 컴퓨터 핫스팟 또는 USB 테더링으로 연결하세요. 여기서 수신을 준비한 뒤 컴퓨터에서 던지기를 승인하세요. 소리와 입력은 컴퓨터에 남고 휴대전화 음량 키로 밝기를 조절합니다.</string>
+    <string name="headset_wait_for_computer">던지기 수신 준비</string>
+    <string name="headset_waiting">던지기 준비 완료. 컴퓨터에서 이 헤드셋을 승인하세요.</string>
+    <string name="headset_stop">던지기 중지</string>
+    <string name="headset_upnp_android_version">독립 검색에는 Android 7 이상이 필요합니다. 페어링된 RDP 수신기는 계속 사용할 수 있습니다.</string>
+    <string name="headset_discovery_failed">이 네트워크에서 검색을 시작할 수 없습니다. 연결을 확인하고 다시 시도하세요.</string>
+    <string name="headset_scan_viewer">뷰어 QR 코드 스캔</string>
+    <string name="headset_profile_default">렌즈 프로필: Cardboard 기본값</string>
+    <string name="headset_profile_saved">렌즈 프로필: 저장된 뷰어</string>
+    <string name="headset_correction_title">렌즈 보정</string>
+    <string name="headset_correction_off">보정 없음</string>
+    <string name="headset_correction_fitted">Shinecon 조정값 (D)</string>
+    <string name="headset_correction_profile">뷰어 QR 프로필</string>
+    <string name="headset_correction_hint">이 조정은 보기 시험 D와 일치합니다. 휴대전화 위치, 렌즈 간격, 초점을 그대로 유지하세요. 보정되지 않은 일반 영상이나 스트림을 사용하세요.</string>
+    <string name="headset_hevc">지원될 때 HEVC 사용 (기본 및 대체 방식은 H.264)</string>
+    <string name="headset_throw_connecting">던지기를 기다리는 중…</string>
+    <string name="headset_throw_reconnecting">다음 던지기를 기다리는 중…</string>
+    <string name="headset_wait_reduce_motion">기다리는 동안 움직임 줄이기</string>
+</resources>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted-GPL -->
+<resources>
+    <string name="headset_link_title">投送画面大小</string>
+    <string name="headset_link_sbs720">720p 阅读预设：全宽左右</string>
+    <string name="headset_link_tb720">半高上下：保留水平方向细节</string>
+    <string name="headset_link_native">面板原生分辨率（当前默认）</string>
+    <string name="headset_link_hint">720p 是阅读预设：独立的 1280×720 桌面比缩放后的全高清桌面文字更大。仅改变传输格式不会放大镜像文字。半分辨率格式传输 1280×720，由手机还原双眼，以减少细节换取较少像素。这些选项使用 H.264，需要更新电脑组件。原生模式保留可选 HEVC。更改前请停止投送。</string>
+    <string name="headset_link_halfsbs720">半宽左右：保留垂直方向细节</string>
+    <string name="headset_link_fulltb720">全上下 720p · 完整细节，纵向画面 (1280×1440)</string>
+</resources>

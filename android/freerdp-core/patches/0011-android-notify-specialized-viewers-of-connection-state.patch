@@ -1,0 +1,18 @@
+--- a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionActivity.java
++++ b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionActivity.java
+@@ -1049,9 +1049,15 @@
+ 		finish();
+ 	}
+ 
++	protected void onSessionConnectionChanged(boolean connected)
++	{
++	}
++
+ 	@SuppressWarnings("deprecation")
+ 	private void reportConnectionState(int state, String detail)
+ 	{
++		if (state == CONNECTION_STATE_CONNECTED || state == CONNECTION_STATE_DISCONNECTED || state == CONNECTION_STATE_FAILED)
++			onSessionConnectionChanged(state == CONNECTION_STATE_CONNECTED);
+ 		ResultReceiver receiver = getIntent().getParcelableExtra(EXTRA_CONNECTION_STATE_RECEIVER);
+ 		if (receiver == null)
+ 			return;

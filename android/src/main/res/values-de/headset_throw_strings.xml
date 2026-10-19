@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted-GPL -->
+<resources>
+    <string name="remote_desktop_mode_headset">Flat Headset (Cardboard-Linsen)</string>
+    <string name="remote_desktop_mode_headset_no_lenses">Flat Headset (ohne Linsen)</string>
+    <string name="remote_desktop_native_panel_unavailable">Der Computer kann das angeforderte native Headset-Display nicht erstellen.</string>
+    <string name="headset_notch_warning">Kameraaussparungen verdecken einen Teil des Bildes. Gleiche Ränder verdecken für beide Augen dieselben Kanten, ohne das Bild zu verzerren.</string>
+    <string name="headset_symmetric_notch">Gleiche Augenränder bei Kameraaussparungen</string>
+    <string name="headset_alignment">Mittlere Ausrichtungslinie und Pfeil nach unten anzeigen</string>
+    <string name="headset_title">Flat Headset</string>
+    <string name="headset_discovery_description">Verbinde Telefon und Computer mit demselben WLAN, dem Hotspot des Computers oder über USB-Tethering. Bereite das Telefon hier vor und bestätige den Wurf am Computer. Ton und Eingabe bleiben am Computer; die Lautstärketasten des Telefons regeln die Helligkeit.</string>
+    <string name="headset_wait_for_computer">Für den Wurf vorbereiten</string>
+    <string name="headset_waiting">Bereit für den Wurf. Bestätige dieses Headset am Computer.</string>
+    <string name="headset_stop">Werfen beenden</string>
+    <string name="headset_upnp_android_version">Die eigenständige Erkennung erfordert Android 7 oder neuer. Der gekoppelte RDP-Empfänger bleibt verfügbar.</string>
+    <string name="headset_discovery_failed">Die Erkennung in diesem Netzwerk konnte nicht gestartet werden. Prüfe die Verbindung und versuche es erneut.</string>
+    <string name="headset_scan_viewer">QR-Code des Betrachters scannen</string>
+    <string name="headset_profile_default">Linsenprofil: Cardboard-Standard</string>
+    <string name="headset_profile_saved">Linsenprofil: gespeicherter Betrachter</string>
+    <string name="headset_correction_title">Linsenkorrektur</string>
+    <string name="headset_correction_off">Ohne Korrektur</string>
+    <string name="headset_correction_fitted">Shinecon angepasst (D)</string>
+    <string name="headset_correction_profile">QR-Profil des Betrachters</string>
+    <string name="headset_correction_hint">Die Anpassung entspricht Sehtest D. Behalte Telefonposition, Linsenabstand und Fokus bei. Verwende einen gewöhnlichen Film oder Stream ohne Korrektur.</string>
+    <string name="headset_hevc">HEVC, wenn unterstützt (H.264 als Standard und Rückfall)</string>
+    <string name="headset_throw_connecting">Warten auf den Wurf…</string>
+    <string name="headset_throw_reconnecting">Warten auf den nächsten Wurf…</string>
+    <string name="headset_wait_reduce_motion">Bewegungen beim Warten reduzieren</string>
+    <string name="headset_movie_mode">Film ansehen</string>
+    <string name="headset_movie_waiting">Wähle Flat Headset in deiner Mediensteuerung. Der Filmton wird auf diesem Telefon wiedergegeben.</string>
+    <string name="headset_movie_unsupported">Dieses Filmformat muss vom Medienserver umgewandelt werden.</string>
+    <string name="headset_movie_failed">Der Film konnte nicht abgespielt werden. Wähle in deiner Steuerung eine andere Datei.</string>
+    <string name="headset_link_title">Bildgröße beim Werfen</string>
+    <string name="headset_link_sbs720">720p-Leseprofil: vollständig nebeneinander</string>
+    <string name="headset_link_tb720">Halb oben/unten: erhält horizontale Details</string>
+    <string name="headset_link_native">Native Displayauflösung (aktueller Standard)</string>
+    <string name="headset_link_hint">720p ist das Leseprofil: Ein separater Desktop mit 1280×720 zeigt größeren Text als ein eingepasster Full-HD-Desktop. Nur das Übertragungsformat zu ändern vergrößert gespiegelten Text nicht. Halbe Formate übertragen 1280×720 und stellen beide Augen auf dem Telefon wieder her, mit weniger Details und Pixeln. Diese Optionen verwenden H.264 und erfordern die aktualisierten Computerkomponenten. Nativ behält optionales HEVC. Beende das Werfen vor einer Änderung.</string>
+    <string name="headset_link_halfsbs720">Halb nebeneinander: erhält vertikale Details</string>
+    <string name="headset_link_fulltb720">Voll oben/unten 720p · volle Details, hohes Bild (1280×1440)</string>
+    <string name="headset_link_automatic">Automatisch · Auswahl beim Verbinden</string>
+    <string name="headset_show_link_status">Verbindungsstatus für beide Augen anzeigen</string>
+    <string name="headset_wifi_status">%1$s · %2$s (%3$d MHz) · Senden/Empfangen %4$s/%5$s Mbit/s · %6$s dBm</string>
+    <string name="headset_wifi_unavailable">WLAN-Details nicht verfügbar (Kabel oder unbekannte Verbindung)</string>
+    <string name="headset_link_current">Verbindung: %1$s</string>
+    <string name="headset_auto_next">Nächste Verbindung: %1$s · %2$s</string>
+    <string name="headset_auto_unknown">Verbindung unbekannt; Nativ beibehalten</string>
+    <string name="headset_auto_phy">Angegebene WLAN-Rate; keine gemessene Bandbreite</string>
+    <string name="headset_auto_limited">Begrenztes WLAN; horizontale Textdetails erhalten</string>
+    <string name="headset_auto_measured">Niedrigste gemessene Darstellungsverzögerung und Bildabstände</string>
+</resources>

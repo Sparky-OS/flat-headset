@@ -1,0 +1,13 @@
+version = 1
+
+[[annotations]]
+path = "src/main/res/**/flat_headset*"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Sparky Stereo, by Daniel Ramos and partners (OpenAI GPT-6 Astra via Codex; Anthropic Claude Sonnet via Claude Code)"
+SPDX-License-Identifier = "CC-BY-SA-4.0"
+
+[[annotations]]
+path = ["src/debug/assets/headset-waiting-proof/**", "src/main/assets/headset-waiting/**"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Sparky Stereo, by Daniel Ramos and partners (OpenAI GPT-6 Astra via Codex)"
+SPDX-License-Identifier = "GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted-GPL"

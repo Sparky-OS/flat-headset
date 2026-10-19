@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted-GPL -->
+<resources>
+    <string name="headset_link_title">スローする画像サイズ</string>
+    <string name="headset_link_sbs720">読書用720p：フル左右並列</string>
+    <string name="headset_link_tb720">ハーフ上下：水平方向の細部を維持</string>
+    <string name="headset_link_native">パネルのネイティブ解像度（現在の既定）</string>
+    <string name="headset_link_hint">読書用は720pです。独立した1280×720のデスクトップでは、縮小したフルHDより文字が大きくなります。転送形式だけを変えてもミラーの文字は大きくなりません。ハーフ形式は1280×720を送り、細部を減らす代わりに転送画素数を減らしてスマートフォンで両眼を復元します。これらはH.264と更新済みPCコンポーネントが必要です。ネイティブではHEVCも選べます。変更前にスローを停止してください。</string>
+    <string name="headset_link_halfsbs720">ハーフ左右：垂直方向の細部を維持</string>
+    <string name="headset_link_fulltb720">フルTB 720p · 詳細を保持、縦長フレーム (1280×1440)</string>
+</resources>

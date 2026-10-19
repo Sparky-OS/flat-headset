@@ -1,0 +1,136 @@
+--- a/client/Android/Studio/freeRDPCore/src/main/cpp/android_freerdp.c
++++ b/client/Android/Studio/freeRDPCore/src/main/cpp/android_freerdp.c
+@@ -240,6 +240,8 @@
+ 	return TRUE;
+ }
+ 
++#include "android_headset.c"
++
+ static BOOL android_pre_connect(freerdp* instance)
+ {
+ 	WINPR_ASSERT(instance);
+@@ -268,6 +270,9 @@
+ 		return FALSE;
+ 	}
+ 
++	const char* headsetArgs[] = {"headsetvideo"};
++	if (freerdp_register_addin_provider(headset_provider, 0) != CHANNEL_RC_OK ||
++	    !freerdp_client_add_dynamic_channel(settings, 1, headsetArgs)) return FALSE;
+ 	freerdp_callback("OnPreConnect", "(J)V", (jlong)instance);
+ 	return TRUE;
+ }
+--- /dev/null
++++ b/client/Android/Studio/freeRDPCore/src/main/cpp/android_headset.c
+@@ -0,0 +1,75 @@
++/* SPDX-License-Identifier: MPL-2.0
++ * Uses the FreeRDP Android receiver by its contributors and KDE Connect integration.
++ */
++#include <freerdp/dvc.h>
++#include <freerdp/client/channels.h>
++#include <freerdp/client/cmdline.h>
++#include <winpr/stream.h>
++#include "android_jni_callback.h"
++
++#define HEADSET_HEADER 36
++#define HEADSET_LIMIT (8 * 1024 * 1024)
++typedef struct { GENERIC_DYNVC_PLUGIN base; rdpContext* context; } HeadsetPlugin;
++typedef struct { GENERIC_CHANNEL_CALLBACK base; BOOL failed; UINT32 sequence; } HeadsetCallback;
++
++static UINT32 headset_word(const BYTE* p) {
++    return p[0] | ((UINT32)p[1] << 8) | ((UINT32)p[2] << 16) | ((UINT32)p[3] << 24);
++}
++static void headset_put(BYTE* p, UINT32 value) {
++    for (int i = 0; i < 4; i++) p[i] = (BYTE)(value >> (i * 8));
++}
++static int headset_java(HeadsetCallback* callback, const BYTE* p, size_t length) {
++    HeadsetPlugin* plugin = (HeadsetPlugin*)callback->base.plugin;
++    JNIEnv* env = NULL;
++    const jboolean attached = jni_attach_thread(&env);
++    if (!env) return 0;
++    jbyteArray data = (*env)->NewByteArray(env, (jsize)length);
++    if (!data) { if (attached) jni_detach_thread(); return 0; }
++    if (length) (*env)->SetByteArrayRegion(env, data, 0, (jsize)length, (const jbyte*)p);
++    int result = freerdp_callback_int_result("OnHeadsetPacket", "(J[B)I", (jlong)plugin->context->instance, data);
++    (*env)->DeleteLocalRef(env, data);
++    if (attached) jni_detach_thread();
++    return result;
++}
++static UINT headset_received(IWTSVirtualChannelCallback* iface, wStream* stream) {
++    HeadsetCallback* c = (HeadsetCallback*)iface;
++    const BYTE* p = Stream_Pointer(stream);
++    size_t size = Stream_GetRemainingLength(stream);
++    if (c->failed) return CHANNEL_RC_OK;
++    if (size < HEADSET_HEADER || size > HEADSET_LIMIT + HEADSET_HEADER || headset_word(p) != 1
++        || headset_word(p + 28) != size - HEADSET_HEADER || headset_word(p + 32) != 2) {
++        c->failed = TRUE; headset_java(c, NULL, 0); return CHANNEL_RC_OK;
++    }
++    UINT32 kind = headset_word(p + 4), seq = headset_word(p + 20);
++    if (kind == 5) { c->failed = TRUE; headset_java(c, NULL, 0); return CHANNEL_RC_OK; }
++    BOOL valid = (kind == 1 && seq == 0 && size == HEADSET_HEADER && c->sequence == 0)
++        || (kind == 3 && seq == c->sequence + 1 && size > HEADSET_HEADER);
++    const int accepted = valid && headset_java(c, p, size) == 1;
++    BYTE reply[HEADSET_HEADER]; memcpy(reply, p, sizeof(reply));
++    headset_put(reply + 4, accepted ? (kind == 1 ? 2 : 4) : 5);
++    headset_put(reply + 24, accepted && kind == 1 ? 1 : 0);
++    headset_put(reply + 28, 0);
++    if (!accepted) { c->failed = TRUE; headset_java(c, NULL, 0); }
++    else c->sequence = seq;
++    // A frame is acknowledged only after decode and a bounded GL presentation wait.
++    if (c->base.channel->Write(c->base.channel, sizeof(reply), reply, NULL) != CHANNEL_RC_OK) {
++        c->failed = TRUE; headset_java(c, NULL, 0);
++    }
++    return CHANNEL_RC_OK; // This optional channel must never abort ordinary RDP.
++}
++static UINT headset_closed(IWTSVirtualChannelCallback* iface) {
++    HeadsetCallback* c = (HeadsetCallback*)iface;
++    headset_java(c, NULL, 0); free(c); return CHANNEL_RC_OK;
++}
++static UINT headset_initialize(GENERIC_DYNVC_PLUGIN* base, rdpContext* context, rdpSettings* settings) {
++    (void)settings; ((HeadsetPlugin*)base)->context = context; return CHANNEL_RC_OK;
++}
++static UINT headset_entry(IDRDYNVC_ENTRY_POINTS* ep) {
++    static const IWTSVirtualChannelCallback callbacks = { .OnDataReceived = headset_received, .OnClose = headset_closed };
++    return freerdp_generic_DVCPluginEntry(ep, "com.freerdp.channels.headsetvideo", "org.sparky.Headset.Video1",
++        sizeof(HeadsetPlugin), sizeof(HeadsetCallback), &callbacks, headset_initialize, NULL);
++}
++static PVIRTUALCHANNELENTRY headset_provider(LPCSTR name, LPCSTR sub, LPCSTR type, DWORD flags) {
++    if (name && strcmp(name, "headsetvideo") == 0) return (PVIRTUALCHANNELENTRY)headset_entry;
++    return freerdp_channels_load_static_addin_entry(name, sub, type, flags);
++}
+--- a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/services/LibFreeRDP.java
++++ b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/services/LibFreeRDP.java
+@@ -710,6 +710,13 @@
+ 		return uiEventListener.OnExperimentalFeature(feature);
+ 	}
+ 
++	private static int OnHeadsetPacket(long inst, byte[] packet)
++	{
++		SessionState s = GlobalApp.getSession(inst);
++		if (s == null || s.getUIEventListener() == null) return 0;
++		return s.getUIEventListener().OnHeadsetPacket(packet);
++	}
++
+ 	private static void OnGraphicsUpdate(long inst, int x, int y, int width, int height)
+ 	{
+ 		SessionState s = GlobalApp.getSession(inst);
+@@ -887,6 +894,8 @@
+ 
+ 		boolean OnExperimentalFeature(int feature);
+ 
++		default int OnHeadsetPacket(byte[] packet) { return 0; }
++
+ 		void OnGraphicsUpdate(int x, int y, int width, int height);
+ 
+ 		void OnGraphicsResize(int width, int height, int bpp);
+--- a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionActivity.java
++++ b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionActivity.java
+@@ -777,6 +777,9 @@
+ 		uiHandler.sendEmptyMessage(REFRESH_SESSIONVIEW);
+ 	}
+ 
++	@Override public int OnHeadsetPacket(byte[] packet) { return onHeadsetPacket(packet); }
++	protected int onHeadsetPacket(byte[] packet) { return 0; }
++
+ 	protected void onDesktopFrame(Bitmap frame)
+ 	{
+ 	}

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted-GPL -->
+<resources>
+    <string name="headset_transport_title">Conexão</string>
+    <string name="headset_transport_network">Rede atual / conexão USB</string>
+    <string name="headset_transport_direct">Wi-Fi direto com o computador</string>
+    <string name="headset_direct_creating">Iniciando Wi-Fi direto…</string>
+    <string name="headset_direct_waiting">No computador, abra Throw via Wi-Fi direto, procure e selecione este telefone. Aceite a conexão no telefone e aprove o Throw no computador.</string>
+    <string name="headset_direct_unavailable">Wi-Fi direto indisponível. Verifique se o Wi-Fi está ativado ou use a rede atual.</string>
+    <string name="headset_direct_permission">O Wi-Fi direto precisa da permissão de dispositivos Wi-Fi próximos (localização nas versões anteriores do Android).</string>
+    <string name="headset_direct_busy">Outra sessão de Wi-Fi Direct está ativa ou iniciando. Encerre-a antes de iniciar esta conexão.</string>
+    <string name="headset_direct_timeout">O Wi-Fi direto não ficou pronto. Verifique o Wi-Fi e tente novamente.</string>
+    <string name="headset_direct_lost">A conexão Wi-Fi direta terminou. Inicie novamente para reconectar.</string>
+    <string name="headset_direct_status">Wi-Fi direto · medições do enlace indisponíveis</string>
+    <string name="headset_direct_connected">Wi-Fi direto conectado. Aprove este telefone no Throw do computador e escolha o que compartilhar.</string>
+</resources>

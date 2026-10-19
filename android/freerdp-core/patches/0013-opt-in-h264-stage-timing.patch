@@ -1,0 +1,103 @@
+--- a/libfreerdp/codec/h264.c
++++ b/libfreerdp/codec/h264.c
+@@ -19,6 +19,22 @@
+  */
+ 
+ #include <freerdp/config.h>
++#include <winpr/wlog.h>
++#include <winpr/print.h>
++
++#if defined(HEADSET_TIMING)
++#include <time.h>
++static UINT64 headset_clock_ns(void)
++{
++    struct timespec now;
++    clock_gettime(CLOCK_MONOTONIC, &now);
++    return (UINT64)now.tv_sec * 1000000000ULL + now.tv_nsec;
++}
++#define HEADSET_STAGE(stage, id) WLog_Print(WLog_Get("HeadsetStage"), WLOG_INFO, "stage=%s ns=%" PRIu64 " id=%" PRIu64, stage, headset_clock_ns(), (UINT64)(id))
++#else
++#define HEADSET_STAGE(stage, id) do { } while (0)
++#endif
++
+ 
+ #include <winpr/crt.h>
+ #include <winpr/print.h>
+@@ -191,7 +207,14 @@
+ 	if (!areRectsValid(h264->log, nDstWidth, nDstHeight, regionRects, numRegionRects))
+ 		return -1013;
+ 
++#if defined(HEADSET_TIMING)
++    UINT64 identity = 14695981039346656037ULL;
++    for (UINT32 i = 0; i < SrcSize; ++i)
++        identity = (identity ^ pSrcData[i]) * 1099511628211ULL;
++#endif
++    HEADSET_STAGE("decode_start", identity);
+ 	status = log_decompress(h264, pSrcData, SrcSize, regionRects, numRegionRects);
++    HEADSET_STAGE("decode_end", identity);
+ 
+ 	if (status == 0)
+ 		return 1;
+@@ -206,6 +229,7 @@
+ 	                           pDstData, nDstStep, regionRects, numRegionRects))
+ 		return -1002;
+ 
++    HEADSET_STAGE("color_end", identity);
+ 	return 1;
+ }
+ 
+--- a/channels/rdpgfx/client/rdpgfx_main.c
++++ b/channels/rdpgfx/client/rdpgfx_main.c
+@@ -43,6 +43,20 @@
+ #include "rdpgfx_codec.h"
+ 
+ #include "rdpgfx_main.h"
++
++
++#if defined(HEADSET_TIMING)
++#include <time.h>
++static UINT64 headset_clock_ns(void)
++{
++    struct timespec now;
++    clock_gettime(CLOCK_MONOTONIC, &now);
++    return (UINT64)now.tv_sec * 1000000000ULL + now.tv_nsec;
++}
++#define HEADSET_STAGE(stage, id) WLog_Print(WLog_Get("HeadsetStage"), WLOG_INFO, "stage=%s ns=%" PRIu64 " id=%" PRIu64, stage, headset_clock_ns(), (UINT64)(id))
++#else
++#define HEADSET_STAGE(stage, id) do { } while (0)
++#endif
+ 
+ #define GFXTAG CHANNELS_TAG("rdpgfx.client")
+ 
+@@ -621,6 +635,7 @@
+ 		                           .pduLength = RDPGFX_HEADER_SIZE + 12 };
+ 
+ 	WLog_Print(gfx->base.log, WLOG_TRACE, "SendFrameAcknowledgePdu: %" PRIu32 "", pdu->frameId);
++	HEADSET_STAGE("ack_write", pdu->frameId);
+ 
+ 	wStream* s = Stream_New(nullptr, header.pduLength);
+ 
+@@ -1278,6 +1293,7 @@
+ 	WLog_Print(gfx->base.log, WLOG_TRACE,
+ 	           "RecvStartFramePdu: frameId: %" PRIu32 " timestamp: 0x%08" PRIX32 "", pdu.frameId,
+ 	           pdu.timestamp);
++	HEADSET_STAGE("frame_begin", pdu.frameId);
+ 	gfx->StartDecodingTime = GetTickCount64();
+ 
+ 	if (context)
+@@ -1314,6 +1330,7 @@
+ 	Stream_Read_UINT32(s, pdu.frameId); /* frameId (4 bytes) */
+ 	WLog_Print(gfx->base.log, WLOG_TRACE, "RecvEndFramePdu: frameId: %" PRIu32 "", pdu.frameId);
+ 
++	HEADSET_STAGE("bitmap_begin", pdu.frameId);
+ 	const UINT64 start = GetTickCount64();
+ 	if (context)
+ 	{
+@@ -1327,6 +1344,7 @@
+ 		}
+ 	}
+ 	const UINT64 end = GetTickCount64();
++	HEADSET_STAGE("bitmap_end", pdu.frameId);
+ 	const UINT64 EndFrameTime = end - start;
+ 	gfx->TotalDecodedFrames++;
+ 

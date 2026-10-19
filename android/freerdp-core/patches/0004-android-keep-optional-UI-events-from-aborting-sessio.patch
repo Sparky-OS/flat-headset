@@ -1,0 +1,410 @@
+From f3f4db519371ce90243438a47cdf9de7f3e5778f Mon Sep 17 00:00:00 2001
+From: Fabian Druschke <fdruschke@outlook.com>
+Date: Fri, 10 Jul 2026 23:54:52 +0200
+Subject: [PATCH 4/9] android: keep optional UI events from aborting sessions
+
+---
+ .../freeRDPCore/src/main/cpp/android_event.c  | 103 +++++++++++++-----
+ .../freeRDPCore/src/main/cpp/android_event.h  |   6 +-
+ .../src/main/cpp/android_freerdp.c            |  27 ++++-
+ .../src/main/cpp/android_freerdp.h            |   1 +
+ .../presentation/SessionActivity.java         |  32 ++++--
+ 5 files changed, 126 insertions(+), 43 deletions(-)
+
+diff --git a/client/Android/Studio/freeRDPCore/src/main/cpp/android_event.c b/client/Android/Studio/freeRDPCore/src/main/cpp/android_event.c
+index ae8aa24..e090f4e 100644
+--- a/client/Android/Studio/freeRDPCore/src/main/cpp/android_event.c
++++ b/client/Android/Studio/freeRDPCore/src/main/cpp/android_event.c
+@@ -24,58 +24,72 @@
+ 
+ BOOL android_push_event(freerdp* inst, ANDROID_EVENT* event)
+ {
++	if (!inst || !inst->context || !event)
++		return FALSE;
++
+ 	androidContext* aCtx = (androidContext*)inst->context;
++	ANDROID_EVENT_QUEUE* queue = aCtx->event_queue;
++	if (!queue || !queue->isSet)
++		return FALSE;
+ 
+-	if (aCtx->event_queue->count >= aCtx->event_queue->size)
++	EnterCriticalSection(&queue->lock);
++
++	if (queue->count >= queue->size)
+ 	{
+-		size_t new_size = aCtx->event_queue->size;
++		size_t new_size = queue->size;
+ 		do
+ 		{
+ 			if (new_size >= SIZE_MAX - 128ull)
++			{
++				LeaveCriticalSection(&queue->lock);
+ 				return FALSE;
++			}
+ 
+ 			new_size += 128ull;
+-		} while (new_size <= aCtx->event_queue->count);
++		} while (new_size <= queue->count);
+ 		void* new_events =
+-		    realloc((void*)aCtx->event_queue->events, sizeof(ANDROID_EVENT*) * new_size);
++		    realloc((void*)queue->events, sizeof(ANDROID_EVENT*) * new_size);
+ 
+ 		if (!new_events)
++		{
++			LeaveCriticalSection(&queue->lock);
+ 			return FALSE;
++		}
+ 
+-		aCtx->event_queue->events = new_events;
+-		aCtx->event_queue->size = new_size;
++		queue->events = new_events;
++		queue->size = new_size;
+ 	}
+ 
+-	aCtx->event_queue->events[(aCtx->event_queue->count)++] = event;
+-	return SetEvent(aCtx->event_queue->isSet);
+-}
+-
+-static ANDROID_EVENT* android_peek_event(ANDROID_EVENT_QUEUE* queue)
+-{
+-	ANDROID_EVENT* event;
+-
+-	if (queue->count < 1)
+-		return nullptr;
+-
+-	event = queue->events[0];
+-	return event;
++	queue->events[queue->count++] = event;
++	const BOOL rc = SetEvent(queue->isSet);
++	if (!rc)
++	{
++		queue->count--;
++		queue->events[queue->count] = nullptr;
++	}
++	LeaveCriticalSection(&queue->lock);
++	return rc;
+ }
+ 
+ static ANDROID_EVENT* android_pop_event(ANDROID_EVENT_QUEUE* queue)
+ {
+-	ANDROID_EVENT* event;
++	WINPR_ASSERT(queue);
++	EnterCriticalSection(&queue->lock);
+ 
+ 	if (queue->count < 1)
++	{
++		LeaveCriticalSection(&queue->lock);
+ 		return nullptr;
++	}
+ 
+-	event = queue->events[0];
++	ANDROID_EVENT* event = queue->events[0];
+ 	(queue->count)--;
+ 
+ 	for (size_t i = 0; i < queue->count; i++)
+-	{
+ 		queue->events[i] = queue->events[i + 1];
+-	}
++	queue->events[queue->count] = nullptr;
+ 
++	LeaveCriticalSection(&queue->lock);
+ 	return event;
+ }
+ 
+@@ -89,15 +103,14 @@ static BOOL android_process_event(ANDROID_EVENT_QUEUE* queue, freerdp* inst)
+ 	context = inst->context;
+ 	WINPR_ASSERT(context);
+ 
+-	while (android_peek_event(queue))
++	ANDROID_EVENT* event = nullptr;
++	while ((event = android_pop_event(queue)) != nullptr)
+ 	{
+-		BOOL rc = FALSE;
++		BOOL rc = TRUE;
+ 		androidContext* afc = (androidContext*)context;
+-		ANDROID_EVENT* event = android_pop_event(queue);
+-
+-		WINPR_ASSERT(event);
++		const int eventType = event->type;
+ 
+-		switch (event->type)
++		switch (eventType)
+ 		{
+ 			case EVENT_TYPE_KEY:
+ 			{
+@@ -128,6 +141,12 @@ static BOOL android_process_event(ANDROID_EVENT_QUEUE* queue, freerdp* inst)
+ 
+ 			case EVENT_TYPE_CLIPBOARD:
+ 			{
++				if (!afc->clipboard || !afc->cliprdr)
++				{
++					WLog_DBG(TAG, "Dropping clipboard event because clipboard redirection is disabled");
++					break;
++				}
++
+ 				ANDROID_EVENT_CLIPBOARD* clipboard_event = (ANDROID_EVENT_CLIPBOARD*)event;
+ 				const char* mimeType = clipboard_event->mimeType;
+ 				UINT32 formatId = ClipboardRegisterFormat(afc->clipboard, mimeType);
+@@ -143,14 +162,33 @@ static BOOL android_process_event(ANDROID_EVENT_QUEUE* queue, freerdp* inst)
+ 			break;
+ 
+ 			case EVENT_TYPE_DISCONNECT:
++				afc->disconnect_requested = TRUE;
++				WLog_DBG(TAG, "Processing requested Android disconnect");
++				break;
++
+ 			default:
++				rc = FALSE;
+ 				break;
+ 		}
+ 
+ 		android_event_free(event);
+ 
+ 		if (!rc)
++		{
++			/* Input and clipboard events are auxiliary to the RDP transport. A rejected
++			 * event must not tear down an otherwise healthy desktop session; transport
++			 * failures are reported by freerdp_check_event_handles(). */
++			if (eventType == EVENT_TYPE_KEY || eventType == EVENT_TYPE_KEY_UNICODE ||
++			    eventType == EVENT_TYPE_CURSOR || eventType == EVENT_TYPE_CLIPBOARD)
++			{
++				WLog_WARN(TAG, "Android event type %d was rejected; keeping the RDP session alive",
++				          eventType);
++				continue;
++			}
++
++			WLog_ERR(TAG, "Unknown Android event type %d", eventType);
+ 			return FALSE;
++		}
+ 	}
+ 
+ 	return TRUE;
+@@ -331,10 +369,12 @@ BOOL android_event_queue_init(freerdp* inst)
+ 
+ 	queue->size = 16;
+ 	queue->count = 0;
++	InitializeCriticalSection(&queue->lock);
+ 	queue->isSet = CreateEventA(nullptr, TRUE, FALSE, nullptr);
+ 
+ 	if (!queue->isSet)
+ 	{
++		DeleteCriticalSection(&queue->lock);
+ 		free(queue);
+ 		return FALSE;
+ 	}
+@@ -345,6 +385,7 @@ BOOL android_event_queue_init(freerdp* inst)
+ 	{
+ 		WLog_ERR(TAG, "android_event_queue_init: memory allocation failed");
+ 		(void)CloseHandle(queue->isSet);
++		DeleteCriticalSection(&queue->lock);
+ 		free(queue);
+ 		return FALSE;
+ 	}
+@@ -374,13 +415,17 @@ void android_event_queue_uninit(freerdp* inst)
+ 
+ 		if (queue->events)
+ 		{
++			for (size_t i = 0; i < queue->count; i++)
++				android_event_free(queue->events[i]);
+ 			free(queue->events);
+ 			queue->events = nullptr;
+ 			queue->size = 0;
+ 			queue->count = 0;
+ 		}
+ 
++		DeleteCriticalSection(&queue->lock);
+ 		free(queue);
++		aCtx->event_queue = nullptr;
+ 	}
+ }
+ 
+diff --git a/client/Android/Studio/freeRDPCore/src/main/cpp/android_event.h b/client/Android/Studio/freeRDPCore/src/main/cpp/android_event.h
+index ea98624..65321cc 100644
+--- a/client/Android/Studio/freeRDPCore/src/main/cpp/android_event.h
++++ b/client/Android/Studio/freeRDPCore/src/main/cpp/android_event.h
+@@ -13,6 +13,7 @@
+ #define FREERDP_CLIENT_ANDROID_EVENT_H
+ #include <freerdp/freerdp.h>
+ #include <freerdp/api.h>
++#include <winpr/synch.h>
+ 
+ #define EVENT_TYPE_KEY 1
+ #define EVENT_TYPE_CURSOR 2
+@@ -50,9 +51,10 @@ typedef struct
+ 
+ typedef struct
+ {
+-	int size;
+-	int count;
++	size_t size;
++	size_t count;
+ 	HANDLE isSet;
++	CRITICAL_SECTION lock;
+ 	ANDROID_EVENT** events;
+ } ANDROID_EVENT_QUEUE;
+ 
+diff --git a/client/Android/Studio/freeRDPCore/src/main/cpp/android_freerdp.c b/client/Android/Studio/freeRDPCore/src/main/cpp/android_freerdp.c
+index 07b43fa..0a7d0f4 100644
+--- a/client/Android/Studio/freeRDPCore/src/main/cpp/android_freerdp.c
++++ b/client/Android/Studio/freeRDPCore/src/main/cpp/android_freerdp.c
+@@ -685,6 +685,7 @@ static DWORD android_freerdp_run(freerdp* instance)
+ 	HANDLE handles[MAXIMUM_WAIT_OBJECTS];
+ 	HANDLE inputEvent = nullptr;
+ 	rdpContext* context = instance->context;
++	androidContext* afc = (androidContext*)context;
+ 
+ 	inputEvent = android_get_handle(instance);
+ 
+@@ -693,6 +694,12 @@ static DWORD android_freerdp_run(freerdp* instance)
+ 		DWORD tmp;
+ 		DWORD waitStatus;
+ 
++		if (afc->disconnect_requested)
++		{
++			sessionStatus = CHANNEL_RC_OK;
++			break;
++		}
++
+ 		if (freerdp_shall_disconnect_context(context))
+ 		{
+ 			sessionStatus = android_resolve_session_status(context, CHANNEL_RC_OK);
+@@ -737,6 +744,12 @@ static DWORD android_freerdp_run(freerdp* instance)
+ 			break;
+ 		}
+ 
++		if (afc->disconnect_requested)
++		{
++			sessionStatus = CHANNEL_RC_OK;
++			break;
++		}
++
+ 		if (freerdp_shall_disconnect_context(context))
+ 		{
+ 			sessionStatus = android_resolve_session_status(context, CHANNEL_RC_OK);
+@@ -745,10 +758,14 @@ static DWORD android_freerdp_run(freerdp* instance)
+ 
+ 		if (android_check_handle(instance) != TRUE)
+ 		{
+-			const DWORD handleError = GetLastError();
+ 			WLog_ERR(TAG, "Failed to check android file descriptor");
+-			sessionStatus = android_resolve_session_status(
+-			    context, handleError != ERROR_SUCCESS ? handleError : ERROR_INTERNAL_ERROR);
++			sessionStatus = android_resolve_session_status(context, ERROR_INTERNAL_ERROR);
++			break;
++		}
++
++		if (afc->disconnect_requested)
++		{
++			sessionStatus = CHANNEL_RC_OK;
+ 			break;
+ 		}
+ 	}
+@@ -1042,6 +1059,7 @@ JNIEXPORT jboolean JNICALL Java_com_freerdp_freerdpcore_services_LibFreeRDP_free
+ 	androidContext* ctx = (androidContext*)inst->context;
+ 	android_clear_session_error(ctx);
+ 	ctx->is_connected = FALSE;
++	ctx->disconnect_requested = FALSE;
+ 	ctx->gfx_pipeline_initialized = FALSE;
+ 
+ 	if (!(ctx->thread = CreateThread(nullptr, 0, android_thread_func, inst, 0, nullptr)))
+@@ -1075,6 +1093,7 @@ JNIEXPORT jboolean JNICALL Java_com_freerdp_freerdpcore_services_LibFreeRDP_free
+ 		android_event_free((ANDROID_EVENT*)event);
+ 		return JNI_FALSE;
+ 	}
++	ctx->disconnect_requested = TRUE;
+ 
+ 	if (!freerdp_abort_connect_context(inst->context))
+ 		return JNI_FALSE;
+@@ -1264,7 +1283,7 @@ Java_com_freerdp_freerdpcore_services_LibFreeRDP_freerdp_1send_1clipboard_1data(
+ 	const char* data = jdata != nullptr ? (*env)->GetStringUTFChars(env, jdata, nullptr) : nullptr;
+ 	const size_t data_length = data ? (*env)->GetStringUTFLength(env, jdata) : 0;
+ 	jboolean ret = android_push_clipboard_event(inst, data, data_length, "text/plain");
+-	WLog_DBG(TAG, "send_clipboard_data: (%s)", data);
++	WLog_DBG(TAG, "send_clipboard_data: %" PRIuz " bytes", data_length);
+ 
+ 	if (data)
+ 		(*env)->ReleaseStringUTFChars(env, jdata, data);
+diff --git a/client/Android/Studio/freeRDPCore/src/main/cpp/android_freerdp.h b/client/Android/Studio/freeRDPCore/src/main/cpp/android_freerdp.h
+index 1d3645a..3cb18d3 100644
+--- a/client/Android/Studio/freeRDPCore/src/main/cpp/android_freerdp.h
++++ b/client/Android/Studio/freeRDPCore/src/main/cpp/android_freerdp.h
+@@ -31,6 +31,7 @@ typedef struct
+ 	HANDLE thread;
+ 
+ 	BOOL is_connected;
++	BOOL disconnect_requested;
+ 	BOOL gfx_pipeline_initialized;
+ 	UINT32 last_session_error;
+ 	char last_session_error_text[768];
+diff --git a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionActivity.java b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionActivity.java
+index aee4808..f4ffe2e 100644
+--- a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionActivity.java
++++ b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionActivity.java
+@@ -325,7 +325,8 @@ public class SessionActivity extends AppCompatActivity
+ 		if (hasFocus)
+ 		{
+ 			hideSystemBars();
+-			mClipboardManager.getPrimaryClipManually();
++			if (isClipboardRedirectionEnabled())
++				mClipboardManager.getPrimaryClipManually();
+ 		}
+ 	}
+ 
+@@ -844,14 +845,16 @@ public class SessionActivity extends AppCompatActivity
+ 
+ 	@Override public void OnRemoteClipboardChanged(String data)
+ 	{
+-		Log.v(TAG, "OnRemoteClipboardChanged: " + data);
+-		mClipboardManager.setClipboardData(data);
++		Log.v(TAG, "OnRemoteClipboardChanged: " + (data == null ? 0 : data.length()) + " chars");
++		if (isClipboardRedirectionEnabled())
++			mClipboardManager.setClipboardData(data);
+ 	}
+ 
+ 	@Override public void OnRemoteClipboardImageChanged(byte[] data)
+ 	{
+-		Log.v(TAG, "OnRemoteClipboardImageChanged: " + data.length + " bytes");
+-		mClipboardManager.setClipboardImage(data);
++		Log.v(TAG, "OnRemoteClipboardImageChanged: " + (data == null ? 0 : data.length) + " bytes");
++		if (isClipboardRedirectionEnabled() && data != null)
++			mClipboardManager.setClipboardImage(data);
+ 	}
+ 
+ 	@Override public void OnPointerSet(int[] pixels, int width, int height, int hotX, int hotY)
+@@ -921,17 +924,30 @@ public class SessionActivity extends AppCompatActivity
+ 	// ClipboardManagerProxy.OnClipboardChangedListener
+ 	@Override public void onClipboardChanged(String data)
+ 	{
+-		Log.v(TAG, "onClipboardChanged: " + data);
+-		if (session != null)
++		Log.v(TAG, "onClipboardChanged: " + (data == null ? 0 : data.length()) + " chars");
++		if (isClipboardRedirectionEnabled())
+ 			LibFreeRDP.sendClipboardData(session.getInstance(), data);
+ 	}
+ 
+ 	@Override public void onClipboardImageChanged(byte[] data, String mimeType)
+ 	{
+-		if (session != null && data != null)
++		if (isClipboardRedirectionEnabled() && data != null)
+ 			LibFreeRDP.sendClipboardImageData(session.getInstance(), data, mimeType);
+ 	}
+ 
++	private boolean isClipboardRedirectionEnabled()
++	{
++		if (session == null)
++			return false;
++
++		Uri openUri = session.getOpenUri();
++		if (openUri == null)
++			return true; // Saved bookmarks explicitly enable /clipboard.
++
++		String clipboard = openUri.getQueryParameter("clipboard");
++		return clipboard != null && !"-".equals(clipboard);
++	}
++
+ 	private void onConnectionStateChanged(SessionViewModel.ConnectionState state)
+ 	{
+ 		if (session == null)
+-- 
+2.55.0
+

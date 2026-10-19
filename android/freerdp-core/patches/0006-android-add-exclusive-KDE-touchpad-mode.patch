@@ -1,0 +1,110 @@
+From a2bb26a18c53fa567179013a09baf4dcbc73929d Mon Sep 17 00:00:00 2001
+From: Fabian Druschke <fdruschke@outlook.com>
+Date: Sat, 11 Jul 2026 14:37:30 +0200
+Subject: [PATCH 6/9] android: add exclusive KDE touchpad mode
+
+---
+ .../presentation/SessionActivity.java           | 10 ++++++++++
+ .../presentation/SessionInputManager.java       |  5 +++++
+ .../freerdpcore/presentation/SessionView.java   | 17 ++++++++++++++++-
+ 3 files changed, 31 insertions(+), 1 deletion(-)
+
+diff --git a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionActivity.java b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionActivity.java
+index f4ffe2e..9a53279 100644
+--- a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionActivity.java
++++ b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionActivity.java
+@@ -69,6 +69,8 @@ public class SessionActivity extends AppCompatActivity
+ 	    "com.freerdp.freerdpcore.CONNECTION_STATE_RECEIVER";
+ 	public static final String EXTRA_CONNECTION_STATE_DETAIL =
+ 	    "com.freerdp.freerdpcore.CONNECTION_STATE_DETAIL";
++	public static final String EXTRA_INPUT_MODE = "com.freerdp.freerdpcore.INPUT_MODE";
++	public static final String INPUT_MODE_KDE_TOUCHPAD = "kdeTouchpad";
+ 	public static final int CONNECTION_STATE_CONNECTED = 1;
+ 	public static final int CONNECTION_STATE_FAILED = 2;
+ 	public static final int CONNECTION_STATE_DISCONNECTED = 3;
+@@ -259,6 +261,14 @@ public class SessionActivity extends AppCompatActivity
+ 		sessionView.requestFocus();
+ 
+ 		touchPointerView = findViewById(R.id.touchPointerView);
++		boolean kdeTouchpadMode = INPUT_MODE_KDE_TOUCHPAD.equals(
++		    getIntent().getStringExtra(EXTRA_INPUT_MODE));
++		sessionView.setKdeTouchpadMode(kdeTouchpadMode);
++		if (kdeTouchpadMode)
++		{
++			touchPointerView.setVisibility(View.GONE);
++			findViewById(R.id.floating_toolbar_touch_pointer).setVisibility(View.GONE);
++		}
+ 
+ 		floatingToolbar = new FloatingToolbar(this, new FloatingToolbar.Listener() {
+ 			@Override public void onToggleTouchPointer()
+diff --git a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionInputManager.java b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionInputManager.java
+index be30d3a..d7ba0db 100644
+--- a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionInputManager.java
++++ b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionInputManager.java
+@@ -448,6 +448,11 @@ public class SessionInputManager
+ 		LibFreeRDP.sendCursorEvent(instance, 0, 0, Mouse.getHScrollEvent(context, right));
+ 	}
+ 
++	@Override public void onSessionViewPan(float distanceX, float distanceY)
++	{
++		scrollView.scrollBy(Math.round(distanceX), Math.round(distanceY));
++	}
++
+ 	// ****************************************************************************
+ 	// TouchPointerView.TouchPointerListener
+ 
+diff --git a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionView.java b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionView.java
+index 829516c..1119854 100644
+--- a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionView.java
++++ b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionView.java
+@@ -96,6 +96,7 @@ public class SessionView extends View
+ 	private boolean cursorVisible = true;
+ 	private boolean defaultCursor = true;
+ 	private boolean softwareCursorVisible = false;
++	private boolean kdeTouchpadMode = false;
+ 	private final Paint defaultCursorFill = new Paint(Paint.ANTI_ALIAS_FLAG);
+ 	private final Paint defaultCursorStroke = new Paint(Paint.ANTI_ALIAS_FLAG);
+ 	private final Path defaultCursorPath = new Path();
+@@ -430,6 +431,11 @@ public class SessionView extends View
+ 		invalidate();
+ 	}
+ 
++	public void setKdeTouchpadMode(boolean enabled)
++	{
++		kdeTouchpadMode = enabled;
++	}
++
+ 	public void setSoftwareCursorVisible(boolean visible)
+ 	{
+ 		softwareCursorVisible = visible;
+@@ -553,6 +559,8 @@ public class SessionView extends View
+ 		void onSessionViewScroll(boolean down);
+ 
+ 		void onSessionViewHScroll(boolean right);
++
++		void onSessionViewPan(float distanceX, float distanceY);
+ 	}
+ 
+ 	public void setRemoteCursor(int[] pixels, int width, int height, int hotX, int hotY)
+@@ -709,10 +717,17 @@ public class SessionView extends View
+ 
+ 		public boolean onDoubleTouchScroll(MotionEvent e1, MotionEvent e2)
+ 		{
++			float deltaX = e2.getX() - prevEvent.getX();
+ 			float deltaY = e2.getY() - prevEvent.getY();
+-			accumulatedScrollY += deltaY * scrollCoefficient;
+ 			prevEvent.recycle();
+ 			prevEvent = MotionEvent.obtain(e2);
++			if (kdeTouchpadMode)
++			{
++				sessionViewListener.onSessionViewPan(-deltaX, -deltaY);
++				return true;
++			}
++
++			accumulatedScrollY += deltaY * scrollCoefficient;
+ 			if (accumulatedScrollY > TOUCH_SCROLL_MIN_DISTANCE)
+ 			{
+ 				sessionViewListener.onSessionViewScroll(scrollDirection > 0);
+-- 
+2.55.0
+

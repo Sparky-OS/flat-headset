@@ -1,0 +1,22 @@
+[
+  {
+    "coordinate": "org.jetbrains.kotlin:kotlin-compiler-embeddable:2.4.0",
+    "url": "https://repo.maven.apache.org/maven2/org/jetbrains/kotlin/kotlin-compiler-embeddable/2.4.0/kotlin-compiler-embeddable-2.4.0.jar",
+    "sha256": "c2b25e8c1c93ec416ba4327f5e31eaec0f0c8847241b9353e294b8db9dce564f"
+  },
+  {
+    "coordinate": "org.jetbrains.kotlin:kotlin-stdlib:2.4.0",
+    "url": "https://repo.maven.apache.org/maven2/org/jetbrains/kotlin/kotlin-stdlib/2.4.0/kotlin-stdlib-2.4.0.jar",
+    "sha256": "ccb14ff83fabcb11458b798dbc9824748ccdffeec79c9aba789e6ed1cda86b1c"
+  },
+  {
+    "coordinate": "org.jetbrains.intellij.deps:trove4j:1.0.20200330",
+    "url": "https://repo.maven.apache.org/maven2/org/jetbrains/intellij/deps/trove4j/1.0.20200330/trove4j-1.0.20200330.jar",
+    "sha256": "c5fd725bffab51846bf3c77db1383c60aaaebfe1b7fe2f00d23fe1b7df0a439d"
+  },
+  {
+    "coordinate": "org.jetbrains:annotations:23.0.0",
+    "url": "https://repo.maven.apache.org/maven2/org/jetbrains/annotations/23.0.0/annotations-23.0.0.jar",
+    "sha256": "7b0f19724082cbfcbc66e5abea2b9bc92cf08a1ea11e191933ed43801eb3cd05"
+  }
+]

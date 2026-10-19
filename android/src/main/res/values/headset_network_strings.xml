@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="headset_link_automatic">Automatic · choose when connecting</string>
+    <string name="headset_show_link_status">Show link status in both eyes</string>
+    <string name="headset_wifi_status">%1$s · %2$s (%3$d MHz) · Tx/Rx %4$s/%5$s Mbit/s · %6$s dBm</string>
+    <string name="headset_wifi_unavailable">Wi-Fi details unavailable (wired or unknown link)</string>
+    <string name="headset_link_current">Link: %1$s</string>
+    <string name="headset_auto_next">Next connection: %1$s · %2$s</string>
+    <string name="headset_auto_unknown">link unknown; keep Native</string>
+    <string name="headset_auto_phy">advertised Wi-Fi rate; not measured bandwidth</string>
+    <string name="headset_auto_limited">limited Wi-Fi; keep horizontal text detail</string>
+    <string name="headset_auto_measured">lowest measured render delay and frame interval</string>
+</resources>

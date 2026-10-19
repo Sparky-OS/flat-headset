@@ -1,0 +1,25 @@
+Subject: [PATCH] android: let a stereo session supply its waiting view
+
+--- a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionActivity.java
++++ b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionActivity.java
+@@ -614,13 +614,19 @@
+ 
+ 	private ConnectThread connectThread = null;
+ 
++	protected boolean showConnectionProgress()
++	{
++		return true;
++	}
++
+ 	private void connectWithTitle(String title)
+ 	{
+ 		session.setUIEventListener(this);
+ 
+ 		sessionViewModel.register(session.getInstance());
+ 
+-		dialogs.showProgress(title, () -> {
++		if (showConnectionProgress())
++			dialogs.showProgress(title, () -> {
+ 			connectCancelledByUser = true;
+ 			LibFreeRDP.cancelConnection(session.getInstance());
+ 		});

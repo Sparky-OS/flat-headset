@@ -1,0 +1,21 @@
+--- a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionActivity.java
++++ b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionActivity.java
+@@ -766,6 +766,7 @@
+ 	{
+ 		LibFreeRDP.updateGraphics(session.getInstance(), bitmap, x, y, width, height);
+ 
++		onDesktopFrame(bitmap);
+ 		sessionView.addInvalidRegion(new Rect(x, y, x + width, y + height));
+ 
+ 		/*
+@@ -774,6 +775,10 @@
+ 		 */
+ 
+ 		uiHandler.sendEmptyMessage(REFRESH_SESSIONVIEW);
++	}
++
++	protected void onDesktopFrame(Bitmap frame)
++	{
+ 	}
+ 
+ 	@Override public void OnGraphicsResize(int width, int height, int bpp)

@@ -1,0 +1,102 @@
+From 3fd59cf971612f92fa40cc46f15fba3145f3d2db Mon Sep 17 00:00:00 2001
+From: Fabian Druschke <fdruschke@outlook.com>
+Date: Fri, 10 Jul 2026 21:25:46 +0200
+Subject: [PATCH 1/9] Android: report native RDP connection state
+
+---
+ .../presentation/SessionActivity.java         | 31 +++++++++++++++++--
+ .../freerdpcore/services/LibFreeRDP.java      |  8 +++++
+ 2 files changed, 37 insertions(+), 2 deletions(-)
+
+diff --git a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionActivity.java b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionActivity.java
+index cae9b40..4e40c88 100644
+--- a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionActivity.java
++++ b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionActivity.java
+@@ -27,6 +27,7 @@ import android.os.Bundle;
+ import android.os.Handler;
+ import android.os.Looper;
+ import android.os.Message;
++import android.os.ResultReceiver;
+ 
+ import androidx.activity.OnBackPressedCallback;
+ import androidx.annotation.NonNull;
+@@ -63,6 +64,13 @@ public class SessionActivity extends AppCompatActivity
+ {
+ 	public static final String PARAM_CONNECTION_REFERENCE = "conRef";
+ 	public static final String PARAM_INSTANCE = "instance";
++	public static final String EXTRA_CONNECTION_ERROR = "com.freerdp.freerdpcore.CONNECTION_ERROR";
++	public static final String EXTRA_CONNECTION_STATE_RECEIVER =
++	    "com.freerdp.freerdpcore.CONNECTION_STATE_RECEIVER";
++	public static final String EXTRA_CONNECTION_STATE_DETAIL =
++	    "com.freerdp.freerdpcore.CONNECTION_STATE_DETAIL";
++	public static final int CONNECTION_STATE_CONNECTED = 1;
++	public static final int CONNECTION_STATE_FAILED = 2;
+ 	private static final String TAG = "FreeRDP.SessionActivity";
+ 	static volatile SessionActivity activeSession;
+ 	private Bitmap bitmap;
+@@ -942,6 +950,7 @@ public class SessionActivity extends AppCompatActivity
+ 
+ 		// bind session
+ 		bindSession();
++		reportConnectionState(CONNECTION_STATE_CONNECTED, "");
+ 
+ 		if (ApplicationSettingsActivity.getKeepScreenOnWhenConnected(this))
+ 		{
+@@ -971,7 +980,9 @@ public class SessionActivity extends AppCompatActivity
+ 
+ 	private void onSessionFailed()
+ 	{
+-		Log.v(TAG, "onSessionFailed");
++		String nativeError = LibFreeRDP.getLastErrorString(session.getInstance()).trim();
++		Log.e(TAG, "onSessionFailed" + (nativeError.isEmpty() ? "" : ": " + nativeError));
++		reportConnectionState(CONNECTION_STATE_FAILED, nativeError);
+ 
+ 		// cancel any pending input events
+ 		if (inputManager != null)
+@@ -984,7 +995,23 @@ public class SessionActivity extends AppCompatActivity
+ 			uiHandler.sendMessage(Message.obtain(
+ 			    null, DISPLAY_TOAST, getResources().getText(R.string.error_connection_failure)));
+ 
+-		closeSessionActivity(RESULT_CANCELED);
++		Intent result = new Intent();
++		if (!nativeError.isEmpty())
++			result.putExtra(EXTRA_CONNECTION_ERROR, nativeError);
++		setResult(RESULT_CANCELED, result);
++		finish();
++	}
++
++	@SuppressWarnings("deprecation")
++	private void reportConnectionState(int state, String detail)
++	{
++		ResultReceiver receiver = getIntent().getParcelableExtra(EXTRA_CONNECTION_STATE_RECEIVER);
++		if (receiver == null)
++			return;
++		Bundle result = new Bundle();
++		if (detail != null && !detail.isEmpty())
++			result.putString(EXTRA_CONNECTION_STATE_DETAIL, detail);
++		receiver.send(state, result);
+ 	}
+ 
+ 	private void onSessionDisconnected()
+diff --git a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/services/LibFreeRDP.java b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/services/LibFreeRDP.java
+index c8de7e1..d99c36b 100644
+--- a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/services/LibFreeRDP.java
++++ b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/services/LibFreeRDP.java
+@@ -847,6 +847,14 @@ public class LibFreeRDP
+ 		return freerdp_get_version();
+ 	}
+ 
++	public static String getLastErrorString(long instance)
++	{
++		if (instance == 0)
++			return "";
++		String error = freerdp_get_last_error_string(instance);
++		return error == null ? "" : error;
++	}
++
+ 	public interface EventListener
+ 	{
+ 		void OnPreConnect(long instance);
+-- 
+2.55.0
+

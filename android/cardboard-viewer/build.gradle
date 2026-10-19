@@ -1,0 +1,46 @@
+/* SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted-GPL */
+plugins {
+    id 'com.android.library'
+    id 'com.google.protobuf' version '0.10.0'
+}
+def cardboard = rootProject.file(providers.gradleProperty('cardboardSourceDir').getOrElse('../cardboard'))
+android {
+    namespace 'com.google.cardboard.sdk'
+    compileSdk 37
+    ndkVersion '29.0.13113456'
+    defaultConfig {
+        minSdk 23
+        ndk { abiFilters.addAll(providers.gradleProperty('phoneAbis').getOrElse('arm64-v8a,armeabi-v7a,x86_64').split(',')) }
+        externalNativeBuild.cmake {
+            arguments "-DCARDBOARD_SOURCE_DIR=${cardboard}", '-DANDROID_STL=c++_shared'
+        }
+        consumerProguardFiles cardboard.toPath().resolve('sdk/proguard-rules.pro').toFile()
+    }
+    externalNativeBuild.cmake {
+        path 'CMakeLists.txt'
+        version '4.1.2'
+    }
+    sourceSets.main {
+        java.srcDirs = ['qrcode', 'device_params', 'screen_params', 'java_utils'].collect { new File(cardboard, "sdk/${it}/android/java") } + [new File(cardboard, 'java_api/src/main/java')]
+        res.srcDirs = [new File(cardboard, 'sdk/qrcode/android/res'), new File(cardboard, 'java_api/src/main/res')]
+        proto.srcDir new File(cardboard, 'proto')
+        proto.include 'cardboard_device.proto'
+    }
+    sourceSets.test.java.srcDir new File(cardboard, 'sdk/src/test/java')
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+protobuf {
+    protoc { artifact = 'com.google.protobuf:protoc:3.19.4' }
+    generateProtoTasks { all().configureEach { builtins { java { option 'lite' } } } }
+}
+dependencies {
+    testImplementation 'junit:junit:4.13.2'
+    implementation 'androidx.appcompat:appcompat:1.7.1'
+    implementation 'com.google.zxing:core:3.5.4'
+    implementation 'com.google.android.material:material:1.12.0'
+    implementation 'com.google.protobuf:protobuf-javalite:3.19.4'
+    implementation 'org.jspecify:jspecify:1.0.0'
+}

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted-GPL -->
+<resources>
+    <string name="remote_desktop_mode_headset">Flat Headset（Cardboard 镜片）</string>
+    <string name="remote_desktop_mode_headset_no_lenses">Flat Headset（无镜片）</string>
+    <string name="remote_desktop_native_panel_unavailable">电脑无法创建所请求的头显原生显示屏。</string>
+    <string name="headset_notch_warning">摄像头刘海和开孔会遮住部分画面。相等的双眼边距会遮住两眼相同的边缘，保持画面平衡而不拉伸。</string>
+    <string name="headset_symmetric_notch">为摄像头开孔设置相等的双眼边距</string>
+    <string name="headset_alignment">显示中央对齐线和向下箭头</string>
+    <string name="headset_title">Flat Headset</string>
+    <string name="headset_discovery_description">将手机和电脑连接到同一 Wi-Fi、电脑热点或 USB 网络共享。在这里准备接收，然后在电脑上批准投送。声音和输入留在电脑上；手机音量键用于调整亮度。</string>
+    <string name="headset_wait_for_computer">准备接收投送</string>
+    <string name="headset_waiting">已准备好接收投送。请在电脑上批准此头显。</string>
+    <string name="headset_stop">停止投送</string>
+    <string name="headset_upnp_android_version">独立发现需要 Android 7 或更高版本。已配对的 RDP 接收器仍可使用。</string>
+    <string name="headset_discovery_failed">无法在此网络上启动发现。请检查连接后重试。</string>
+    <string name="headset_scan_viewer">扫描眼镜二维码</string>
+    <string name="headset_profile_default">镜片配置：Cardboard 默认</string>
+    <string name="headset_profile_saved">镜片配置：已保存的眼镜</string>
+    <string name="headset_correction_title">镜片校正</string>
+    <string name="headset_correction_off">不校正</string>
+    <string name="headset_correction_fitted">Shinecon 调整配置（D）</string>
+    <string name="headset_correction_profile">眼镜二维码配置</string>
+    <string name="headset_correction_hint">此配置对应观看测试 D。请保持相同的手机位置、镜片间距和焦距。使用普通的、未经校正的影片或串流。</string>
+    <string name="headset_hevc">支持时使用 HEVC（默认及回退使用 H.264）</string>
+    <string name="headset_throw_connecting">正在等待投送…</string>
+    <string name="headset_throw_reconnecting">正在等待下一次投送…</string>
+    <string name="headset_wait_reduce_motion">等待时减少动态效果</string>
+</resources>

@@ -1,0 +1,372 @@
+From 24fd1cd8d2c9df59edead3f79a9d0c515daee881 Mon Sep 17 00:00:00 2001
+From: Fabian Druschke <fdruschke@outlook.com>
+Date: Fri, 10 Jul 2026 23:37:40 +0200
+Subject: [PATCH 3/9] android: preserve channel failures across disconnect
+
+---
+ .../src/main/cpp/android_freerdp.c            | 190 +++++++++++++++---
+ .../src/main/cpp/android_freerdp.h            |   3 +
+ 2 files changed, 161 insertions(+), 32 deletions(-)
+
+diff --git a/client/Android/Studio/freeRDPCore/src/main/cpp/android_freerdp.c b/client/Android/Studio/freeRDPCore/src/main/cpp/android_freerdp.c
+index e791452..07b43fa 100644
+--- a/client/Android/Studio/freeRDPCore/src/main/cpp/android_freerdp.c
++++ b/client/Android/Studio/freeRDPCore/src/main/cpp/android_freerdp.c
+@@ -24,8 +24,10 @@
+ 
+ #include <winpr/assert.h>
+ #include <winpr/image.h>
++#include <winpr/wtsapi.h>
+ 
+ #include <freerdp/graphics.h>
++#include <freerdp/codecs.h>
+ #include <freerdp/codec/rfx.h>
+ #include <freerdp/gdi/gdi.h>
+ #include <freerdp/gdi/gfx.h>
+@@ -71,7 +73,6 @@ static UINT android_UpdateWindowFromSurface(RdpgfxClientContext* context, gdiGfx
+ static void android_OnChannelConnectedEventHandler(void* context,
+                                                    const ChannelConnectedEventArgs* e)
+ {
+-	rdpSettings* settings;
+ 	androidContext* afc;
+ 
+ 	if (!context || !e)
+@@ -81,7 +82,6 @@ static void android_OnChannelConnectedEventHandler(void* context,
+ 	}
+ 
+ 	afc = (androidContext*)context;
+-	settings = afc->common.context.settings;
+ 
+ 	if (strcmp(e->name, CLIPRDR_SVC_CHANNEL_NAME) == 0)
+ 	{
+@@ -97,10 +97,28 @@ static void android_OnChannelConnectedEventHandler(void* context,
+ 	}
+ 	else if (strcmp(e->name, RDPGFX_DVC_CHANNEL_NAME) == 0)
+ 	{
+-		freerdp_client_OnChannelConnectedEventHandler(context, e);
+ 		RdpgfxClientContext* gfx = (RdpgfxClientContext*)e->pInterface;
+-		if (gfx)
+-			gfx->UpdateWindowFromSurface = android_UpdateWindowFromSurface;
++		afc->gfx_pipeline_initialized = FALSE;
++		if (!gfx || !gdi_graphics_pipeline_init(afc->common.context.gdi, gfx))
++		{
++			/* gdi_graphics_pipeline_init can fail after wiring the context but before
++			 * its critical section is initialized. Undo only those partial assignments;
++			 * the regular disconnect handler must not uninitialize that incomplete object. */
++			if (gfx)
++			{
++				if (afc->common.context.gdi)
++					afc->common.context.gdi->gfx = nullptr;
++				gfx->custom = nullptr;
++				freerdp_client_codecs_free(gfx->codecs);
++				gfx->codecs = nullptr;
++			}
++			setChannelError(&afc->common.context, CHANNEL_RC_INITIALIZATION_ERROR,
++			                "Android RDPGFX GDI pipeline initialization failed");
++			return;
++		}
++
++		afc->gfx_pipeline_initialized = TRUE;
++		gfx->UpdateWindowFromSurface = android_UpdateWindowFromSurface;
+ 	}
+ 	else
+ 		freerdp_client_OnChannelConnectedEventHandler(context, e);
+@@ -109,7 +127,6 @@ static void android_OnChannelConnectedEventHandler(void* context,
+ static void android_OnChannelDisconnectedEventHandler(void* context,
+                                                       const ChannelDisconnectedEventArgs* e)
+ {
+-	rdpSettings* settings;
+ 	androidContext* afc;
+ 
+ 	if (!context || !e)
+@@ -119,7 +136,6 @@ static void android_OnChannelDisconnectedEventHandler(void* context,
+ 	}
+ 
+ 	afc = (androidContext*)context;
+-	settings = afc->common.context.settings;
+ 
+ 	if (strcmp(e->name, CLIPRDR_SVC_CHANNEL_NAME) == 0)
+ 	{
+@@ -133,6 +149,12 @@ static void android_OnChannelDisconnectedEventHandler(void* context,
+ 	{
+ 		android_rail_uninit(afc, (RailClientContext*)e->pInterface);
+ 	}
++	else if (strcmp(e->name, RDPGFX_DVC_CHANNEL_NAME) == 0)
++	{
++		if (afc->gfx_pipeline_initialized)
++			freerdp_client_OnChannelDisconnectedEventHandler(context, e);
++		afc->gfx_pipeline_initialized = FALSE;
++	}
+ 	else
+ 		freerdp_client_OnChannelDisconnectedEventHandler(context, e);
+ }
+@@ -465,7 +487,6 @@ static BOOL android_post_connect(freerdp* instance)
+ 	                 freerdp_settings_get_uint32(settings, FreeRDP_DesktopWidth),
+ 	                 freerdp_settings_get_uint32(settings, FreeRDP_DesktopHeight),
+ 	                 freerdp_settings_get_uint32(settings, FreeRDP_ColorDepth));
+-	freerdp_callback("OnConnectionSuccess", "(J)V", (jlong)instance);
+ 	return TRUE;
+ }
+ 
+@@ -587,20 +608,97 @@ static DWORD android_verify_changed_certificate_ex(freerdp* instance, const char
+ 	return res;
+ }
+ 
+-static int android_freerdp_run(freerdp* instance)
++static void android_clear_session_error(androidContext* afc)
++{
++	WINPR_ASSERT(afc);
++	afc->last_session_error = FREERDP_ERROR_SUCCESS;
++	ZeroMemory(afc->last_session_error_text, sizeof(afc->last_session_error_text));
++}
++
++static DWORD android_resolve_session_status(const rdpContext* context, DWORD fallback)
++{
++	WINPR_ASSERT(context);
++
++	const UINT channelError = getChannelError(context);
++	if (channelError != CHANNEL_RC_OK)
++		return channelError;
++
++	const UINT32 lastError = freerdp_get_last_error(context);
++	if (lastError == FREERDP_ERROR_CONNECT_CANCELLED)
++		return CHANNEL_RC_OK;
++	if (lastError != FREERDP_ERROR_SUCCESS)
++		return lastError;
++
++	return fallback;
++}
++
++static DWORD android_snapshot_session_error(freerdp* instance, DWORD fallback,
++                                            const char* fallbackDescription)
++{
++	WINPR_ASSERT(instance);
++	WINPR_ASSERT(instance->context);
++
++	rdpContext* context = instance->context;
++	androidContext* afc = (androidContext*)context;
++	const UINT channelError = getChannelError(context);
++	const UINT32 lastError = freerdp_get_last_error(context);
++	const DWORD status = android_resolve_session_status(context, fallback);
++
++	if (status == CHANNEL_RC_OK)
++	{
++		android_clear_session_error(afc);
++		return CHANNEL_RC_OK;
++	}
++
++	afc->last_session_error = status;
++	if (channelError != CHANNEL_RC_OK)
++	{
++		const char* name = WTSErrorToString(channelError);
++		const char* description = getChannelErrorDescription(context);
++		(void)snprintf(afc->last_session_error_text, sizeof(afc->last_session_error_text),
++		               "Channel error %s [0x%08" PRIX32 "]: %s", name ? name : "unknown",
++		               (UINT32)channelError,
++		               (description && description[0]) ? description : "No channel details");
++	}
++	else if ((lastError != FREERDP_ERROR_SUCCESS) &&
++	         (lastError != FREERDP_ERROR_CONNECT_CANCELLED))
++	{
++		(void)snprintf(afc->last_session_error_text, sizeof(afc->last_session_error_text),
++		               "%s [0x%08" PRIX32 "]", freerdp_get_last_error_string(lastError), lastError);
++	}
++	else
++	{
++		(void)snprintf(afc->last_session_error_text, sizeof(afc->last_session_error_text),
++		               "%s [0x%08" PRIX32 "]",
++		               fallbackDescription ? fallbackDescription : "RDP session failed",
++		               (UINT32)status);
++	}
++
++	WLog_ERR(TAG, "Session failure snapshot: %s", afc->last_session_error_text);
++	return status;
++}
++
++static DWORD android_freerdp_run(freerdp* instance)
+ {
+ 	DWORD count;
+-	DWORD status = WAIT_FAILED;
++	DWORD sessionStatus = CHANNEL_RC_OK;
+ 	HANDLE handles[MAXIMUM_WAIT_OBJECTS];
+ 	HANDLE inputEvent = nullptr;
+-	const rdpSettings* settings = instance->context->settings;
+ 	rdpContext* context = instance->context;
+ 
+ 	inputEvent = android_get_handle(instance);
+ 
+-	while (!freerdp_shall_disconnect_context(instance->context))
++	for (;;)
+ 	{
+ 		DWORD tmp;
++		DWORD waitStatus;
++
++		if (freerdp_shall_disconnect_context(context))
++		{
++			sessionStatus = android_resolve_session_status(context, CHANNEL_RC_OK);
++			break;
++		}
++
+ 		count = 0;
+ 
+ 		handles[count++] = inputEvent;
+@@ -610,16 +708,20 @@ static int android_freerdp_run(freerdp* instance)
+ 		if (tmp == 0)
+ 		{
+ 			WLog_ERR(TAG, "freerdp_get_event_handles failed");
++			sessionStatus = android_resolve_session_status(context, ERROR_INTERNAL_ERROR);
+ 			break;
+ 		}
+ 
+ 		count += tmp;
+-		status = WaitForMultipleObjects(count, handles, FALSE, INFINITE);
++		waitStatus = WaitForMultipleObjects(count, handles, FALSE, INFINITE);
+ 
+-		if (status == WAIT_FAILED)
++		if (waitStatus == WAIT_FAILED)
+ 		{
+-			WLog_ERR(TAG, "WaitForMultipleObjects failed with %u [%08X]", status,
++			const DWORD waitError = GetLastError();
++			WLog_ERR(TAG, "WaitForMultipleObjects failed with %u [%08X]", waitStatus,
+ 			         (unsigned)GetLastError());
++			sessionStatus = android_resolve_session_status(
++			    context, waitError != ERROR_SUCCESS ? waitError : ERROR_INTERNAL_ERROR);
+ 			break;
+ 		}
+ 
+@@ -630,63 +732,80 @@ static int android_freerdp_run(freerdp* instance)
+ 			    continue;
+ 			    */
+ 			WLog_ERR(TAG, "Failed to check FreeRDP file descriptor");
+-			status = freerdp_get_last_error(context);
+-			if (status == FREERDP_ERROR_SUCCESS)
+-			{
+-				/* Channel callbacks do not consistently set WinPR's thread-local
+-				 * error. Preserve a meaningful failure for the Java diagnostics. */
+-				status = FREERDP_ERROR_CONNECT_TRANSPORT_FAILED;
+-				freerdp_set_last_error(context, status);
+-			}
++			sessionStatus = android_resolve_session_status(
++			    context, FREERDP_ERROR_CONNECT_TRANSPORT_FAILED);
+ 			break;
+ 		}
+ 
+-		if (freerdp_shall_disconnect_context(instance->context))
++		if (freerdp_shall_disconnect_context(context))
++		{
++			sessionStatus = android_resolve_session_status(context, CHANNEL_RC_OK);
+ 			break;
++		}
+ 
+ 		if (android_check_handle(instance) != TRUE)
+ 		{
++			const DWORD handleError = GetLastError();
+ 			WLog_ERR(TAG, "Failed to check android file descriptor");
+-			status = GetLastError();
++			sessionStatus = android_resolve_session_status(
++			    context, handleError != ERROR_SUCCESS ? handleError : ERROR_INTERNAL_ERROR);
+ 			break;
+ 		}
+ 	}
+ 
+-disconnect:
+ 	WLog_INFO(TAG, "Prepare shutdown...");
+ 
+-	return status;
++	return sessionStatus;
+ }
+ 
+ static DWORD WINAPI android_thread_func(LPVOID param)
+ {
+ 	DWORD status = ERROR_BAD_ARGUMENTS;
+ 	freerdp* instance = param;
++	androidContext* afc = nullptr;
+ 	WLog_DBG(TAG, "Start...");
+ 
+ 	WINPR_ASSERT(instance);
+ 	WINPR_ASSERT(instance->context);
++	afc = (androidContext*)instance->context;
+ 
+-	if (freerdp_client_start(instance->context) != CHANNEL_RC_OK)
++	const UINT startStatus = freerdp_client_start(instance->context);
++	if (startStatus != CHANNEL_RC_OK)
++	{
++		status = android_snapshot_session_error(instance, startStatus,
++		                                        "FreeRDP client startup failed");
+ 		goto fail;
++	}
+ 
+ 	WLog_DBG(TAG, "Connect...");
+ 
+ 	if (!freerdp_connect(instance))
+-		status = GetLastError();
++		status = android_snapshot_session_error(instance, FREERDP_ERROR_CONNECT_FAILED,
++		                                        "FreeRDP connection failed");
+ 	else
+ 	{
++		afc->is_connected = TRUE;
++		freerdp_callback("OnConnectionSuccess", "(J)V", (jlong)instance);
+ 		status = android_freerdp_run(instance);
++		if (status != CHANNEL_RC_OK)
++			status = android_snapshot_session_error(instance, status, "RDP event loop failed");
+ 		WLog_DBG(TAG, "Disconnect...");
+ 
+ 		if (!freerdp_disconnect(instance))
+-			status = GetLastError();
++		{
++			if (status == CHANNEL_RC_OK)
++				status = android_snapshot_session_error(instance, ERROR_INTERNAL_ERROR,
++				                                        "FreeRDP disconnect failed");
++		}
++		afc->is_connected = FALSE;
+ 	}
+ 
+ 	WLog_DBG(TAG, "Stop...");
+ 
+-	if (freerdp_client_stop(instance->context) != CHANNEL_RC_OK)
+-		goto fail;
++	const UINT stopStatus = freerdp_client_stop(instance->context);
++	if ((stopStatus != CHANNEL_RC_OK) && (status == CHANNEL_RC_OK))
++		status = android_snapshot_session_error(instance, stopStatus,
++		                                        "FreeRDP client shutdown failed");
+ 
+ fail:
+ 	WLog_DBG(TAG, "Session ended with %08" PRIX32 "", status);
+@@ -863,6 +982,10 @@ Java_com_freerdp_freerdpcore_services_LibFreeRDP_freerdp_1get_1last_1error_1stri
+ 	if (!inst || !inst->context)
+ 		return (*env)->NewStringUTF(env, "");
+ 
++	const androidContext* afc = (const androidContext*)inst->context;
++	if (afc->last_session_error_text[0])
++		return (*env)->NewStringUTF(env, afc->last_session_error_text);
++
+ 	return (*env)->NewStringUTF(
+ 	    env, freerdp_get_last_error_string(freerdp_get_last_error(inst->context)));
+ }
+@@ -917,6 +1040,9 @@ JNIEXPORT jboolean JNICALL Java_com_freerdp_freerdpcore_services_LibFreeRDP_free
+ 	}
+ 
+ 	androidContext* ctx = (androidContext*)inst->context;
++	android_clear_session_error(ctx);
++	ctx->is_connected = FALSE;
++	ctx->gfx_pipeline_initialized = FALSE;
+ 
+ 	if (!(ctx->thread = CreateThread(nullptr, 0, android_thread_func, inst, 0, nullptr)))
+ 	{
+diff --git a/client/Android/Studio/freeRDPCore/src/main/cpp/android_freerdp.h b/client/Android/Studio/freeRDPCore/src/main/cpp/android_freerdp.h
+index a72a705..1d3645a 100644
+--- a/client/Android/Studio/freeRDPCore/src/main/cpp/android_freerdp.h
++++ b/client/Android/Studio/freeRDPCore/src/main/cpp/android_freerdp.h
+@@ -31,6 +31,9 @@ typedef struct
+ 	HANDLE thread;
+ 
+ 	BOOL is_connected;
++	BOOL gfx_pipeline_initialized;
++	UINT32 last_session_error;
++	char last_session_error_text[768];
+ 
+ 	BOOL clipboardSync;
+ 	wClipboard* clipboard;
+-- 
+2.55.0
+

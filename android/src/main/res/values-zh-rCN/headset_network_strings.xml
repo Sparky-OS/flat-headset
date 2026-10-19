@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="headset_link_automatic">自动 · 连接时选择</string>
+    <string name="headset_show_link_status">双眼显示连接状态</string>
+    <string name="headset_wifi_status">%1$s · %2$s (%3$d MHz) · Tx/Rx %4$s/%5$s Mbit/s · %6$s dBm</string>
+    <string name="headset_wifi_unavailable">Wi-Fi 信息不可用（有线或未知连接）</string>
+    <string name="headset_link_current">连接：%1$s</string>
+    <string name="headset_auto_next">下次连接：%1$s · %2$s</string>
+    <string name="headset_auto_unknown">连接未知；保持原生</string>
+    <string name="headset_auto_phy">Wi-Fi 标称速率；非实测带宽</string>
+    <string name="headset_auto_limited">Wi-Fi 受限；保留文字水平细节</string>
+    <string name="headset_auto_measured">实测渲染延迟和帧间隔最低</string>
+</resources>

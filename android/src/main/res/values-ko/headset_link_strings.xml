@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted-GPL -->
+<resources>
+    <string name="headset_link_title">던질 화면 크기</string>
+    <string name="headset_link_sbs720">읽기용 720p: 전체 좌우</string>
+    <string name="headset_link_tb720">절반 상하: 가로 세부 정보 유지</string>
+    <string name="headset_link_native">패널 기본 해상도 (현재 기본값)</string>
+    <string name="headset_link_hint">읽기용은 720p입니다. 별도 1280×720 바탕 화면은 축소된 Full HD보다 글자가 큽니다. 전송 형식만 바꾸면 미러 화면의 글자는 커지지 않습니다. 절반 형식은 1280×720으로 보내고 휴대폰에서 양쪽 눈을 복원하며 세부 정보를 줄여 픽셀 수를 낮춥니다. 이 옵션은 H.264와 업데이트된 PC 구성 요소가 필요합니다. 기본 해상도에서는 HEVC를 선택할 수 있습니다. 변경 전에 던지기를 중지하세요.</string>
+    <string name="headset_link_halfsbs720">절반 좌우: 세로 세부 정보 유지</string>
+    <string name="headset_link_fulltb720">전체 TB 720p · 모든 세부 정보, 세로 프레임 (1280×1440)</string>
+</resources>

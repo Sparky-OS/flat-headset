@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted-GPL -->
+<resources>
+    <string name="headset_transport_title">接続</string>
+    <string name="headset_transport_network">現在のネットワーク / USB テザリング</string>
+    <string name="headset_transport_direct">コンピューターに直接 Wi-Fi 接続</string>
+    <string name="headset_direct_creating">直接 Wi-Fi 接続を開始中…</string>
+    <string name="headset_direct_waiting">コンピューターで「直接 Wi-Fi で Throw」を開き、検索してこの電話を選択してください。電話で接続を許可し、コンピューターで Throw を承認してください。</string>
+    <string name="headset_direct_unavailable">直接 Wi-Fi 接続を利用できません。Wi-Fi が有効か確認するか、現在のネットワークを使用してください。</string>
+    <string name="headset_direct_permission">直接 Wi-Fi 接続には付近の Wi-Fi デバイスへのアクセス権限が必要です（古い Android では位置情報の権限）。</string>
+    <string name="headset_direct_busy">別の Wi-Fi Direct セッションが動作中または開始中です。先にそのセッションを終了してください。</string>
+    <string name="headset_direct_timeout">直接 Wi-Fi 接続の準備ができませんでした。Wi-Fi を確認して再試行してください。</string>
+    <string name="headset_direct_lost">直接 Wi-Fi 接続が終了しました。再接続するにはもう一度開始してください。</string>
+    <string name="headset_direct_status">直接 Wi-Fi · リンクの測定値は利用できません</string>
+    <string name="headset_direct_connected">直接 Wi-Fi に接続しました。コンピューターの Throw でこの電話を承認し、共有する内容を選んでください。</string>
+</resources>

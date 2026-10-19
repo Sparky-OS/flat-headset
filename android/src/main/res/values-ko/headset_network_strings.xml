@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="headset_link_automatic">자동 · 연결할 때 선택</string>
+    <string name="headset_show_link_status">양쪽 눈에 연결 상태 표시</string>
+    <string name="headset_wifi_status">%1$s · %2$s (%3$d MHz) · Tx/Rx %4$s/%5$s Mbit/s · %6$s dBm</string>
+    <string name="headset_wifi_unavailable">Wi-Fi 정보 없음 (유선 또는 알 수 없는 연결)</string>
+    <string name="headset_link_current">연결: %1$s</string>
+    <string name="headset_auto_next">다음 연결: %1$s · %2$s</string>
+    <string name="headset_auto_unknown">연결 정보 없음; 기본 해상도 유지</string>
+    <string name="headset_auto_phy">Wi-Fi 표시 속도; 측정 대역폭이 아님</string>
+    <string name="headset_auto_limited">제한된 Wi-Fi; 텍스트 가로 세부 정보 유지</string>
+    <string name="headset_auto_measured">측정 렌더링 지연과 프레임 간격이 가장 짧음</string>
+</resources>

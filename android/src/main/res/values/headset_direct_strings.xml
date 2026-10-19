@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted-GPL -->
+<resources>
+    <string name="headset_transport_title">Connection</string>
+    <string name="headset_transport_network">Current network / USB tethering</string>
+    <string name="headset_transport_direct">Direct Wi-Fi to computer</string>
+    <string name="headset_direct_creating">Starting direct Wi-Fi…</string>
+    <string name="headset_direct_waiting">On the computer, open Throw via Direct Wi-Fi, scan and select this phone. Accept the connection on the phone, then approve Throw on the computer.</string>
+    <string name="headset_direct_unavailable">Direct Wi-Fi is unavailable. Check that Wi-Fi is enabled, or use the current network.</string>
+    <string name="headset_direct_permission">Direct Wi-Fi needs the nearby Wi-Fi permission (location permission on older Android versions).</string>
+    <string name="headset_direct_busy">Another Wi-Fi Direct session is active or starting. Stop it before starting this connection.</string>
+    <string name="headset_direct_timeout">Direct Wi-Fi did not become ready. Check Wi-Fi and try again.</string>
+    <string name="headset_direct_lost">The direct Wi-Fi connection ended. Start again to reconnect.</string>
+    <string name="headset_direct_status">Direct Wi-Fi · link measurements unavailable</string>
+    <string name="headset_direct_connected">Direct Wi-Fi connected. Approve this phone in Throw on the computer, then choose what to share.</string>
+</resources>

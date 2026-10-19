@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="headset_link_automatic">Automatique · choisir à la connexion</string>
+    <string name="headset_show_link_status">Afficher la connexion dans les deux yeux</string>
+    <string name="headset_wifi_status">%1$s · %2$s (%3$d MHz) · Tx/Rx %4$s/%5$s Mbit/s · %6$s dBm</string>
+    <string name="headset_wifi_unavailable">Détails Wi-Fi indisponibles (liaison filaire ou inconnue)</string>
+    <string name="headset_link_current">Liaison : %1$s</string>
+    <string name="headset_auto_next">Prochaine connexion : %1$s · %2$s</string>
+    <string name="headset_auto_unknown">liaison inconnue ; garder Natif</string>
+    <string name="headset_auto_phy">débit Wi-Fi annoncé ; bande passante non mesurée</string>
+    <string name="headset_auto_limited">Wi-Fi limité ; garder les détails horizontaux du texte</string>
+    <string name="headset_auto_measured">délai de rendu et intervalle entre images mesurés les plus bas</string>
+</resources>

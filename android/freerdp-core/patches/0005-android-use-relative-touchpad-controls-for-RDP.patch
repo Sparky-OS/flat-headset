@@ -1,0 +1,804 @@
+From 4e5397e19018c8b938960eefe1895cbb25659afa Mon Sep 17 00:00:00 2001
+From: Fabian Druschke <fdruschke@outlook.com>
+Date: Sat, 11 Jul 2026 14:14:04 +0200
+Subject: [PATCH 5/9] android: use relative touchpad controls for RDP
+
+---
+ .../presentation/SessionInputManager.java     |   6 +
+ .../freerdpcore/presentation/SessionView.java | 306 ++++++++++++++----
+ .../utils/TouchpadPointerController.java      | 221 +++++++++++++
+ 3 files changed, 468 insertions(+), 65 deletions(-)
+ create mode 100644 client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/utils/TouchpadPointerController.java
+
+diff --git a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionInputManager.java b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionInputManager.java
+index f0b4e92..be30d3a 100644
+--- a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionInputManager.java
++++ b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionInputManager.java
+@@ -291,12 +291,14 @@ public class SessionInputManager
+ 		{
+ 			touchPointerView.setVisibility(View.INVISIBLE);
+ 			sessionView.setTouchPointerPadding(0, 0);
++			sessionView.setSoftwareCursorVisible(true);
+ 		}
+ 		else
+ 		{
+ 			touchPointerView.setVisibility(View.VISIBLE);
+ 			sessionView.setTouchPointerPadding(touchPointerView.getPointerWidth(),
+ 			                                   touchPointerView.getPointerHeight());
++			sessionView.setSoftwareCursorVisible(false);
+ 		}
+ 	}
+ 
+@@ -453,6 +455,7 @@ public class SessionInputManager
+ 	{
+ 		touchPointerView.setVisibility(View.INVISIBLE);
+ 		sessionView.setTouchPointerPadding(0, 0);
++		sessionView.setSoftwareCursorVisible(true);
+ 	}
+ 
+ 	@Override public void onTouchPointerLeftClick(int x, int y, boolean down)
+@@ -460,6 +463,7 @@ public class SessionInputManager
+ 		if (instance == 0)
+ 			return;
+ 		Point p = mapScreenCoordToSessionCoord(x, y);
++		sessionView.setTouchpadCursorPosition(p.x, p.y);
+ 		LibFreeRDP.sendCursorEvent(instance, p.x, p.y, Mouse.getLeftButtonEvent(context, down));
+ 	}
+ 
+@@ -468,6 +472,7 @@ public class SessionInputManager
+ 		if (instance == 0)
+ 			return;
+ 		Point p = mapScreenCoordToSessionCoord(x, y);
++		sessionView.setTouchpadCursorPosition(p.x, p.y);
+ 		LibFreeRDP.sendCursorEvent(instance, p.x, p.y, Mouse.getRightButtonEvent(context, down));
+ 	}
+ 
+@@ -476,6 +481,7 @@ public class SessionInputManager
+ 		if (instance == 0)
+ 			return;
+ 		Point p = mapScreenCoordToSessionCoord(x, y);
++		sessionView.setTouchpadCursorPosition(p.x, p.y);
+ 		LibFreeRDP.sendCursorEvent(instance, p.x, p.y, Mouse.getMoveEvent());
+ 
+ 		if (ApplicationSettingsActivity.getAutoScrollTouchPointer(context) &&
+diff --git a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionView.java b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionView.java
+index aff0889..829516c 100644
+--- a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionView.java
++++ b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionView.java
+@@ -11,10 +11,13 @@
+ package com.freerdp.freerdpcore.presentation;
+ 
+ import android.content.Context;
++import android.content.SharedPreferences;
+ import android.graphics.Bitmap;
+ import android.graphics.Canvas;
+ import android.graphics.Color;
+ import android.graphics.Matrix;
++import android.graphics.Paint;
++import android.graphics.Path;
+ import android.graphics.Rect;
+ import android.graphics.RectF;
+ import android.graphics.drawable.BitmapDrawable;
+@@ -26,15 +29,18 @@ import android.view.MotionEvent;
+ import android.view.PointerIcon;
+ import android.view.ScaleGestureDetector;
+ import android.view.View;
++import android.view.ViewConfiguration;
+ import android.view.inputmethod.BaseInputConnection;
+ import android.view.inputmethod.EditorInfo;
+ import android.view.inputmethod.InputConnection;
+ 
+ import androidx.annotation.NonNull;
++import androidx.preference.PreferenceManager;
+ 
+ import com.freerdp.freerdpcore.application.SessionState;
+ import com.freerdp.freerdpcore.utils.DoubleGestureDetector;
+ import com.freerdp.freerdpcore.utils.GestureDetector;
++import com.freerdp.freerdpcore.utils.TouchpadPointerController;
+ 
+ import java.util.Stack;
+ 
+@@ -44,7 +50,7 @@ public class SessionView extends View
+ 	public static final float MIN_SCALE_FACTOR = 0.75f;
+ 	private static final String TAG = "SessionView";
+ 	private static final float SCALE_FACTOR_DELTA = 0.0001f;
+-	private static final float TOUCH_SCROLL_DELTA = 10.0f;
++	private static final float TOUCH_SCROLL_MIN_DISTANCE = 2.5f;
+ 	private int width;
+ 	private int height;
+ 	private BitmapDrawable surface;
+@@ -61,12 +67,38 @@ public class SessionView extends View
+ 	private RectF invalidRegionF;
+ 	private GestureDetector gestureDetector;
+ 	private SessionState currentSession;
++	private final TouchpadPointerController touchpadPointer = new TouchpadPointerController();
++	private float previousTouchX;
++	private float previousTouchY;
++	private float accumulatedScrollY;
++	private int scrollDirection = 1;
++	private double scrollCoefficient = 1.0;
++	private boolean doubleTapDragEnabled = true;
++	private boolean dragging = false;
++	private String singleTapAction = "left";
++	private String doubleFingerTapAction = "right";
++	private String tripleFingerTapAction = "middle";
++	private long gestureDownTime;
++	private float gestureDownX;
++	private float gestureDownY;
++	private int maximumPointerCount;
++	private boolean multiFingerMoved;
++	private boolean multiFingerTapHandled;
++	private int touchSlop;
++	private int multiFingerTapTimeout;
+ 
+ 	private int[] cursorPixels = null;
+ 	private int cursorWidth = 0;
+ 	private int cursorHeight = 0;
+ 	private int cursorHotX = 0;
+ 	private int cursorHotY = 0;
++	private Bitmap cursorBitmap = null;
++	private boolean cursorVisible = true;
++	private boolean defaultCursor = true;
++	private boolean softwareCursorVisible = false;
++	private final Paint defaultCursorFill = new Paint(Paint.ANTI_ALIAS_FLAG);
++	private final Paint defaultCursorStroke = new Paint(Paint.ANTI_ALIAS_FLAG);
++	private final Path defaultCursorPath = new Path();
+ 
+ 	// private static final String TAG = "FreeRDP.SessionView";
+ 	private DoubleGestureDetector doubleGestureDetector;
+@@ -103,6 +135,22 @@ public class SessionView extends View
+ 		scaleMatrix = new Matrix();
+ 		invScaleMatrix = new Matrix();
+ 		invalidRegionF = new RectF();
++		touchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
++		multiFingerTapTimeout = ViewConfiguration.getTapTimeout() + 100;
++		configureTouchpadFromRemoteInputPreferences();
++		defaultCursorFill.setColor(Color.WHITE);
++		defaultCursorFill.setStyle(Paint.Style.FILL);
++		defaultCursorStroke.setColor(Color.BLACK);
++		defaultCursorStroke.setStyle(Paint.Style.STROKE);
++		defaultCursorStroke.setStrokeWidth(1.5f);
++		defaultCursorPath.moveTo(0, 0);
++		defaultCursorPath.lineTo(0, 18);
++		defaultCursorPath.lineTo(5, 13);
++		defaultCursorPath.lineTo(9, 21);
++		defaultCursorPath.lineTo(13, 19);
++		defaultCursorPath.lineTo(9, 11);
++		defaultCursorPath.lineTo(16, 11);
++		defaultCursorPath.close();
+ 	}
+ 
+ 	/* External Mouse Hover */
+@@ -110,11 +158,14 @@ public class SessionView extends View
+ 	{
+ 		if (event.getAction() == MotionEvent.ACTION_HOVER_MOVE)
+ 		{
++			softwareCursorVisible = false;
++			invalidate();
+ 			// Handle hover move event
+ 			float x = event.getX();
+ 			float y = event.getY();
+ 			// Perform actions based on the hover position (x, y)
+ 			MotionEvent mappedEvent = mapTouchEvent(event);
++			touchpadPointer.setPosition((int)mappedEvent.getX(), (int)mappedEvent.getY());
+ 			sessionViewListener.onSessionViewMouseMove((int)mappedEvent.getX(),
+ 			                                           (int)mappedEvent.getY());
+ 			mappedEvent.recycle();
+@@ -161,6 +212,23 @@ public class SessionView extends View
+ 
+ 		requestLayout();
+ 		currentSession = session;
++		touchpadPointer.setBounds(width, height);
++	}
++
++	private void configureTouchpadFromRemoteInputPreferences()
++	{
++		SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getContext());
++		String sensitivity = preferences.getString("mousepad_sensitivity_key", "default");
++		String acceleration =
++		    preferences.getString("mousepad_acceleration_profile_key", "medium");
++		touchpadPointer.configure(getResources().getDisplayMetrics().xdpi, sensitivity, acceleration);
++		singleTapAction = preferences.getString("mousepad_single_tap_key", "left");
++		doubleFingerTapAction = preferences.getString("mousepad_double_tap_key", "right");
++		tripleFingerTapAction = preferences.getString("mousepad_triple_tap_key", "middle");
++		doubleTapDragEnabled = preferences.getBoolean("doubletap_drag_enabled", true);
++		scrollDirection = preferences.getBoolean("mousepad_scroll_direction", false) ? -1 : 1;
++		int scrollSensitivity = Math.max(1, preferences.getInt("mousepad_scroll_sensitivity", 100));
++		scrollCoefficient = Math.pow(scrollSensitivity / 100.0f, 1.5);
+ 	}
+ 
+ 	public float getZoom()
+@@ -272,6 +340,21 @@ public class SessionView extends View
+ 		{
+ 			surface.draw(canvas);
+ 		}
++		if (softwareCursorVisible && cursorVisible)
++		{
++			TouchpadPointerController.Position position = touchpadPointer.getPosition();
++			if (!defaultCursor && cursorBitmap != null)
++				canvas.drawBitmap(cursorBitmap, position.x - cursorHotX, position.y - cursorHotY,
++				                  null);
++			else
++			{
++				canvas.save();
++				canvas.translate(position.x, position.y);
++				canvas.drawPath(defaultCursorPath, defaultCursorFill);
++				canvas.drawPath(defaultCursorPath, defaultCursorStroke);
++				canvas.restore();
++			}
++		}
+ 		canvas.restore();
+ 	}
+ 
+@@ -285,17 +368,6 @@ public class SessionView extends View
+ 		return mappedEvent;
+ 	}
+ 
+-	// perform mapping on the double touch event's coordinates according to the current scaling
+-	private MotionEvent mapDoubleTouchEvent(MotionEvent event)
+-	{
+-		MotionEvent mappedEvent = MotionEvent.obtain(event);
+-		float[] coordinates = { (mappedEvent.getX(0) + mappedEvent.getX(1)) / 2,
+-			                    (mappedEvent.getY(0) + mappedEvent.getY(1)) / 2 };
+-		invScaleMatrix.mapPoints(coordinates);
+-		mappedEvent.setLocation(coordinates[0], coordinates[1]);
+-		return mappedEvent;
+-	}
+-
+ 	@Override public boolean onTouchEvent(MotionEvent event)
+ 	{
+ 		// Physical mouse events: bypass gesture detector entirely.
+@@ -306,7 +378,10 @@ public class SessionView extends View
+ 			int action = event.getActionMasked();
+ 			if (action == MotionEvent.ACTION_MOVE && event.getButtonState() != 0)
+ 			{
++				softwareCursorVisible = false;
++				invalidate();
+ 				MotionEvent mapped = mapTouchEvent(event);
++				touchpadPointer.setPosition((int)mapped.getX(), (int)mapped.getY());
+ 				sessionViewListener.onSessionViewMouseMove((int)mapped.getX(), (int)mapped.getY());
+ 				mapped.recycle();
+ 				return true;
+@@ -314,11 +389,93 @@ public class SessionView extends View
+ 			return true;
+ 		}
+ 
++		int action = event.getActionMasked();
++		if (action == MotionEvent.ACTION_DOWN)
++		{
++			softwareCursorVisible = true;
++			invalidate();
++			configureTouchpadFromRemoteInputPreferences();
++			gestureDownTime = event.getEventTime();
++			gestureDownX = event.getX();
++			gestureDownY = event.getY();
++			maximumPointerCount = 1;
++			multiFingerMoved = false;
++			multiFingerTapHandled = false;
++		}
++		else
++		{
++			maximumPointerCount = Math.max(maximumPointerCount, event.getPointerCount());
++			if (action == MotionEvent.ACTION_MOVE &&
++			    (Math.abs(event.getX() - gestureDownX) > touchSlop ||
++			     Math.abs(event.getY() - gestureDownY) > touchSlop))
++				multiFingerMoved = true;
++		}
++
+ 		boolean res = gestureDetector.onTouchEvent(event);
+ 		res |= doubleGestureDetector.onTouchEvent(event);
++		if (action == MotionEvent.ACTION_POINTER_UP && event.getPointerCount() >= 3 &&
++		    !multiFingerTapHandled && !multiFingerMoved &&
++		    event.getEventTime() - gestureDownTime <= multiFingerTapTimeout)
++		{
++			performConfiguredClick(tripleFingerTapAction);
++			multiFingerTapHandled = true;
++			res = true;
++		}
+ 		return res;
+ 	}
+ 
++	public void setTouchpadCursorPosition(int x, int y)
++	{
++		touchpadPointer.setPosition(x, y);
++		invalidate();
++	}
++
++	public void setSoftwareCursorVisible(boolean visible)
++	{
++		softwareCursorVisible = visible;
++		invalidate();
++	}
++
++	private void moveTouchpadPointer(float deltaX, float deltaY, long eventTime)
++	{
++		TouchpadPointerController.Position position =
++		    touchpadPointer.moveBy(deltaX, deltaY, eventTime);
++		sessionViewListener.onSessionViewMouseMove(position.x, position.y);
++		invalidate();
++	}
++
++	private void performConfiguredClick(String action)
++	{
++		TouchpadPointerController.Position position = touchpadPointer.getPosition();
++		if ("left".equals(action))
++		{
++			if (dragging)
++			{
++				sessionViewListener.onSessionViewLeftTouch(position.x, position.y, false);
++				dragging = false;
++				sessionViewListener.onSessionViewEndTouch();
++			}
++			else
++				sendLeftClick(position);
++		}
++		else if ("right".equals(action))
++		{
++			sessionViewListener.onSessionViewRightTouch(position.x, position.y, true);
++			sessionViewListener.onSessionViewRightTouch(position.x, position.y, false);
++		}
++		else if ("middle".equals(action))
++		{
++			sessionViewListener.onSessionViewMiddleTouch(position.x, position.y, true);
++			sessionViewListener.onSessionViewMiddleTouch(position.x, position.y, false);
++		}
++	}
++
++	private void sendLeftClick(TouchpadPointerController.Position position)
++	{
++		sessionViewListener.onSessionViewLeftTouch(position.x, position.y, true);
++		sessionViewListener.onSessionViewLeftTouch(position.x, position.y, false);
++	}
++
+ 	// Handle all physical mouse buttons here; finger taps come via onSingleTapUp.
+ 	@Override public boolean onGenericMotionEvent(MotionEvent event)
+ 	{
+@@ -332,10 +489,13 @@ public class SessionView extends View
+ 		if (isMouse && (action == MotionEvent.ACTION_BUTTON_PRESS ||
+ 		                action == MotionEvent.ACTION_BUTTON_RELEASE))
+ 		{
++			softwareCursorVisible = false;
++			invalidate();
+ 			boolean down = action == MotionEvent.ACTION_BUTTON_PRESS;
+ 			MotionEvent mapped = mapTouchEvent(event);
+ 			int x = (int)mapped.getX();
+ 			int y = (int)mapped.getY();
++			touchpadPointer.setPosition(x, y);
+ 			mapped.recycle();
+ 
+ 			switch (event.getActionButton())
+@@ -400,7 +560,10 @@ public class SessionView extends View
+ 		if (pixels == null || width == 0 || height == 0)
+ 		{
+ 			cursorPixels = null;
++			cursorBitmap = null;
++			cursorVisible = false;
+ 			setPointerIcon(PointerIcon.getSystemIcon(getContext(), PointerIcon.TYPE_NULL));
++			invalidate();
+ 			return;
+ 		}
+ 		cursorPixels = pixels;
+@@ -408,7 +571,12 @@ public class SessionView extends View
+ 		cursorHeight = height;
+ 		cursorHotX = hotX;
+ 		cursorHotY = hotY;
++		cursorBitmap =
++		    Bitmap.createBitmap(cursorPixels, cursorWidth, cursorHeight, Bitmap.Config.ARGB_8888);
++		cursorVisible = true;
++		defaultCursor = false;
+ 		applyScaledCursor();
++		invalidate();
+ 	}
+ 
+ 	private void applyScaledCursor()
+@@ -425,7 +593,11 @@ public class SessionView extends View
+ 
+ 	public void setDefaultCursor()
+ 	{
++		cursorBitmap = null;
++		cursorVisible = true;
++		defaultCursor = true;
+ 		setPointerIcon(PointerIcon.getSystemIcon(getContext(), PointerIcon.TYPE_ARROW));
++		invalidate();
+ 	}
+ 
+ 	private class SessionGestureListener extends GestureDetector.SimpleOnGestureListener
+@@ -434,72 +606,79 @@ public class SessionView extends View
+ 
+ 		public boolean onDown(MotionEvent e)
+ 		{
++			previousTouchX = e.getX();
++			previousTouchY = e.getY();
++			sessionViewListener.onSessionViewBeginTouch();
+ 			return true;
+ 		}
+ 
+ 		public boolean onUp(MotionEvent e)
+ 		{
+-			sessionViewListener.onSessionViewEndTouch();
++			if (!dragging && !longPressInProgress)
++				sessionViewListener.onSessionViewEndTouch();
+ 			return true;
+ 		}
+ 
+ 		public void onLongPress(MotionEvent e)
+ 		{
+-			MotionEvent mappedEvent = mapTouchEvent(e);
+-			sessionViewListener.onSessionViewBeginTouch();
+-			sessionViewListener.onSessionViewLeftTouch((int)mappedEvent.getX(),
+-			                                           (int)mappedEvent.getY(), true);
+-			longPressInProgress = true;
++			if (!doubleTapDragEnabled)
++			{
++				performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY);
++				TouchpadPointerController.Position position = touchpadPointer.getPosition();
++				sessionViewListener.onSessionViewLeftTouch(position.x, position.y, true);
++				longPressInProgress = true;
++			}
+ 		}
+ 
+ 		public void onLongPressUp(MotionEvent e)
+-		{
+-			MotionEvent mappedEvent = mapTouchEvent(e);
+-			sessionViewListener.onSessionViewLeftTouch((int)mappedEvent.getX(),
+-			                                           (int)mappedEvent.getY(), false);
+-			longPressInProgress = false;
+-			sessionViewListener.onSessionViewEndTouch();
+-		}
+-
+-		public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY)
+ 		{
+ 			if (longPressInProgress)
+ 			{
+-				MotionEvent mappedEvent = mapTouchEvent(e2);
+-				sessionViewListener.onSessionViewMove((int)mappedEvent.getX(),
+-				                                      (int)mappedEvent.getY());
+-				return true;
++				TouchpadPointerController.Position position = touchpadPointer.getPosition();
++				sessionViewListener.onSessionViewLeftTouch(position.x, position.y, false);
++				longPressInProgress = false;
++				sessionViewListener.onSessionViewEndTouch();
+ 			}
++		}
+ 
+-			return false;
++		public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY)
++		{
++			if (maximumPointerCount > 1)
++				return false;
++			float deltaX = e2.getX() - previousTouchX;
++			float deltaY = e2.getY() - previousTouchY;
++			previousTouchX = e2.getX();
++			previousTouchY = e2.getY();
++			moveTouchpadPointer(deltaX, deltaY, e2.getEventTime());
++			return true;
+ 		}
+ 
+ 		public boolean onDoubleTap(MotionEvent e)
+ 		{
+-			// send 2nd click for double click
+-			MotionEvent mappedEvent = mapTouchEvent(e);
+-			sessionViewListener.onSessionViewLeftTouch((int)mappedEvent.getX(),
+-			                                           (int)mappedEvent.getY(), true);
+-			sessionViewListener.onSessionViewLeftTouch((int)mappedEvent.getX(),
+-			                                           (int)mappedEvent.getY(), false);
++			TouchpadPointerController.Position position = touchpadPointer.getPosition();
++			if (doubleTapDragEnabled)
++			{
++				sessionViewListener.onSessionViewLeftTouch(position.x, position.y, true);
++				dragging = true;
++			}
++			else
++			{
++				sendLeftClick(position);
++				sendLeftClick(position);
++			}
+ 			return true;
+ 		}
+ 
+ 		public boolean onSingleTapUp(MotionEvent e)
+ 		{
+-			// Physical mouse buttons are handled via ACTION_BUTTON_PRESS in onGenericMotionEvent.
+-			// If buttonState is non-zero this event came from a physical mouse button
+-			if (e.getButtonState() != 0)
+-				return false;
++			return false;
++		}
+ 
+-			// Finger touch -> left click
+-			MotionEvent mappedEvent = mapTouchEvent(e);
+-			sessionViewListener.onSessionViewBeginTouch();
+-			sessionViewListener.onSessionViewLeftTouch((int)mappedEvent.getX(),
+-			                                           (int)mappedEvent.getY(), true);
+-			sessionViewListener.onSessionViewLeftTouch((int)mappedEvent.getX(),
+-			                                           (int)mappedEvent.getY(), false);
+-			sessionViewListener.onSessionViewEndTouch();
++		public boolean onSingleTapConfirmed(MotionEvent e)
++		{
++			if (e.getButtonState() != 0 || maximumPointerCount > 1)
++				return false;
++			performConfiguredClick(singleTapAction);
+ 			return true;
+ 		}
+ 	}
+@@ -512,6 +691,7 @@ public class SessionView extends View
+ 		public boolean onDoubleTouchDown(MotionEvent e)
+ 		{
+ 			sessionViewListener.onSessionViewBeginTouch();
++			accumulatedScrollY = 0;
+ 			prevEvent = MotionEvent.obtain(e);
+ 			return true;
+ 		}
+@@ -529,31 +709,27 @@ public class SessionView extends View
+ 
+ 		public boolean onDoubleTouchScroll(MotionEvent e1, MotionEvent e2)
+ 		{
+-			// calc if user scrolled up or down (or if any scrolling happened at all)
+ 			float deltaY = e2.getY() - prevEvent.getY();
+-			if (deltaY > TOUCH_SCROLL_DELTA)
++			accumulatedScrollY += deltaY * scrollCoefficient;
++			prevEvent.recycle();
++			prevEvent = MotionEvent.obtain(e2);
++			if (accumulatedScrollY > TOUCH_SCROLL_MIN_DISTANCE)
+ 			{
+-				sessionViewListener.onSessionViewScroll(true);
+-				prevEvent.recycle();
+-				prevEvent = MotionEvent.obtain(e2);
++				sessionViewListener.onSessionViewScroll(scrollDirection > 0);
++				accumulatedScrollY = 0;
+ 			}
+-			else if (deltaY < -TOUCH_SCROLL_DELTA)
++			else if (accumulatedScrollY < -TOUCH_SCROLL_MIN_DISTANCE)
+ 			{
+-				sessionViewListener.onSessionViewScroll(false);
+-				prevEvent.recycle();
+-				prevEvent = MotionEvent.obtain(e2);
++				sessionViewListener.onSessionViewScroll(scrollDirection < 0);
++				accumulatedScrollY = 0;
+ 			}
+ 			return true;
+ 		}
+ 
+ 		public boolean onDoubleTouchSingleTap(MotionEvent e)
+ 		{
+-			// send single click
+-			MotionEvent mappedEvent = mapDoubleTouchEvent(e);
+-			sessionViewListener.onSessionViewRightTouch((int)mappedEvent.getX(),
+-			                                            (int)mappedEvent.getY(), true);
+-			sessionViewListener.onSessionViewRightTouch((int)mappedEvent.getX(),
+-			                                            (int)mappedEvent.getY(), false);
++			if (maximumPointerCount < 3)
++				performConfiguredClick(doubleFingerTapAction);
+ 			return true;
+ 		}
+ 	}
+diff --git a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/utils/TouchpadPointerController.java b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/utils/TouchpadPointerController.java
+new file mode 100644
+index 0000000..e7fa443
+--- /dev/null
++++ b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/utils/TouchpadPointerController.java
+@@ -0,0 +1,221 @@
++/*
++   Android relative touchpad pointer controller
++
++   Copyright 2026 KDE Connect Developers
++
++   This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.
++   If a copy of the MPL was not distributed with this file, You can obtain one at
++   http://mozilla.org/MPL/2.0/.
++*/
++
++package com.freerdp.freerdpcore.utils;
++
++/**
++ * Converts touch deltas into a bounded absolute RDP cursor position.
++ *
++ * RDP pointer PDUs use absolute coordinates, while KDE Connect's Remote Input UI behaves like a
++ * relative touchpad. This class bridges the two models and intentionally mirrors Remote Input's
++ * DPI normalization, sensitivity steps, and speed-based polynomial acceleration profiles.
++ */
++public final class TouchpadPointerController
++{
++	private static final float STANDARD_DPI = 240.0f;
++
++	private int width = 1;
++	private int height = 1;
++	private int x;
++	private int y;
++	private boolean positionInitialized;
++	private float dpiMultiplier = 1.0f;
++	private float sensitivity = 1.0f;
++	private AccelerationProfile accelerationProfile = new PolynomialProfile(1.0f);
++	private String accelerationProfileName = "medium";
++
++	public void setBounds(int width, int height)
++	{
++		this.width = Math.max(1, width);
++		this.height = Math.max(1, height);
++		if (!positionInitialized)
++		{
++			x = this.width / 2;
++			y = this.height / 2;
++			positionInitialized = true;
++		}
++		else
++			setPosition(x, y);
++	}
++
++	public void configure(float displayDpi, String sensitivityName, String profileName)
++	{
++		dpiMultiplier = displayDpi > 0 ? STANDARD_DPI / displayDpi : 1.0f;
++		sensitivity = sensitivityForName(sensitivityName);
++
++		String normalizedProfile = profileName == null ? "medium" : profileName;
++		if (!normalizedProfile.equals(accelerationProfileName))
++		{
++			accelerationProfileName = normalizedProfile;
++			accelerationProfile = createAccelerationProfile(normalizedProfile);
++		}
++	}
++
++	public Position moveBy(float touchDeltaX, float touchDeltaY, long eventTime)
++	{
++		float normalizedX = touchDeltaX * dpiMultiplier * sensitivity;
++		float normalizedY = touchDeltaY * dpiMultiplier * sensitivity;
++		accelerationProfile.touchMoved(normalizedX, normalizedY, eventTime);
++		Position delta = accelerationProfile.commit();
++		setPosition(x + delta.x, y + delta.y);
++		return getPosition();
++	}
++
++	public void setPosition(int x, int y)
++	{
++		this.x = Math.max(0, Math.min(width - 1, x));
++		this.y = Math.max(0, Math.min(height - 1, y));
++		positionInitialized = true;
++	}
++
++	public Position getPosition()
++	{
++		return new Position(x, y);
++	}
++
++	private static float sensitivityForName(String name)
++	{
++		if ("slowest".equals(name))
++			return 0.2f;
++		if ("aboveSlowest".equals(name))
++			return 0.5f;
++		if ("aboveDefault".equals(name))
++			return 1.5f;
++		if ("fastest".equals(name))
++			return 2.0f;
++		return 1.0f;
++	}
++
++	private static AccelerationProfile createAccelerationProfile(String name)
++	{
++		switch (name)
++		{
++			case "weaker":
++				return new PolynomialProfile(0.25f);
++			case "weak":
++				return new PolynomialProfile(0.5f);
++			case "medium":
++				return new PolynomialProfile(1.0f);
++			case "strong":
++				return new PolynomialProfile(1.5f);
++			case "stronger":
++				return new PolynomialProfile(2.0f);
++			case "noacceleration":
++			default:
++				return new DefaultProfile();
++		}
++	}
++
++	public static final class Position
++	{
++		public final int x;
++		public final int y;
++
++		public Position(int x, int y)
++		{
++			this.x = x;
++			this.y = y;
++		}
++	}
++
++	private interface AccelerationProfile
++	{
++		void touchMoved(float deltaX, float deltaY, long eventTime);
++
++		Position commit();
++	}
++
++	private static final class DefaultProfile implements AccelerationProfile
++	{
++		private float accumulatedX;
++		private float accumulatedY;
++
++		@Override public void touchMoved(float deltaX, float deltaY, long eventTime)
++		{
++			accumulatedX += deltaX;
++			accumulatedY += deltaY;
++		}
++
++		@Override public Position commit()
++		{
++			int deltaX = (int)accumulatedX;
++			int deltaY = (int)accumulatedY;
++			accumulatedX %= 1.0f;
++			accumulatedY %= 1.0f;
++			return new Position(deltaX, deltaY);
++		}
++	}
++
++	private static final class PolynomialProfile implements AccelerationProfile
++	{
++		private static final int HISTORY_SIZE = 32;
++		private static final long FRESH_THRESHOLD_MS = 150;
++
++		private final float exponent;
++		private final TouchDeltaEvent[] history = new TouchDeltaEvent[HISTORY_SIZE];
++		private float accumulatedX;
++		private float accumulatedY;
++
++		private PolynomialProfile(float exponent)
++		{
++			this.exponent = exponent;
++		}
++
++		@Override public void touchMoved(float deltaX, float deltaY, long eventTime)
++		{
++			float multiplier = multiplierFromHistory(eventTime);
++			accumulatedX += deltaX * multiplier;
++			accumulatedY += deltaY * multiplier;
++			System.arraycopy(history, 0, history, 1, history.length - 1);
++			history[0] = new TouchDeltaEvent(deltaX, deltaY, eventTime);
++		}
++
++		private float multiplierFromHistory(long eventTime)
++		{
++			float distanceMoved = 0;
++			long deltaTime = 0;
++			for (TouchDeltaEvent event : history)
++			{
++				if (event == null || eventTime - event.time > FRESH_THRESHOLD_MS)
++					break;
++				distanceMoved += Math.hypot(event.x, event.y);
++				deltaTime = eventTime - event.time;
++			}
++
++			if (deltaTime == 0)
++				return 0.01f;
++			float speed = distanceMoved / (deltaTime / 1000.0f);
++			return Math.max(0.01f, (float)Math.pow(speed / 600.0f, exponent));
++		}
++
++		@Override public Position commit()
++		{
++			int deltaX = (int)accumulatedX;
++			int deltaY = (int)accumulatedY;
++			accumulatedX %= 1.0f;
++			accumulatedY %= 1.0f;
++			return new Position(deltaX, deltaY);
++		}
++
++		private static final class TouchDeltaEvent
++		{
++			private final float x;
++			private final float y;
++			private final long time;
++
++			private TouchDeltaEvent(float x, float y, long time)
++			{
++				this.x = x;
++				this.y = y;
++				this.time = time;
++			}
++		}
++	}
++}
+-- 
+2.55.0
+

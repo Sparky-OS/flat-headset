@@ -1,0 +1,33 @@
+--- a/libfreerdp/core/tcp.c
++++ b/libfreerdp/core/tcp.c
+@@ -1363,6 +1363,30 @@
+ 		(void)freerdp_tcp_set_nodelay(WLog_Get(TAG), WLOG_ERROR, sockfd);
+ 	}
+ 
++#if defined(__ANDROID__)
++    /* AF41 is video; RFC 8325 maps it to UP 4. AP policy remains authoritative. */
++    if (!ipcSocket)
++    {
++        struct sockaddr_storage address = { 0 };
++        socklen_t length = sizeof(address);
++        int readback = -1;
++        if (getsockname(sockfd, (struct sockaddr*)&address, &length) == 0 &&
++            (address.ss_family == AF_INET || address.ss_family == AF_INET6))
++        {
++            const int level = address.ss_family == AF_INET6 ? IPPROTO_IPV6 : IPPROTO_IP;
++            const int option = address.ss_family == AF_INET6 ? IPV6_TCLASS : IP_TOS;
++            int value = 34 << 2;
++            if (setsockopt(sockfd, level, option, &value, sizeof(value)) == 0)
++            {
++                length = sizeof(value);
++                if (getsockopt(sockfd, level, option, &value, &length) == 0)
++                    readback = value >> 2;
++            }
++        }
++        WLog_Print(WLog_Get("HeadsetNetwork"), WLOG_INFO, "videoPriorityDscp=%d", readback);
++    }
++#endif
++
+ 	/* receive buffer must be a least 32 K */
+ 	UINT32 optval = 1;
+ 	socklen_t optlen = sizeof(optval);

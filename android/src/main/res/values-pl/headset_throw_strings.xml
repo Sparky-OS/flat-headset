@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted-GPL -->
+<resources>
+    <string name="remote_desktop_mode_headset">Flat Headset (soczewki Cardboard)</string>
+    <string name="remote_desktop_mode_headset_no_lenses">Flat Headset (bez soczewek)</string>
+    <string name="remote_desktop_native_panel_unavailable">Komputer nie może utworzyć żądanego natywnego ekranu gogli.</string>
+    <string name="headset_notch_warning">Wcięcia i otwory aparatu zasłaniają część obrazu. Równe marginesy zasłaniają te same krawędzie dla obu oczu, zachowując równowagę bez rozciągania obrazu.</string>
+    <string name="headset_symmetric_notch">Równe marginesy dla otworów aparatu</string>
+    <string name="headset_alignment">Pokaż środkową linię wyrównania i strzałkę w dół</string>
+    <string name="headset_title">Flat Headset</string>
+    <string name="headset_discovery_description">Połącz telefon i komputer z tą samą siecią Wi-Fi, hotspotem komputera lub przez tethering USB. Przygotuj telefon, a następnie zatwierdź przerzucanie na komputerze. Dźwięk i sterowanie pozostają na komputerze; przyciski głośności telefonu regulują jasność.</string>
+    <string name="headset_wait_for_computer">Przygotuj do przerzucenia</string>
+    <string name="headset_waiting">Gotowe do przerzucenia. Zatwierdź te gogle na komputerze.</string>
+    <string name="headset_stop">Zatrzymaj przerzucanie</string>
+    <string name="headset_upnp_android_version">Samodzielne wykrywanie wymaga Androida 7 lub nowszego. Sparowany odbiornik RDP pozostaje dostępny.</string>
+    <string name="headset_discovery_failed">Nie można uruchomić wykrywania w tej sieci. Sprawdź połączenie i spróbuj ponownie.</string>
+    <string name="headset_scan_viewer">Zeskanuj kod QR gogli</string>
+    <string name="headset_profile_default">Profil soczewek: domyślny Cardboard</string>
+    <string name="headset_profile_saved">Profil soczewek: zapisane gogle</string>
+    <string name="headset_correction_title">Korekcja soczewek</string>
+    <string name="headset_correction_off">Bez korekcji</string>
+    <string name="headset_correction_fitted">Dopasowany Shinecon (D)</string>
+    <string name="headset_correction_profile">Profil QR gogli</string>
+    <string name="headset_correction_hint">Dopasowanie odpowiada próbie D. Zachowaj położenie telefonu, rozstaw soczewek i ostrość. Użyj zwykłego filmu lub strumienia bez korekcji.</string>
+    <string name="headset_hevc">HEVC, gdy obsługiwane (H.264 domyślnie i awaryjnie)</string>
+    <string name="headset_throw_connecting">Oczekiwanie na przerzucenie…</string>
+    <string name="headset_throw_reconnecting">Oczekiwanie na kolejne przerzucenie…</string>
+    <string name="headset_wait_reduce_motion">Ogranicz ruch podczas oczekiwania</string>
+</resources>

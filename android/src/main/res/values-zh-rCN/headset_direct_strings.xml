@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted-GPL -->
+<resources>
+    <string name="headset_transport_title">连接</string>
+    <string name="headset_transport_network">当前网络 / USB 网络共享</string>
+    <string name="headset_transport_direct">通过 Wi-Fi 直连电脑</string>
+    <string name="headset_direct_creating">正在启动 Wi-Fi 直连…</string>
+    <string name="headset_direct_waiting">在电脑上打开“通过 Wi-Fi 直连 Throw”，搜索并选择此手机。在手机上接受连接，然后在电脑上批准 Throw。</string>
+    <string name="headset_direct_unavailable">Wi-Fi 直连不可用。请确认 Wi-Fi 已开启，或使用当前网络。</string>
+    <string name="headset_direct_permission">Wi-Fi 直连需要附近 Wi-Fi 设备权限（旧版 Android 需要位置权限）。</string>
+    <string name="headset_direct_busy">另一个 Wi-Fi Direct 会话正在运行或启动。请先停止该会话。</string>
+    <string name="headset_direct_timeout">Wi-Fi 直连未能就绪。请检查 Wi-Fi 并重试。</string>
+    <string name="headset_direct_lost">Wi-Fi 直连已结束。请重新启动以再次连接。</string>
+    <string name="headset_direct_status">Wi-Fi 直连 · 无可用链路测量数据</string>
+    <string name="headset_direct_connected">Wi-Fi 直连已连接。请在电脑的 Throw 中批准此手机，然后选择要共享的内容。</string>
+</resources>

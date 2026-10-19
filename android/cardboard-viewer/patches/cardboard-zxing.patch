@@ -1,0 +1,638 @@
+diff --git a/hellocardboard-android/build.gradle b/hellocardboard-android/build.gradle
+index 5a1bca2..8ed5bb1 100644
+--- a/hellocardboard-android/build.gradle
++++ b/hellocardboard-android/build.gradle
+@@ -47,9 +47,6 @@ android {
+ dependencies {
+     implementation fileTree(dir: 'libs', include: ['*.jar'])
+     implementation 'androidx.appcompat:appcompat:1.6.1'
+-    // Android Mobile Vision
+-    // TODO(b/213613345) Migrate to ML Kit.
+-    implementation 'com.google.android.gms:play-services-vision:20.1.3'
+     implementation 'com.google.android.material:material:1.12.0'
+     implementation 'com.google.protobuf:protobuf-javalite:3.19.4'
+     implementation project(":sdk")
+diff --git a/paperscope/build.gradle b/paperscope/build.gradle
+index 7c9cf84..e1900d4 100644
+--- a/paperscope/build.gradle
++++ b/paperscope/build.gradle
+@@ -65,9 +65,6 @@ android {
+ dependencies {
+     implementation fileTree(dir: 'libs', include: ['*.jar'])
+     implementation 'androidx.appcompat:appcompat:1.7.1'
+-    // Android Mobile Vision
+-    // TODO(b/213613345) Migrate to ML Kit.
+-    implementation 'com.google.android.gms:play-services-vision:20.1.3'
+     implementation 'com.google.android.material:material:1.13.0'
+     implementation 'com.google.protobuf:protobuf-javalite:4.34.1'
+     implementation "com.google.flogger:flogger:0.9"
+diff --git a/sdk/build.gradle b/sdk/build.gradle
+index db0a56d..8116b76 100644
+--- a/sdk/build.gradle
++++ b/sdk/build.gradle
+@@ -83,11 +83,10 @@ protobuf {
+ }
+ 
+ dependencies {
++    testImplementation 'junit:junit:4.13.2'
+     implementation fileTree(dir: 'libs', include: ['*.jar'])
+     implementation 'androidx.appcompat:appcompat:1.6.1'
+-    // Android Mobile Vision
+-    // TODO(b/217176538) Migrate to ML Kit.
+-    implementation 'com.google.android.gms:play-services-vision:20.1.3'
++    implementation 'com.google.zxing:core:3.5.4'
+     implementation 'com.google.android.material:material:1.12.0'
+     implementation 'com.google.protobuf:protobuf-javalite:3.19.4'
+     implementation 'org.jspecify:jspecify:1.0.0'
+diff --git a/sdk/qrcode/android/java/com/google/cardboard/sdk/QrCodeCaptureActivity.java b/sdk/qrcode/android/java/com/google/cardboard/sdk/QrCodeCaptureActivity.java
+index 732d004..50105e1 100755
+--- a/sdk/qrcode/android/java/com/google/cardboard/sdk/QrCodeCaptureActivity.java
++++ b/sdk/qrcode/android/java/com/google/cardboard/sdk/QrCodeCaptureActivity.java
+@@ -16,7 +16,6 @@
+ package com.google.cardboard.sdk;
+ 
+ import android.Manifest;
+-import android.app.Dialog;
+ import android.content.Context;
+ import android.content.Intent;
+ import android.content.pm.PackageManager;
+@@ -27,25 +26,16 @@ import android.os.Bundle;
+ import android.provider.Settings;
+ import android.util.Log;
+ import android.view.View;
+-import android.view.ViewGroup;
+ import android.widget.Toast;
+ import androidx.annotation.NonNull;
+ import androidx.appcompat.app.AppCompatActivity;
+ import androidx.core.app.ActivityCompat;
+-import androidx.core.graphics.Insets;
+-import androidx.core.view.ViewCompat;
+ import androidx.core.view.WindowCompat;
+ import androidx.core.view.WindowInsetsCompat;
+ import androidx.core.view.WindowInsetsControllerCompat;
+-import com.google.android.gms.common.ConnectionResult;
+-import com.google.android.gms.common.GoogleApiAvailability;
+-import com.google.android.gms.vision.MultiProcessor;
+-import com.google.android.gms.vision.barcode.Barcode;
+-import com.google.android.gms.vision.barcode.BarcodeDetector;
+ import com.google.cardboard.sdk.qrcode.CardboardParamsUtils;
+ import com.google.cardboard.sdk.qrcode.QrCodeContentProcessor;
+-import com.google.cardboard.sdk.qrcode.QrCodeTracker;
+-import com.google.cardboard.sdk.qrcode.QrCodeTrackerFactory;
++import com.google.cardboard.sdk.qrcode.QrCodeDecoder;
+ import com.google.cardboard.sdk.qrcode.camera.CameraSource;
+ import com.google.cardboard.sdk.qrcode.camera.CameraSourcePreview;
+ import java.io.IOException;
+@@ -55,23 +45,18 @@ import java.io.IOException;
+  * QR code.
+  */
+ public class QrCodeCaptureActivity extends AppCompatActivity
+-    implements QrCodeTracker.Listener, QrCodeContentProcessor.Listener {
++    implements QrCodeDecoder.Listener, QrCodeContentProcessor.Listener {
+   private static final String TAG = QrCodeCaptureActivity.class.getSimpleName();
+ 
+-  // Intent request code to handle updating play services if needed.
+-  private static final int RC_HANDLE_GMS = 9001;
+-
+   // Permission request codes
+   private static final int PERMISSIONS_REQUEST_CODE = 2;
+ 
+-  // Min sdk version required for google play services.
+-  private static final int MIN_SDK_VERSION = 23;
+-
+   private CameraSource cameraSource;
+   private CameraSourcePreview cameraSourcePreview;
+ 
+   // Flag used to avoid saving the device parameters more than once.
+-  private static boolean qrCodeSaved = false;
++  private boolean qrCodeSaved = false;
++  private boolean resumed = false;
+ 
+   /** Initializes the UI and creates the detector pipeline. */
+   @Override
+@@ -129,6 +114,17 @@ public class QrCodeCaptureActivity extends AppCompatActivity
+   public void onRequestPermissionsResult(
+       int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+     super.onRequestPermissionsResult(requestCode, permissions, grantResults);
++    if (requestCode != PERMISSIONS_REQUEST_CODE) {
++      return;
++    }
++    if (isCameraEnabled()
++        && (VERSION.SDK_INT >= VERSION_CODES.Q || isWriteExternalStoragePermissionsEnabled())) {
++      if (resumed && cameraSource == null) {
++        createCameraSource();
++        startCameraSource();
++      }
++      return;
++    }
+     if (VERSION.SDK_INT < VERSION_CODES.Q) {
+       if (!(isCameraEnabled() && isWriteExternalStoragePermissionsEnabled())) {
+         Log.i(TAG, getString(R.string.no_permissions));
+@@ -168,32 +164,14 @@ public class QrCodeCaptureActivity extends AppCompatActivity
+ 
+   /** Creates and starts the camera. */
+   private void createCameraSource() {
+-    Context context = getApplicationContext();
+-
+-    BarcodeDetector qrCodeDetector =
+-        new BarcodeDetector.Builder(context).setBarcodeFormats(Barcode.QR_CODE).build();
+-
+-    QrCodeTrackerFactory qrCodeFactory = new QrCodeTrackerFactory(this);
+-
+-    qrCodeDetector.setProcessor(new MultiProcessor.Builder<>(qrCodeFactory).build());
+-
+-    // Check that native dependencies are downloaded.
+-    if (!qrCodeDetector.isOperational()) {
+-      Toast.makeText(this, R.string.missing_dependencies, Toast.LENGTH_LONG).show();
+-      Log.w(
+-          TAG,
+-          "QR Code detector is not operational. Try connecting to WiFi and updating Google Play"
+-              + " Services or checking that the device storage isn't low.");
+-    }
+-
+-    // Creates and starts the camera.
+-    cameraSource = new CameraSource(getApplicationContext(), qrCodeDetector);
++    cameraSource = new CameraSource(getApplicationContext(), new QrCodeDecoder(this));
+   }
+ 
+   /** Restarts the camera. */
+   @Override
+   protected void onResume() {
+     super.onResume();
++    resumed = true;
+     // Checks for CAMERA permission and WRITE_EXTERNAL_STORAGE permission when running on Android P
+     // or below. If needed permissions are not granted, requests them.
+     if (!(isCameraEnabled()
+@@ -210,25 +188,17 @@ public class QrCodeCaptureActivity extends AppCompatActivity
+   /** Stops the camera. */
+   @Override
+   protected void onPause() {
++    resumed = false;
+     super.onPause();
+     if (cameraSourcePreview != null) {
+       cameraSourcePreview.stop();
+       cameraSourcePreview.release();
++      cameraSource = null;
+     }
+   }
+ 
+   /** Starts or restarts the camera source, if it exists. */
+   private void startCameraSource() {
+-    // Check that the device has play services available.
+-    int code =
+-        GoogleApiAvailability.getInstance()
+-            .isGooglePlayServicesAvailable(getApplicationContext(), MIN_SDK_VERSION);
+-    if (code != ConnectionResult.SUCCESS) {
+-      Log.i(TAG, "isGooglePlayServicesAvailable() returned: " + new ConnectionResult(code));
+-      Dialog dlg = GoogleApiAvailability.getInstance().getErrorDialog(this, code, RC_HANDLE_GMS);
+-      dlg.show();
+-    }
+-
+     if (cameraSource != null) {
+       try {
+         cameraSourcePreview.start(cameraSource);
+@@ -262,12 +232,13 @@ public class QrCodeCaptureActivity extends AppCompatActivity
+    * @param qrCode Detected QR code.
+    */
+   @Override
+-  public void onQrCodeDetected(Barcode qrCode) {
+-    if (qrCode != null && !qrCodeSaved) {
+-      qrCodeSaved = true;
+-      QrCodeContentProcessor qrCodeContentProcessor = new QrCodeContentProcessor(this);
+-      qrCodeContentProcessor.processAndSaveQrCode(qrCode, this);
+-    }
++  public void onQrCodeDetected(String qrCode) {
++    runOnUiThread(() -> {
++      if (resumed && !isFinishing() && !qrCodeSaved) {
++        qrCodeSaved = true;
++        new QrCodeContentProcessor(this).processAndSaveQrCode(qrCode, this);
++      }
++    });
+   }
+ 
+   /**
+diff --git a/sdk/qrcode/android/java/com/google/cardboard/sdk/qrcode/QrCodeContentProcessor.java b/sdk/qrcode/android/java/com/google/cardboard/sdk/qrcode/QrCodeContentProcessor.java
+index 5d1bb3c..cce4249 100644
+--- a/sdk/qrcode/android/java/com/google/cardboard/sdk/qrcode/QrCodeContentProcessor.java
++++ b/sdk/qrcode/android/java/com/google/cardboard/sdk/qrcode/QrCodeContentProcessor.java
+@@ -18,7 +18,6 @@ package com.google.cardboard.sdk.qrcode;
+ import android.content.Context;
+ import android.util.Log;
+ import android.widget.Toast;
+-import com.google.android.gms.vision.barcode.Barcode;
+ import com.google.cardboard.sdk.R;
+ 
+ /**
+@@ -50,7 +49,7 @@ public class QrCodeContentProcessor {
+    *     Application. It is used to write device params to scoped storage via {@code
+    *     Context.getFilesDir()}.
+    */
+-  public void processAndSaveQrCode(Barcode qrCode, Context context) {
++  public void processAndSaveQrCode(String qrCode, Context context) {
+     new ProcessAndSaveQrCodeTask(context).execute(qrCode);
+   }
+ 
+@@ -59,7 +58,7 @@ public class QrCodeContentProcessor {
+    * external storage.
+    */
+   public class ProcessAndSaveQrCodeTask
+-      extends AsyncTask<Barcode, CardboardParamsUtils.UriToParamsStatus> {
++      extends AsyncTask<String, CardboardParamsUtils.UriToParamsStatus> {
+     private final Context context;
+ 
+     /**
+@@ -74,7 +73,7 @@ public class QrCodeContentProcessor {
+     }
+ 
+     @Override
+-    protected CardboardParamsUtils.UriToParamsStatus doInBackground(Barcode qrCode) {
++    protected CardboardParamsUtils.UriToParamsStatus doInBackground(String qrCode) {
+       UrlFactory urlFactory = new UrlFactory();
+       return getParamsFromQrCode(qrCode, urlFactory);
+     }
+@@ -109,13 +108,7 @@ public class QrCodeContentProcessor {
+    * @return Cardboard device parameters, or null if there is an error.
+    */
+   private static CardboardParamsUtils.UriToParamsStatus getParamsFromQrCode(
+-      Barcode barcode, UrlFactory urlFactory) {
+-    if (barcode.valueFormat != Barcode.TEXT && barcode.valueFormat != Barcode.URL) {
+-      Log.e(TAG, "Invalid QR code format: " + barcode.valueFormat);
+-      return CardboardParamsUtils.UriToParamsStatus.error(
+-          CardboardParamsUtils.UriToParamsStatus.STATUS_UNEXPECTED_FORMAT);
+-    }
+-
+-    return CardboardParamsUtils.getParamsFromUriString(barcode.rawValue, urlFactory);
++      String barcode, UrlFactory urlFactory) {
++    return CardboardParamsUtils.getParamsFromUriString(barcode, urlFactory);
+   }
+ }
+diff --git a/sdk/qrcode/android/java/com/google/cardboard/sdk/qrcode/QrCodeDecoder.java b/sdk/qrcode/android/java/com/google/cardboard/sdk/qrcode/QrCodeDecoder.java
+new file mode 100644
+index 0000000..74cfc0c
+--- /dev/null
++++ b/sdk/qrcode/android/java/com/google/cardboard/sdk/qrcode/QrCodeDecoder.java
+@@ -0,0 +1,59 @@
++/*
++ * Copyright 2026 Daniel Ramos
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package com.google.cardboard.sdk.qrcode;
++
++import com.google.zxing.BinaryBitmap;
++import com.google.zxing.PlanarYUVLuminanceSource;
++import com.google.zxing.ReaderException;
++import com.google.zxing.common.HybridBinarizer;
++import com.google.zxing.qrcode.QRCodeReader;
++
++/** Decodes QR codes locally from the camera's NV21 luminance plane. */
++public final class QrCodeDecoder {
++  public interface Listener {
++    void onQrCodeDetected(String content);
++  }
++
++  private final QRCodeReader reader = new QRCodeReader();
++  private Listener listener;
++
++  public QrCodeDecoder(Listener listener) {
++    this.listener = listener;
++  }
++
++  /** Called on the camera worker; QRCodeReader detects rotated codes itself. */
++  public void receiveFrame(byte[] data, int width, int height) {
++    if (listener == null || width <= 0 || height <= 0 || (long) width * height > data.length) {
++      return;
++    }
++    PlanarYUVLuminanceSource source =
++        new PlanarYUVLuminanceSource(data, width, height, 0, 0, width, height, false);
++    try {
++      String content = reader.decode(new BinaryBitmap(new HybridBinarizer(source))).getText();
++      listener.onQrCodeDetected(content);
++    } catch (ReaderException e) {
++      // An ordinary camera frame need not contain a decodable QR code.
++    } finally {
++      reader.reset();
++    }
++  }
++
++  /** Called after the camera worker has stopped. */
++  public void release() {
++    listener = null;
++    reader.reset();
++  }
++}
+diff --git a/sdk/qrcode/android/java/com/google/cardboard/sdk/qrcode/QrCodeTracker.java b/sdk/qrcode/android/java/com/google/cardboard/sdk/qrcode/QrCodeTracker.java
+deleted file mode 100755
+index 83a4849..0000000
+--- a/sdk/qrcode/android/java/com/google/cardboard/sdk/qrcode/QrCodeTracker.java
++++ /dev/null
+@@ -1,48 +0,0 @@
+-/*
+- * Copyright 2019 Google LLC
+- *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
+- *
+- *      http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
+- */
+-package com.google.cardboard.sdk.qrcode;
+-
+-import com.google.android.gms.vision.Tracker;
+-import com.google.android.gms.vision.barcode.Barcode;
+-
+-/**
+- * QrCodeTracker is used for tracking or reading a QR code. This is used to receive newly detected
+- * items, add a graphical representation to an overlay, update the graphics as the item changes, and
+- * remove the graphics when the item goes away.
+- */
+-public class QrCodeTracker extends Tracker<Barcode> {
+-  private final Listener listener;
+-
+-  /**
+-   * Consume the item instance detected from an Activity or Fragment level by implementing the
+-   * Listener interface method onQrCodeDetected.
+-   */
+-  public interface Listener {
+-    void onQrCodeDetected(Barcode qrCode);
+-  }
+-
+-  QrCodeTracker(Listener listener) {
+-    this.listener = listener;
+-  }
+-
+-  /** Start tracking the detected item instance. */
+-  @Override
+-  public void onNewItem(int id, Barcode item) {
+-    if (item.displayValue != null) {
+-      listener.onQrCodeDetected(item);
+-    }
+-  }
+-}
+diff --git a/sdk/qrcode/android/java/com/google/cardboard/sdk/qrcode/QrCodeTrackerFactory.java b/sdk/qrcode/android/java/com/google/cardboard/sdk/qrcode/QrCodeTrackerFactory.java
+deleted file mode 100755
+index 300ed5e..0000000
+--- a/sdk/qrcode/android/java/com/google/cardboard/sdk/qrcode/QrCodeTrackerFactory.java
++++ /dev/null
+@@ -1,37 +0,0 @@
+-/*
+- * Copyright 2019 Google LLC
+- *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
+- *
+- *      http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
+- */
+-package com.google.cardboard.sdk.qrcode;
+-
+-import com.google.android.gms.vision.MultiProcessor;
+-import com.google.android.gms.vision.Tracker;
+-import com.google.android.gms.vision.barcode.Barcode;
+-
+-/**
+- * Factory for creating a tracker and associated graphic to be associated with a new QR code. The
+- * multi-processor uses this factory to create QR code trackers as needed -- one for each QR code.
+- */
+-public class QrCodeTrackerFactory implements MultiProcessor.Factory<Barcode> {
+-  private final QrCodeTracker.Listener listener;
+-
+-  public QrCodeTrackerFactory(QrCodeTracker.Listener listener) {
+-    this.listener = listener;
+-  }
+-
+-  @Override
+-  public Tracker<Barcode> create(Barcode qrCode) {
+-    return new QrCodeTracker(listener);
+-  }
+-}
+diff --git a/sdk/qrcode/android/java/com/google/cardboard/sdk/qrcode/camera/CameraSource.java b/sdk/qrcode/android/java/com/google/cardboard/sdk/qrcode/camera/CameraSource.java
+index 9af1602..e1e219f 100755
+--- a/sdk/qrcode/android/java/com/google/cardboard/sdk/qrcode/camera/CameraSource.java
++++ b/sdk/qrcode/android/java/com/google/cardboard/sdk/qrcode/camera/CameraSource.java
+@@ -18,15 +18,13 @@ package com.google.cardboard.sdk.qrcode.camera;
+ import android.Manifest;
+ import android.content.Context;
+ import android.graphics.ImageFormat;
+-import android.os.SystemClock;
+ import android.util.Log;
+ import android.view.Surface;
+ import android.view.SurfaceHolder;
+ import android.view.WindowManager;
+ import androidx.annotation.RequiresPermission;
+-import com.google.android.gms.common.images.Size;
+-import com.google.android.gms.vision.Detector;
+-import com.google.android.gms.vision.Frame;
++import android.util.Size;
++import com.google.cardboard.sdk.qrcode.QrCodeDecoder;
+ import java.io.IOException;
+ import java.nio.ByteBuffer;
+ import java.util.ArrayList;
+@@ -67,7 +65,6 @@ public class CameraSource {
+   // Guarded by cameraLock
+   private android.hardware.Camera camera;
+ 
+-  private int rotation;
+ 
+   private Size previewSize;
+ 
+@@ -94,7 +91,7 @@ public class CameraSource {
+    * @param detector Expects a QR code detector.
+    * @throws IllegalArgumentException When any of the parameter preconditions is unmet.
+    */
+-  public CameraSource(Context context, Detector<?> detector) {
++  public CameraSource(Context context, QrCodeDecoder detector) {
+     // Prerequisite evaluation.
+     if (context == null) {
+       Log.e(TAG, "context is null.");
+@@ -260,7 +257,8 @@ public class CameraSource {
+         return i;
+       }
+     }
+-    return -1;
++    // External cameras and some tablets have no rear-facing camera.
++    return android.hardware.Camera.getNumberOfCameras() > 0 ? 0 : -1;
+   }
+ 
+   /**
+@@ -430,8 +428,6 @@ public class CameraSource {
+       displayAngle = angle;
+     }
+ 
+-    // This corresponds to the rotation constants in frame.
+-    this.rotation = angle / 90;
+ 
+     camera.setDisplayOrientation(displayAngle);
+     parameters.setRotation(angle);
+@@ -473,19 +469,16 @@ public class CameraSource {
+    * available from the camera. This is designed to run detection on frames as fast as possible.
+    */
+   private class FrameProcessingRunnable implements Runnable {
+-    private Detector<?> detector;
+-    private final long startTimeMillis = SystemClock.elapsedRealtime();
++    private QrCodeDecoder detector;
+ 
+     // This lock guards all of the member variables below.
+     private final Object lock = new Object();
+     private boolean active = true;
+ 
+     // These pending variables hold the state associated with the new frame awaiting processing.
+-    private long pendingTimeMillis;
+-    private int pendingFrameId = 0;
+     private ByteBuffer pendingFrameData;
+ 
+-    FrameProcessingRunnable(Detector<?> detector) {
++    FrameProcessingRunnable(QrCodeDecoder detector) {
+       this.detector = detector;
+     }
+ 
+@@ -494,8 +487,10 @@ public class CameraSource {
+      * completed, which is managed in camera source's release method above.
+      */
+     void release() {
+-      detector.release();
+-      detector = null;
++      if (detector != null) {
++        detector.release();
++        detector = null;
++      }
+     }
+ 
+     /** Marks the runnable as active/not active. Signals any blocked threads to continue. */
+@@ -526,9 +521,6 @@ public class CameraSource {
+           return;
+         }
+ 
+-        // Timestamp and frame ID are saved to aware when frames are dropped along the way.
+-        pendingTimeMillis = SystemClock.elapsedRealtime() - startTimeMillis;
+-        pendingFrameId++;
+         pendingFrameData = bytesToByteBuffer.get(data);
+ 
+         // Notify the processor thread if it is waiting on the next frame.
+@@ -544,7 +536,6 @@ public class CameraSource {
+      */
+     @Override
+     public void run() {
+-      Frame outputFrame;
+       ByteBuffer data;
+ 
+       while (true) {
+@@ -565,18 +556,6 @@ public class CameraSource {
+             return;
+           }
+ 
+-          outputFrame =
+-              new Frame.Builder()
+-                  .setImageData(
+-                      pendingFrameData,
+-                      previewSize.getWidth(),
+-                      previewSize.getHeight(),
+-                      ImageFormat.NV21)
+-                  .setId(pendingFrameId)
+-                  .setTimestampMillis(pendingTimeMillis)
+-                  .setRotation(rotation)
+-                  .build();
+-
+           // Hold onto the frame data locally, so that we can use this for detection
+           // below.  We need to clear pendingFrameData to ensure that this buffer isn't
+           // recycled back to the camera before we are done using that data.
+@@ -588,7 +567,7 @@ public class CameraSource {
+         // the camera to add pending frame(s) while we are running detection on the current
+         // frame.
+         try {
+-          detector.receiveFrame(outputFrame);
++          detector.receiveFrame(data.array(), previewSize.getWidth(), previewSize.getHeight());
+         } catch (Throwable t) {
+           Log.e(TAG, "Exception thrown from receiver.", t);
+         } finally {
+diff --git a/sdk/qrcode/android/java/com/google/cardboard/sdk/qrcode/camera/CameraSourcePreview.java b/sdk/qrcode/android/java/com/google/cardboard/sdk/qrcode/camera/CameraSourcePreview.java
+index 4b33a9d..18d410a 100755
+--- a/sdk/qrcode/android/java/com/google/cardboard/sdk/qrcode/camera/CameraSourcePreview.java
++++ b/sdk/qrcode/android/java/com/google/cardboard/sdk/qrcode/camera/CameraSourcePreview.java
+@@ -24,7 +24,7 @@ import android.view.SurfaceHolder;
+ import android.view.SurfaceView;
+ import android.view.ViewGroup;
+ import androidx.annotation.RequiresPermission;
+-import com.google.android.gms.common.images.Size;
++import android.util.Size;
+ import java.io.IOException;
+ 
+ /**
+diff --git a/sdk/src/test/java/com/google/cardboard/sdk/qrcode/QrCodeDecoderTest.java b/sdk/src/test/java/com/google/cardboard/sdk/qrcode/QrCodeDecoderTest.java
+new file mode 100644
+index 0000000..4cf50a3
+--- /dev/null
++++ b/sdk/src/test/java/com/google/cardboard/sdk/qrcode/QrCodeDecoderTest.java
+@@ -0,0 +1,50 @@
++/* Copyright 2026 Daniel Ramos. SPDX-License-Identifier: Apache-2.0 */
++package com.google.cardboard.sdk.qrcode;
++
++import static org.junit.Assert.*;
++import com.google.zxing.BarcodeFormat;
++import com.google.zxing.common.BitMatrix;
++import com.google.zxing.qrcode.QRCodeWriter;
++import java.util.ArrayList;
++import java.util.Arrays;
++import java.util.List;
++import org.junit.Test;
++
++public class QrCodeDecoderTest {
++  @Test public void decodesAllCameraRotationsWithoutServices() throws Exception {
++    String content = "https://google.com/cardboard/cfg?p=QR_PROOF";
++    BitMatrix matrix = new QRCodeWriter().encode(content, BarcodeFormat.QR_CODE, 480, 480);
++    List<String> results = new ArrayList<>();
++    QrCodeDecoder decoder = new QrCodeDecoder(results::add);
++    for (int turn = 0; turn < 4; turn++) {
++      byte[] nv21 = new byte[480 * 480 * 3 / 2];
++      Arrays.fill(nv21, (byte)128);
++      for (int y = 0; y < 480; y++) {
++        for (int x = 0; x < 480; x++) nv21[y * 480 + x] = (byte)(matrix.get(x,y) ? 16 : 235);
++      }
++      decoder.receiveFrame(nv21, 480, 480);
++      assertEquals(turn + 1, results.size());
++      assertEquals(content, results.get(turn));
++      matrix.rotate90();
++    }
++  }
++
++  @Test public void blankTruncatedAndReleasedFramesDoNotProduceResults() throws Exception {
++    List<String> results = new ArrayList<>();
++    QrCodeDecoder decoder = new QrCodeDecoder(results::add);
++    byte[] pixels = new byte[256 * 256];
++    Arrays.fill(pixels, (byte)235);
++    decoder.receiveFrame(pixels, 256, 256);
++    decoder.receiveFrame(new byte[10], 256, 256);
++    decoder.receiveFrame(pixels, 0, 256);
++    assertTrue(results.isEmpty());
++    BitMatrix matrix = new QRCodeWriter().encode("not a viewer", BarcodeFormat.QR_CODE, 256, 256);
++    for (int y = 0; y < 256; y++) for (int x = 0; x < 256; x++)
++      pixels[y * 256 + x] = (byte)(matrix.get(x,y) ? 16 : 235);
++    decoder.receiveFrame(pixels, 256, 256);
++    assertEquals(Arrays.asList("not a viewer"), results);
++    decoder.release();
++    decoder.receiveFrame(pixels, 256, 256);
++    assertEquals(1, results.size());
++  }
++}

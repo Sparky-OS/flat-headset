@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted-GPL -->
+<resources>
+    <string name="headset_link_title">Taille de l’image à lancer</string>
+    <string name="headset_link_sbs720">Préréglage lecture 720p : côte à côte complet</string>
+    <string name="headset_link_tb720">Demi haut/bas : conserve les détails horizontaux</string>
+    <string name="headset_link_native">Résolution native de l’écran (par défaut actuellement)</string>
+    <string name="headset_link_hint">Le préréglage lecture 720p utilise un bureau séparé de 1280×720, au texte plus grand qu’un bureau Full HD ajusté. Changer uniquement la liaison ne grossit pas le texte du miroir. Les formats réduits transmettent 1280×720 ; le téléphone restitue les deux yeux avec moins de détails. Ces options utilisent H.264 et nécessitent les composants à jour sur l’ordinateur. Le mode natif conserve HEVC en option. Arrêtez le lancer avant de changer.</string>
+    <string name="headset_link_halfsbs720">Demi côte à côte : conserve les détails verticaux</string>
+    <string name="headset_link_fulltb720">TB complet 720p · tous les détails, image haute (1280×1440)</string>
+</resources>

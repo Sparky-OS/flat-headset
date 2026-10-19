@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted-GPL -->
+<resources>
+    <string name="headset_transport_title">Połączenie</string>
+    <string name="headset_transport_network">Bieżąca sieć / tethering USB</string>
+    <string name="headset_transport_direct">Bezpośrednie Wi-Fi do komputera</string>
+    <string name="headset_direct_creating">Uruchamianie bezpośredniego Wi-Fi…</string>
+    <string name="headset_direct_waiting">Na komputerze otwórz Throw przez bezpośrednie Wi-Fi, wyszukaj i wybierz ten telefon. Zaakceptuj połączenie na telefonie, a następnie zatwierdź Throw na komputerze.</string>
+    <string name="headset_direct_unavailable">Bezpośrednie Wi-Fi jest niedostępne. Sprawdź, czy Wi-Fi jest włączone, lub użyj bieżącej sieci.</string>
+    <string name="headset_direct_permission">Bezpośrednie Wi-Fi wymaga uprawnienia do pobliskich urządzeń Wi-Fi (lokalizacji w starszych wersjach Androida).</string>
+    <string name="headset_direct_busy">Inna sesja Wi-Fi Direct jest aktywna lub uruchamiana. Zakończ ją przed rozpoczęciem tego połączenia.</string>
+    <string name="headset_direct_timeout">Bezpośrednie Wi-Fi nie jest gotowe. Sprawdź Wi-Fi i spróbuj ponownie.</string>
+    <string name="headset_direct_lost">Bezpośrednie połączenie Wi-Fi zakończone. Uruchom ponownie, aby się połączyć.</string>
+    <string name="headset_direct_status">Bezpośrednie Wi-Fi · pomiary łącza niedostępne</string>
+    <string name="headset_direct_connected">Bezpośrednie Wi-Fi połączone. Zatwierdź ten telefon w Throw na komputerze i wybierz, co udostępnić.</string>
+</resources>

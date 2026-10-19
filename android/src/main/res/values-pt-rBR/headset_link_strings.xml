@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted-GPL -->
+<resources>
+    <string name="headset_link_title">Tamanho da imagem ao lançar</string>
+    <string name="headset_link_sbs720">Predefinição de leitura 720p: lado a lado completo</string>
+    <string name="headset_link_tb720">Meio acima/abaixo: preserva detalhe horizontal</string>
+    <string name="headset_link_native">Resolução nativa do painel (padrão atual)</string>
+    <string name="headset_link_hint">720p é a predefinição de leitura: uma área de trabalho separada de 1280×720 amplia o texto em relação a uma área Full HD ajustada. Mudar só o enlace não amplia o texto espelhado. Os formatos pela metade enviam 1280×720 e o telefone recompõe os dois olhos, trocando detalhe por menos pixels. Estas opções usam H.264 e exigem os componentes atualizados no computador. O modo nativo mantém HEVC opcional. Pare de arremessar antes de mudar.</string>
+    <string name="headset_link_halfsbs720">Meio lado a lado: preserva detalhe vertical</string>
+    <string name="headset_link_fulltb720">TB completo 720p · detalhe completo, quadro alto (1280×1440)</string>
+</resources>

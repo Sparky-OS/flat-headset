@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted-GPL -->
+<resources>
+    <string name="remote_desktop_mode_headset">Flat Headset (lentes Cardboard)</string>
+    <string name="remote_desktop_mode_headset_no_lenses">Flat Headset (sem lentes)</string>
+    <string name="remote_desktop_native_panel_unavailable">O computador não consegue criar a tela nativa solicitada para os óculos.</string>
+    <string name="headset_notch_warning">Entalhes e recortes da câmera escondem parte da imagem. Margens iguais cobrem as mesmas bordas nos dois olhos, mantendo o equilíbrio sem esticar a imagem.</string>
+    <string name="headset_symmetric_notch">Margens iguais para os recortes da câmera</string>
+    <string name="headset_alignment">Mostrar linha central de alinhamento e seta para baixo</string>
+    <string name="headset_title">Flat Headset</string>
+    <string name="headset_discovery_description">Conecte o telefone e o computador à mesma rede Wi-Fi, ao ponto de acesso do computador ou por compartilhamento USB. Prepare o telefone aqui e aprove o arremesso no computador. Som e controles ficam no computador; as teclas de volume do telefone ajustam o brilho.</string>
+    <string name="headset_wait_for_computer">Preparar para o arremesso</string>
+    <string name="headset_waiting">Pronto para o arremesso. Aprove estes óculos no computador.</string>
+    <string name="headset_stop">Parar de arremessar</string>
+    <string name="headset_upnp_android_version">A descoberta independente exige Android 7 ou posterior. O receptor RDP pareado continua disponível.</string>
+    <string name="headset_discovery_failed">Não foi possível iniciar a descoberta nesta rede. Confira a conexão e tente novamente.</string>
+    <string name="headset_scan_viewer">Ler o código QR dos óculos</string>
+    <string name="headset_profile_default">Perfil das lentes: padrão Cardboard</string>
+    <string name="headset_profile_saved">Perfil das lentes: óculos salvos</string>
+    <string name="headset_correction_title">Correção das lentes</string>
+    <string name="headset_correction_off">Sem correção</string>
+    <string name="headset_correction_fitted">Shinecon ajustado (D)</string>
+    <string name="headset_correction_profile">Perfil QR dos óculos</string>
+    <string name="headset_correction_hint">O ajuste corresponde ao teste D. Mantenha a posição do telefone, a separação das lentes e o foco. Use um filme ou fluxo comum, sem correção.</string>
+    <string name="headset_hevc">HEVC quando compatível (H.264 é o padrão e a alternativa)</string>
+    <string name="headset_throw_connecting">Aguardando o arremesso…</string>
+    <string name="headset_throw_reconnecting">Aguardando o próximo arremesso…</string>
+    <string name="headset_wait_reduce_motion">Reduzir movimento durante a espera</string>
+</resources>

@@ -1,0 +1,136 @@
+From 41cb2ed60af67aaee9622bb92b012036541ae3ba Mon Sep 17 00:00:00 2001
+From: Fabian Druschke <fdruschke@outlook.com>
+Date: Fri, 10 Jul 2026 22:59:35 +0200
+Subject: [PATCH 2/9] android: make embedded RDP sessions recoverable
+
+---
+ .../freeRDPCore/src/main/cpp/android_freerdp.c   |  9 ++++++++-
+ .../presentation/FloatingToolbar.java            |  2 ++
+ .../presentation/SessionActivity.java            | 16 ++++++++++++++++
+ .../src/main/res/layout/floating_toolbar.xml     |  9 +++++++++
+ .../freeRDPCore/src/main/res/values/strings.xml  |  1 +
+ 5 files changed, 36 insertions(+), 1 deletion(-)
+
+diff --git a/client/Android/Studio/freeRDPCore/src/main/cpp/android_freerdp.c b/client/Android/Studio/freeRDPCore/src/main/cpp/android_freerdp.c
+index bfc10fc..e791452 100644
+--- a/client/Android/Studio/freeRDPCore/src/main/cpp/android_freerdp.c
++++ b/client/Android/Studio/freeRDPCore/src/main/cpp/android_freerdp.c
+@@ -630,7 +630,14 @@ static int android_freerdp_run(freerdp* instance)
+ 			    continue;
+ 			    */
+ 			WLog_ERR(TAG, "Failed to check FreeRDP file descriptor");
+-			status = GetLastError();
++			status = freerdp_get_last_error(context);
++			if (status == FREERDP_ERROR_SUCCESS)
++			{
++				/* Channel callbacks do not consistently set WinPR's thread-local
++				 * error. Preserve a meaningful failure for the Java diagnostics. */
++				status = FREERDP_ERROR_CONNECT_TRANSPORT_FAILED;
++				freerdp_set_last_error(context, status);
++			}
+ 			break;
+ 		}
+ 
+diff --git a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/FloatingToolbar.java b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/FloatingToolbar.java
+index 7c184fe..d37d50b 100644
+--- a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/FloatingToolbar.java
++++ b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/FloatingToolbar.java
+@@ -26,6 +26,7 @@ public class FloatingToolbar
+ 		void onToggleTouchPointer();
+ 		void onToggleSysKeyboard();
+ 		void onToggleExtKeyboard();
++		void onDisconnect();
+ 	}
+ 
+ 	private enum Edge
+@@ -76,6 +77,7 @@ public class FloatingToolbar
+ 		bindButton(activity, R.id.floating_toolbar_touch_pointer, listener::onToggleTouchPointer);
+ 		bindButton(activity, R.id.floating_toolbar_sys_keyboard, listener::onToggleSysKeyboard);
+ 		bindButton(activity, R.id.floating_toolbar_ext_keyboard, listener::onToggleExtKeyboard);
++		bindButton(activity, R.id.floating_toolbar_disconnect, listener::onDisconnect);
+ 
+ 		ViewTreeObserver vto = container.getViewTreeObserver();
+ 		vto.addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+diff --git a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionActivity.java b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionActivity.java
+index 4e40c88..aee4808 100644
+--- a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionActivity.java
++++ b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionActivity.java
+@@ -71,6 +71,7 @@ public class SessionActivity extends AppCompatActivity
+ 	    "com.freerdp.freerdpcore.CONNECTION_STATE_DETAIL";
+ 	public static final int CONNECTION_STATE_CONNECTED = 1;
+ 	public static final int CONNECTION_STATE_FAILED = 2;
++	public static final int CONNECTION_STATE_DISCONNECTED = 3;
+ 	private static final String TAG = "FreeRDP.SessionActivity";
+ 	static volatile SessionActivity activeSession;
+ 	private Bitmap bitmap;
+@@ -275,6 +276,10 @@ public class SessionActivity extends AppCompatActivity
+ 				if (inputManager != null)
+ 					inputManager.toggleExtendedKeyboard();
+ 			}
++			@Override public void onDisconnect()
++			{
++				requestDisconnect();
++			}
+ 		});
+ 
+ 		KeyboardView keyboardView = findViewById(R.id.extended_keyboard);
+@@ -637,6 +642,16 @@ public class SessionActivity extends AppCompatActivity
+ 		finish();
+ 	}
+ 
++	private void requestDisconnect()
++	{
++		connectCancelledByUser = true;
++		if (session != null)
++			LibFreeRDP.disconnect(session.getInstance());
++		// Do not leave the user trapped in the session UI if the native disconnect
++		// callback is delayed or the server has already disappeared.
++		closeSessionActivity(RESULT_OK);
++	}
++
+ 	public void handleBackPressed()
+ 	{
+ 		// hide keyboards (if any visible) or send alt+f4 to the session
+@@ -1017,6 +1032,7 @@ public class SessionActivity extends AppCompatActivity
+ 	private void onSessionDisconnected()
+ 	{
+ 		Log.v(TAG, "onSessionDisconnected");
++		reportConnectionState(CONNECTION_STATE_DISCONNECTED, "");
+ 
+ 		// cancel any pending input events
+ 		if (inputManager != null)
+diff --git a/client/Android/Studio/freeRDPCore/src/main/res/layout/floating_toolbar.xml b/client/Android/Studio/freeRDPCore/src/main/res/layout/floating_toolbar.xml
+index 5c3e7f4..45ae0b9 100644
+--- a/client/Android/Studio/freeRDPCore/src/main/res/layout/floating_toolbar.xml
++++ b/client/Android/Studio/freeRDPCore/src/main/res/layout/floating_toolbar.xml
+@@ -52,6 +52,15 @@
+             app:tint="#FFFFFF"
+             android:src="@drawable/ic_fn_keyboard" />
+ 
++        <ImageButton
++            android:id="@+id/floating_toolbar_disconnect"
++            android:layout_width="32dp"
++            android:layout_height="32dp"
++            android:background="?android:attr/selectableItemBackground"
++            android:contentDescription="@string/session_disconnect"
++            app:tint="#FFFFFF"
++            android:src="@drawable/ic_close" />
++
+     </LinearLayout>
+ 
+ </LinearLayout>
+diff --git a/client/Android/Studio/freeRDPCore/src/main/res/values/strings.xml b/client/Android/Studio/freeRDPCore/src/main/res/values/strings.xml
+index 4ee03aa..d5349cc 100644
+--- a/client/Android/Studio/freeRDPCore/src/main/res/values/strings.xml
++++ b/client/Android/Studio/freeRDPCore/src/main/res/values/strings.xml
+@@ -229,6 +229,7 @@
+     <string name="settings_security_clear_certificate_cache">Clear Certificate Cache</string>
+     <!-- Session strings -->
+     <string name="session_double_back_to_exit">Press back again to disconnect</string>
++    <string name="session_disconnect">Disconnect</string>
+     <!-- Activity titles -->
+     <string name="title_bookmark_settings">Connection Settings</string>
+     <string name="title_application_settings">Settings</string>
+-- 
+2.55.0
+
