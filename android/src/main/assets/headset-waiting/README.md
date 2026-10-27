@@ -18,6 +18,8 @@ Keep the camera fixed and the loop short.
 
 Video is full side by side, left first, with a standard stereo mark recognized as Media3 `STEREO_MODE_LEFT_RIGHT`.
 MP4 `st3d` or Matroska `StereoMode` are suitable containers for the existing marked-video path.
+The [IANA Matroska registry](https://www.iana.org/assignments/matroska) assigned StereoMode 15 through 20 for packed picture-and-depth layouts on 26 October 2026, after Track Plane Types 3 through 5 for separate depth tracks on 20 October.
+That allocation does not add depth synthesis to this marked-video receiver; check decoder and rendering support separately.
 Use a hardware-decodable H.264 clip and include no audio.
 The player disables audio, loops while waiting, and selects hardware decoders only.
 The existing movie renderer applies the chosen lens profile.
