@@ -32,9 +32,11 @@ class CodecFailureInstrumentation : Instrumentation() {
                 runOnMainSync { eyes = texts(activity.window.decorView).filter { it.contains("HEVC could not be used") } }
                 check(eyes.size == 2 && eyes[0] == eyes[1]) { "Failure must be readable in both eyes: $eyes" }
                 check(prefs.getBoolean("hevc", false)) { "Failure changed codec preference" }
-                capture("hevc-error-sbs.png")
+                awaitWindow(activity, 2)
+                capture("hevc-error-sbs.png", paired = true)
                 runOnMainSync { activity.showChoices() }
                 waitForIdleSync()
+                awaitWindow(activity, 1)
                 capture("hevc-choice.png")
                 // Select the actual dialog action through its accessibility node.
                 val root = uiAutomation.rootInActiveWindow
@@ -52,9 +54,40 @@ class CodecFailureInstrumentation : Instrumentation() {
             finish(Activity.RESULT_CANCELED, result)
         }
     }
-    private fun capture(name: String) {
-        uiAutomation.waitForIdle(100, 5000)
+    private fun awaitWindow(activity: Activity, textCount: Int) {
+        val deadline = android.os.SystemClock.elapsedRealtime() + 10000
+        while (android.os.SystemClock.elapsedRealtime() < deadline) {
+            var focused = false
+            runOnMainSync { focused = activity.hasWindowFocus() }
+            val root = uiAutomation.rootInActiveWindow
+            if ((focused || textCount == 1) && root?.packageName == targetContext.packageName &&
+                root.findAccessibilityNodeInfosByText("HEVC could not be used").size >= textCount) return
+            android.os.SystemClock.sleep(50)
+        }
+        error("Failure window did not become visible")
+    }
+    private fun capture(name: String, paired: Boolean = false) {
+        uiAutomation.waitForIdle(500, 5000)
         val bitmap = checkNotNull(uiAutomation.takeScreenshot())
+        if (paired) {
+            check(bitmap.width > bitmap.height)
+            val half = bitmap.width / 2
+            var different = 0
+            var white = 0
+            var pixels = 0
+            for (y in bitmap.height / 8 until bitmap.height * 7 / 8) {
+                for (x in 0 until half) {
+                    val left = bitmap.getPixel(x, y)
+                    if (left != bitmap.getPixel(x + half, y)) different++
+                    if (android.graphics.Color.red(left) > 200 && android.graphics.Color.green(left) > 200 &&
+                        android.graphics.Color.blue(left) > 200) white++
+                    pixels++
+                }
+            }
+            check(white > 50 && different < pixels / 1000) {
+                "Capture is not the paired failure screen: white=$white different=$different pixels=$pixels"
+            }
+        }
         File(targetContext.filesDir, name).outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
         bitmap.recycle()
     }

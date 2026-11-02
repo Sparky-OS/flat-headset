@@ -52,6 +52,13 @@ class CodecFailureProofActivity : AppCompatActivity() {
         check(resultCodeFromReceiver == -1 && receiver.failure != null)
     }
 
+    @Suppress("DEPRECATION")
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus && !choices) window.decorView.systemUiVisibility =
+            View.SYSTEM_UI_FLAG_FULLSCREEN or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+    }
+
     fun showChoices() {
         choices = true
         setContentView(TextView(this).apply { text = failure.getStringExtra(SessionActivity.EXTRA_CONNECTION_ERROR) })

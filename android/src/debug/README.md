@@ -11,7 +11,7 @@ Distribution APKs still follow the projection wrapper in that document.
 After installing the debug APK on the emulator, run:
 
 ```sh
-adb -s emulator-5554 shell am instrument -w \
+adb -s emulator-5554 shell am instrument -w -r \
   org.kde.kdeconnect_tp.debug/org.kde.kdeconnect.CodecFailureInstrumentation
 ```
 
