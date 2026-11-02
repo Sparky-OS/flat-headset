@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="headset_hevc">Użyj HEVC (domyślnie H.264)</string>
+    <string name="headset_hevc_failed">Nie można użyć HEVC:\n%1$s</string>
+    <string name="headset_scene_failed">Nie można wyświetlić sceny oczekiwania „%1$s”:\n%2$s</string>
+    <string name="headset_failure_back">Naciśnij Wstecz, aby opuścić tryb gogli i wybrać dalsze działanie.</string>
+    <string name="headset_use_h264">Użyj H.264</string>
+    <string name="headset_use_still">Użyj nieruchomego obrazu</string>
+    <string name="headset_another_scene">Wybierz inną scenę</string>
+</resources>

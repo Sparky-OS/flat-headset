@@ -1,0 +1,21 @@
+--- a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionActivity.java
++++ b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionActivity.java
+@@ -1058,6 +1058,18 @@
+ 		finish();
+ 	}
+ 
++	/** A specialized viewer can stop a session with its own decoder diagnostic. */
++	protected void failSession(String detail)
++	{
++		reportConnectionState(CONNECTION_STATE_FAILED, detail);
++		if (session != null)
++			LibFreeRDP.disconnect(session.getInstance());
++		Intent result = new Intent();
++		result.putExtra(EXTRA_CONNECTION_ERROR, detail);
++		setResult(RESULT_CANCELED, result);
++		finish();
++	}
++
+ 	protected void onSessionConnectionChanged(boolean connected)
+ 	{
+ 	}

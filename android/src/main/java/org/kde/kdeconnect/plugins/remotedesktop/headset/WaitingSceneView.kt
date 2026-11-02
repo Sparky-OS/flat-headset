@@ -31,6 +31,11 @@ internal class WaitingSceneView(context: Context, private val noLenses: Boolean,
         }
     }) : FrameLayout(context), AutoCloseable {
     private val settings = context.getSharedPreferences(HeadsetFitOverlay.PREFERENCES, Context.MODE_PRIVATE)
+    var onFailure: (String, String, Boolean) -> Unit = { _, _, _ -> }
+    var failure: String? = null
+        private set
+    private var showingStill = false
+    private var failureView: View? = null
     private var player: ExoPlayer? = null
     private var movie: MovieView? = null
     private var still: PanelView? = null
@@ -59,7 +64,10 @@ internal class WaitingSceneView(context: Context, private val noLenses: Boolean,
         if (value) {
             val scenes = try { context.assets.open("${assetDirectory}/catalog.json").bufferedReader().use { WaitingScenes.parse(it.readText()) } }
                 catch (_: Exception) { emptyList() }
-            scene = WaitingScenes.choose(scenes, settings.getString("last-waiting-scene", null))
+            failure = null
+            failureView?.let { removeView(it) }; failureView = null
+            scene = scenes.firstOrNull { it.id == settings.getString(WaitingScenes.SCENE_CHOICE, null) }
+                ?: WaitingScenes.choose(scenes, settings.getString("last-waiting-scene", null))
             scene?.let { settings.edit().putString("last-waiting-scene", it.id).apply() }
         }
         update()
@@ -80,9 +88,12 @@ internal class WaitingSceneView(context: Context, private val noLenses: Boolean,
         releaseMedia()
         visibility = if (waiting && resumed && !closed) VISIBLE else GONE
         if (visibility != VISIBLE) return
+        status.visibility = if (failure == null) VISIBLE else GONE
         status.invalidate()
+        if (failure != null) return
         val selected = scene ?: return
-        if (settings.getBoolean(WaitingScenes.REDUCE_MOTION, false)) { showStill(selected); return }
+        if (settings.getBoolean(WaitingScenes.REDUCE_MOTION, false) || settings.getString(WaitingScenes.STILL_CHOICE, null) == selected.id) { showStill(selected); return }
+        showingStill = false
         try {
             val clip = if (reconnecting) selected.reconnect else selected.connect
             context.assets.open("${assetDirectory}/$clip").close()
@@ -94,46 +105,56 @@ internal class WaitingSceneView(context: Context, private val noLenses: Boolean,
             val view = MovieView(context, noLenses)
             movie = view
             view.surfaceReady = { if (player === decoder) decoder.setVideoSurface(it) }
-            view.formatRejected = { if (player === decoder) fallback(selected) }
+            view.formatRejected = { if (player === decoder) fail(selected.id, IllegalArgumentException("Rejected stereo geometry")) }
             addView(view, 0, LayoutParams(-1, -1))
             decoder.addAnalyticsListener(object : AnalyticsListener {
                 override fun onVideoInputFormatChanged(eventTime: AnalyticsListener.EventTime, format: Format, decoderReuseEvaluation: DecoderReuseEvaluation?) {
                     if (player !== decoder) return
-                    if (format.stereoMode != C.STEREO_MODE_LEFT_RIGHT || format.width <= 0 || format.width % 2 != 0) fallback(selected)
+                    if (format.stereoMode != C.STEREO_MODE_LEFT_RIGHT || format.width <= 0 || format.width % 2 != 0) fail(selected.id, IllegalArgumentException("Movie must declare left-first side-by-side stereo with even width"))
                     else view.format = format
                 }
             })
             decoder.addListener(object : Player.Listener {
-                override fun onPlayerError(error: PlaybackException) { if (player === decoder) fallback(selected) }
+                override fun onPlayerError(error: PlaybackException) { if (player === decoder) fail(selected.id, error) }
                 override fun onTracksChanged(tracks: Tracks) {
                     // Unsupported tracks need not raise a decoder error.
-                    if (player === decoder && !tracks.isEmpty && !tracks.isTypeSupported(C.TRACK_TYPE_VIDEO)) fallback(selected)
+                    if (player === decoder && !tracks.isEmpty && !tracks.isTypeSupported(C.TRACK_TYPE_VIDEO)) fail(selected.id, IllegalStateException("No supported video decoder"))
                 }
             })
             decoder.repeatMode = Player.REPEAT_MODE_ONE
             decoder.setMediaItem(MediaItem.fromUri("asset:///${assetDirectory}/$clip"))
             decoder.prepare()
             decoder.playWhenReady = true
-        } catch (_: Exception) { fallback(selected) }
+        } catch (error: Exception) { fail(selected.id, error) }
     }
 
-    private fun fallback(selected: WaitingScenes.Scene) { releaseMedia(); if (waiting && resumed && !closed) showStill(selected) }
+    private fun fail(id: String, error: Throwable, stillFailed: Boolean = showingStill) {
+        if (closed || !waiting || failure != null) return
+        val message = context.getString(R.string.headset_scene_failed, id, DecoderFailure.describe(error))
+        failure = message
+        releaseMedia()
+        status.visibility = GONE
+        failureView = HeadsetFailure.view(context, message).also { addView(it, LayoutParams(-1, -1)) }
+        onFailure(message, id, stillFailed)
+    }
 
     private fun showStill(selected: WaitingScenes.Scene) {
+        showingStill = true
         try {
             val asset = "${assetDirectory}/${selected.still}"
-            if (!context.assets.open(asset).use { WaitingScenes.isLeftFirstPng(it) }) return
+            require(context.assets.open(asset).use { WaitingScenes.isLeftFirstPng(it) }) { "Still must be a valid left-first sTER PNG" }
             val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
             context.assets.open(asset).use { BitmapFactory.decodeStream(it, null, bounds) }
-            if (bounds.outWidth <= 0 || bounds.outWidth % 16 != 0 || bounds.outHeight <= 0 || bounds.outWidth.toLong() * bounds.outHeight > 16 * 1024 * 1024) return
-            val bitmap = context.assets.open(asset).use { BitmapFactory.decodeStream(it) } ?: return
+            require(bounds.outWidth > 0 && bounds.outWidth % 16 == 0 && bounds.outHeight > 0 && bounds.outWidth.toLong() * bounds.outHeight <= 16 * 1024 * 1024) { "Rejected still geometry" }
+            val bitmap = context.assets.open(asset).use { BitmapFactory.decodeStream(it) } ?: error("Still image could not be decoded")
             still = PanelView(context, noLenses).also { view ->
+                view.onFormatRejected = { fail(selected.id, IllegalArgumentException("Still geometry rejected by renderer"), true) }
                 view.preferNewestFrames = false
                 addView(view, 0, LayoutParams(-1, -1))
                 view.submit(bitmap)
             }
             bitmap.recycle()
-        } catch (_: Exception) { /* The neutral, identical per-eye status remains visible. */ }
+        } catch (error: Exception) { fail(selected.id, error) }
     }
 
     override fun close() { closed = true; waiting = false; update() }

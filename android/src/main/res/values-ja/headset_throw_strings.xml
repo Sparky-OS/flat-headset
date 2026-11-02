@@ -22,7 +22,6 @@
     <string name="headset_correction_fitted">Shinecon 調整済み（D）</string>
     <string name="headset_correction_profile">ビューアーの QR プロファイル</string>
     <string name="headset_correction_hint">この調整は表示テスト D に対応します。電話の位置、レンズ間隔、ピントを同じにしてください。補正されていない通常の動画やストリームを使用してください。</string>
-    <string name="headset_hevc">対応時に HEVC を使用（標準と代替は H.264）</string>
     <string name="headset_throw_connecting">スローを待っています…</string>
     <string name="headset_throw_reconnecting">次のスローを待っています…</string>
     <string name="headset_wait_reduce_motion">待機中の動きを減らす</string>

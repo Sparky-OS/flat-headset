@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="headset_hevc">Utiliser HEVC (H.264 par défaut)</string>
+    <string name="headset_hevc_failed">Impossible d’utiliser HEVC :\n%1$s</string>
+    <string name="headset_scene_failed">Impossible d’afficher la scène d’attente « %1$s » :\n%2$s</string>
+    <string name="headset_failure_back">Appuyez sur Retour pour quitter le mode casque et choisir comment continuer.</string>
+    <string name="headset_use_h264">Utiliser H.264</string>
+    <string name="headset_use_still">Utiliser l’image fixe</string>
+    <string name="headset_another_scene">Choisir une autre scène</string>
+</resources>

@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted-GPL */
 package org.kde.kdeconnect.plugins.remotedesktop.headset
 
+import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.os.Bundle
@@ -19,6 +20,8 @@ import com.freerdp.freerdpcore.presentation.SessionActivity
 class HeadsetActivity : SessionActivity() {
     private var video: HeadsetVideo? = null
     private var waitingScene: WaitingSceneView? = null
+    @Volatile private var failureResult: Intent? = null
+    private var failureOverlay: View? = null
     private var userStopped = false
     private var everConnected = false
     @Volatile private var firstFrame = true
@@ -60,9 +63,18 @@ class HeadsetActivity : SessionActivity() {
         }
         waitingScene = WaitingSceneView(this, intent.getBooleanExtra(EXTRA_NO_LENSES, false)).also {
             findViewById<ViewGroup>(android.R.id.content).addView(it, ViewGroup.LayoutParams(-1, -1))
+            it.onFailure = { reason, scene, still ->
+                showFailure(Intent().putExtra(SessionActivity.EXTRA_CONNECTION_ERROR, reason)
+                    .putExtra(HeadsetFailure.SCENE, scene).putExtra(HeadsetFailure.STILL, still))
+            }
             it.setWaiting(true, intent.getBooleanExtra("headsetReconnecting", false))
         }
-        video = HeadsetVideo(panel!!) { resumed && getSharedPreferences(HeadsetFitOverlay.PREFERENCES, MODE_PRIVATE).getBoolean("hevc", false) }
+        video = HeadsetVideo(panel!!) { getSharedPreferences(HeadsetFitOverlay.PREFERENCES, MODE_PRIVATE).getBoolean("hevc", false) }.also {
+            it.onFailure = { reason ->
+                showFailure(Intent().putExtra(SessionActivity.EXTRA_CONNECTION_ERROR,
+                    getString(R.string.headset_hevc_failed, reason)).putExtra(HeadsetFailure.CODEC, true))
+            }
+        }
         findViewById<ViewGroup>(android.R.id.content).addView(HeadsetNetworkOverlay(this, format, directWifi).also {
             networkOverlay = it
             it.setActive(displayConnected && resumed)
@@ -76,7 +88,7 @@ class HeadsetActivity : SessionActivity() {
         if (!connected) { video?.close(); linkStats?.save() }
         displayConnected = connected
         if (connected) everConnected = true
-        if (!connected) { firstFrame = true; waitingScene?.setWaiting(true, true) }
+        if (!connected && failureResult == null) { firstFrame = true; waitingScene?.setWaiting(true, true) }
         performance?.setConnected(connected)
         networkOverlay?.setActive(connected && resumed)
         // FreeRDP's bindSession() has just reapplied its ordinary viewer bar
@@ -87,7 +99,8 @@ class HeadsetActivity : SessionActivity() {
     override fun onHeadsetPacket(packet: ByteArray): Int = video?.receive(packet) ?: 0
 
     override fun onDesktopFrame(frame: Bitmap) {
-        if (video?.active == true) return
+        if (failureResult != null || video?.active == true ||
+            getSharedPreferences(HeadsetFitOverlay.PREFERENCES, MODE_PRIVATE).getBoolean("hevc", false)) return
         if (org.kde.kdeconnect_tp.BuildConfig.DEBUG && proofSamples < 20 && frame.width == 2400 && frame.height == 1080) {
             val left = frame.getPixel(32, 32)
             val right = frame.getPixel(1232, 32)
@@ -123,10 +136,27 @@ class HeadsetActivity : SessionActivity() {
         return true
     }
 
+    private fun showFailure(result: Intent) {
+        if (failureResult != null) return
+        failureResult = result
+        runOnUiThread {
+            waitingScene?.setWaiting(false)
+            panel?.visibility = View.GONE
+            failureOverlay = HeadsetFailure.view(this, result.getStringExtra(SessionActivity.EXTRA_CONNECTION_ERROR)!!).also {
+                findViewById<ViewGroup>(android.R.id.content).addView(it, ViewGroup.LayoutParams(-1, -1))
+            }
+            failSession(result.getStringExtra(SessionActivity.EXTRA_CONNECTION_ERROR)!!)
+        }
+    }
+
     override fun handleBackPressed() { userStopped = true; setResult(RESULT_OK); finish() }
 
     override fun finish() {
-        if (!userStopped && everConnected) setResult(RESULT_CANCELED)
+        failureResult?.let {
+            setResult(RESULT_CANCELED, it)
+            // Keep the explanation in both eyes until Back returns to the choices.
+            if (!userStopped) return
+        } ?: run { if (!userStopped && everConnected) setResult(RESULT_CANCELED) }
         super.finish()
     }
 

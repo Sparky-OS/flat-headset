@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="headset_hevc">HEVC verwenden (Standard: H.264)</string>
+    <string name="headset_hevc_failed">HEVC konnte nicht verwendet werden:\n%1$s</string>
+    <string name="headset_scene_failed">Die Warteszene „%1$s“ konnte nicht angezeigt werden:\n%2$s</string>
+    <string name="headset_failure_back">Drücken Sie Zurück, um den Headset-Modus zu verlassen und das weitere Vorgehen zu wählen.</string>
+    <string name="headset_use_h264">H.264 verwenden</string>
+    <string name="headset_use_still">Standbild verwenden</string>
+    <string name="headset_another_scene">Andere Szene wählen</string>
+</resources>

@@ -22,7 +22,6 @@
     <string name="headset_correction_fitted">Shinecon ajusté (D)</string>
     <string name="headset_correction_profile">Profil QR du casque</string>
     <string name="headset_correction_hint">Le réglage correspond au test D. Gardez la même position du téléphone, le même écartement des lentilles et la même mise au point. Utilisez un film ou un flux ordinaire sans correction.</string>
-    <string name="headset_hevc">HEVC si pris en charge (H.264 par défaut et en secours)</string>
     <string name="headset_throw_connecting">En attente du lancer…</string>
     <string name="headset_throw_reconnecting">En attente du prochain lancer…</string>
     <string name="headset_wait_reduce_motion">Réduire les mouvements pendant l’attente</string>

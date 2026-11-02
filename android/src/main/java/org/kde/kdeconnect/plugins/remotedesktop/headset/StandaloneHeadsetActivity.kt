@@ -26,6 +26,7 @@ import android.widget.Switch
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import com.freerdp.freerdpcore.presentation.SessionActivity
 import com.google.cardboard.sdk.Initialize
 import com.google.cardboard.sdk.QrCode
 import org.json.JSONObject
@@ -42,6 +43,8 @@ class StandaloneHeadsetActivity : AppCompatActivity() {
     @Volatile private var active = false
     private var viewing = false
     private var waitingScene: WaitingSceneView? = null
+    private var pendingFailure: Intent? = null
+    private var hevcSwitch: Switch? = null
     private var reconnecting = false
     private var announcedPanel: JSONObject? = null
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
@@ -60,7 +63,13 @@ class StandaloneHeadsetActivity : AppCompatActivity() {
     }
     private val viewer = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         viewing = false
-        if (result.resultCode == Activity.RESULT_OK) stopSharing()
+        if (result.data?.hasExtra(SessionActivity.EXTRA_CONNECTION_ERROR) == true) {
+            stopSharing()
+            status.text = result.data!!.getStringExtra(SessionActivity.EXTRA_CONNECTION_ERROR)
+            HeadsetFailure.offer(this, result.data) {
+                hevcSwitch?.isChecked = getSharedPreferences(HeadsetFitOverlay.PREFERENCES, MODE_PRIVATE).getBoolean("hevc", false)
+            }
+        } else if (result.resultCode == Activity.RESULT_OK) stopSharing()
         else if (active) { reconnecting = true; status.setText(R.string.headset_waiting); showWaiting() }
     }
 
@@ -142,6 +151,7 @@ class StandaloneHeadsetActivity : AppCompatActivity() {
                 addView(fitSwitch(R.string.headset_symmetric_notch, HeadsetFitOverlay.SYMMETRIC_NOTCH))
                 addView(fitSwitch(R.string.headset_alignment, HeadsetFitOverlay.ALIGNMENT))
                 addView(Switch(this@StandaloneHeadsetActivity).apply {
+                    hevcSwitch = this
                     setText(R.string.headset_hevc)
                     isChecked = fit.getBoolean("hevc", false)
                     setOnCheckedChangeListener { _, enabled -> fit.edit().putBoolean("hevc", enabled).apply() }
@@ -156,7 +166,15 @@ class StandaloneHeadsetActivity : AppCompatActivity() {
         }
         setContentView(FrameLayout(this).apply { addView(controls) })
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() { if (active) stopSharing() else finish() }
+            override fun handleOnBackPressed() {
+                val failure = pendingFailure
+                if (active) stopSharing() else if (failure == null) finish()
+                if (failure != null) {
+                    pendingFailure = null
+                    status.text = failure.getStringExtra(SessionActivity.EXTRA_CONNECTION_ERROR)
+                    HeadsetFailure.offer(this@StandaloneHeadsetActivity, failure)
+                }
+            }
         })
         if (Build.VERSION.SDK_INT < 24) { start.isEnabled = false; status.setText(R.string.headset_upnp_android_version) }
         else {
@@ -198,6 +216,10 @@ class StandaloneHeadsetActivity : AppCompatActivity() {
         waitingScene?.let { content.removeView(it) }
         waitingScene = WaitingSceneView(this, noLenses).also {
             content.addView(it, FrameLayout.LayoutParams(-1, -1))
+            it.onFailure = { reason, scene, still ->
+                pendingFailure = Intent().putExtra(SessionActivity.EXTRA_CONNECTION_ERROR, reason)
+                    .putExtra(HeadsetFailure.SCENE, scene).putExtra(HeadsetFailure.STILL, still)
+            }
             it.setWaiting(true, reconnecting)
             it.setResumed(lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED))
         }

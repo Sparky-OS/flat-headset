@@ -9,6 +9,8 @@ import kotlin.random.Random
 /** Local artwork only. Stereo layout is read from the media, never from this catalogue. */
 internal object WaitingScenes {
     const val DIRECTORY = "headset-waiting"
+    const val SCENE_CHOICE = "waiting-explicit-scene"
+    const val STILL_CHOICE = "waiting-explicit-still"
     const val REDUCE_MOTION = "waiting-reduce-motion"
     data class Scene(val id: String, val connect: String, val reconnect: String, val still: String)
 

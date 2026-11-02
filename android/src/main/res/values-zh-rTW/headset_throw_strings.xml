@@ -22,7 +22,6 @@
     <string name="headset_correction_fitted">Shinecon 調整設定（D）</string>
     <string name="headset_correction_profile">眼鏡 QR 碼設定</string>
     <string name="headset_correction_hint">此設定對應觀看測試 D。請保持相同的手機位置、鏡片間距和焦距。使用一般的、未經校正的影片或串流。</string>
-    <string name="headset_hevc">支援時使用 HEVC（預設及備援使用 H.264）</string>
     <string name="headset_throw_connecting">正在等待投送…</string>
     <string name="headset_throw_reconnecting">正在等待下一次投送…</string>
     <string name="headset_wait_reduce_motion">等待時減少動態效果</string>

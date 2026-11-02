@@ -22,7 +22,6 @@
     <string name="headset_correction_fitted">Shinecon 调整配置（D）</string>
     <string name="headset_correction_profile">眼镜二维码配置</string>
     <string name="headset_correction_hint">此配置对应观看测试 D。请保持相同的手机位置、镜片间距和焦距。使用普通的、未经校正的影片或串流。</string>
-    <string name="headset_hevc">支持时使用 HEVC（默认及回退使用 H.264）</string>
     <string name="headset_throw_connecting">正在等待投送…</string>
     <string name="headset_throw_reconnecting">正在等待下一次投送…</string>
     <string name="headset_wait_reduce_motion">等待时减少动态效果</string>

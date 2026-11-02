@@ -22,7 +22,6 @@
     <string name="headset_correction_fitted">Dopasowany Shinecon (D)</string>
     <string name="headset_correction_profile">Profil QR gogli</string>
     <string name="headset_correction_hint">Dopasowanie odpowiada próbie D. Zachowaj położenie telefonu, rozstaw soczewek i ostrość. Użyj zwykłego filmu lub strumienia bez korekcji.</string>
-    <string name="headset_hevc">HEVC, gdy obsługiwane (H.264 domyślnie i awaryjnie)</string>
     <string name="headset_throw_connecting">Oczekiwanie na przerzucenie…</string>
     <string name="headset_throw_reconnecting">Oczekiwanie na kolejne przerzucenie…</string>
     <string name="headset_wait_reduce_motion">Ogranicz ruch podczas oczekiwania</string>

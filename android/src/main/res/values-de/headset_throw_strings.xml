@@ -22,7 +22,6 @@
     <string name="headset_correction_fitted">Shinecon angepasst (D)</string>
     <string name="headset_correction_profile">QR-Profil des Betrachters</string>
     <string name="headset_correction_hint">Die Anpassung entspricht Sehtest D. Behalte Telefonposition, Linsenabstand und Fokus bei. Verwende einen gewöhnlichen Film oder Stream ohne Korrektur.</string>
-    <string name="headset_hevc">HEVC, wenn unterstützt (H.264 als Standard und Rückfall)</string>
     <string name="headset_throw_connecting">Warten auf den Wurf…</string>
     <string name="headset_throw_reconnecting">Warten auf den nächsten Wurf…</string>
     <string name="headset_wait_reduce_motion">Bewegungen beim Warten reduzieren</string>

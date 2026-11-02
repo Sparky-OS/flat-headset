@@ -5,6 +5,7 @@
  */
 package org.kde.kdeconnect.plugins.remotedesktop
 
+import org.kde.kdeconnect.plugins.remotedesktop.headset.HeadsetFailure
 import org.kde.kdeconnect.plugins.remotedesktop.headset.HeadsetActivity
 import org.kde.kdeconnect.plugins.remotedesktop.headset.PanelDescriptor
 import android.app.Activity
@@ -94,9 +95,12 @@ class RemoteDesktopActivity : BaseActivity<ActivityRemoteDesktopBinding>(), Remo
                         ?.getString(SessionActivity.EXTRA_CONNECTION_STATE_DETAIL)
                         ?.trim()
                         ?.takeIf(String::isNotEmpty)
-                    plugin()?.recordClientDiagnostic(
-                        detail?.let { "Native connection failed: $it" } ?: "Native connection failed"
-                    )
+                    val failureMessage = detail?.let {
+                        getString(R.string.remote_desktop_connection_failed_details, it)
+                    } ?: getString(R.string.remote_desktop_connection_failed)
+                    // Stop the PC session immediately. A following disconnect must not
+                    // erase the reason while the headset still displays it.
+                    plugin()?.markClientConnectionFailed(sessionId, failureMessage)
                 }
             }
         }
@@ -124,6 +128,7 @@ class RemoteDesktopActivity : BaseActivity<ActivityRemoteDesktopBinding>(), Remo
             }
         }
         updateState()
+        HeadsetFailure.offer(this, result.data)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
