@@ -30,6 +30,9 @@ The phone viewer uses [Google's Cardboard SDK](https://github.com/googlevr/cardb
 
 The phone viewer uses [FreeRDP](https://github.com/FreeRDP/FreeRDP)'s Android client library to receive the stream. Its Android client source credits the FreeRDP contributors, Marc-Andre Moreau, Thincast Technologies, Martin Fleisz, Armin Novak and Bernhard Miklautz. FreeRDP is licensed under the Apache License 2.0.
 
+The Android print monitor and notification helper credit Ibrahim Sevinc and carry MPL-2.0 headers.
+Our older-Android notification patch restores the API-26 guard from his [original print-support commit](https://github.com/FreeRDP/FreeRDP/commit/8e18ea5ff834e2f80cdce25722ffaee682263997).
+
 ## Universal Media Server and jUPnP
 
 The movie proof uses [Universal Media Server](https://github.com/UniversalMediaServer/UniversalMediaServer) as one DLNA server that can send a movie to the phone. Its README describes it as a DLNA, UPnP, and HTTP/S media server, and lists ik666, mik_s, SubJunk, SurfaceS, and valib as current project members. It thanks chocolateboy, ditlew, ExSport, happy.neko, infidel, js-kyle, Nadahar, Raptor399, Redlum, renszarv, SharkHunter, skeptical, taconaut, tcox, threedguru, and tomeko for major code contributions. Its LICENSE.txt is GNU GPL version 2.

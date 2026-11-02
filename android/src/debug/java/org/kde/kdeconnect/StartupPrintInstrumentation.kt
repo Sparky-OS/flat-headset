@@ -8,10 +8,10 @@ import android.app.Notification
 import android.app.NotificationManager
 import android.os.Build
 import android.os.Bundle
-import android.os.ParcelFileDescriptor
 import android.os.SystemClock
 import com.freerdp.freerdpcore.application.GlobalApp
 import com.freerdp.freerdpcore.presentation.PrintJobMonitor
+import java.io.File
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
@@ -46,10 +46,6 @@ class StartupPrintInstrumentation : Instrumentation() {
         }
     }
 
-    private fun shell(command: String) {
-        ParcelFileDescriptor.AutoCloseInputStream(uiAutomation.executeShellCommand(command)).use { it.readBytes() }
-    }
-
     private fun checkPrint() {
         val manager = targetContext.getSystemService(NotificationManager::class.java)
         manager.cancelAll()
@@ -58,12 +54,13 @@ class StartupPrintInstrumentation : Instrumentation() {
         check(field.get(targetContext.applicationContext) is PrintJobMonitor)
         val name = "rdp_print_346e_${SystemClock.elapsedRealtime()}.pdf"
         val ignored = "ignored_346e.pdf"
-        shell("mkdir -p /sdcard/Download")
+        val directory = File("/sdcard/Download")
+        check(directory.isDirectory && directory.canWrite()) { "Download is not writable with the granted storage permission" }
         try {
-            shell("echo ignored > /sdcard/Download/$ignored")
+            File(directory, ignored).writeText("ignored")
             SystemClock.sleep(500)
             check(manager.activeNotifications.isEmpty()) { "Unrelated file produced a notification" }
-            shell("echo '%PDF-1.4 proof' > /sdcard/Download/$name")
+            File(directory, name).writeText("%PDF-1.4 proof")
             val deadline = SystemClock.elapsedRealtime() + 5000
             while (manager.activeNotifications.isEmpty() && SystemClock.elapsedRealtime() < deadline) SystemClock.sleep(50)
             val notifications = manager.activeNotifications
@@ -77,7 +74,8 @@ class StartupPrintInstrumentation : Instrumentation() {
             check(manager.activeNotifications.size == 1) { "Duplicate print notification" }
         } finally {
             manager.cancelAll()
-            shell("rm -f /sdcard/Download/$name /sdcard/Download/$ignored")
+            File(directory, name).delete()
+            File(directory, ignored).delete()
         }
     }
 }
