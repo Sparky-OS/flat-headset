@@ -2,6 +2,7 @@
 package org.kde.kdeconnect
 
 import android.app.Activity
+import android.app.Application
 import android.app.Instrumentation
 import android.app.Notification
 import android.app.NotificationManager
@@ -12,21 +13,29 @@ import android.os.SystemClock
 import com.freerdp.freerdpcore.application.GlobalApp
 import com.freerdp.freerdpcore.presentation.PrintJobMonitor
 import java.io.File
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 
 /** Exercises the manifest Application and the real FileObserver in a disposable emulator. */
 class StartupPrintInstrumentation : Instrumentation() {
     private var mode = "print"
+    private val applicationCreated = CountDownLatch(1)
     override fun onCreate(arguments: Bundle?) {
         super.onCreate(arguments)
         mode = arguments?.getString("mode") ?: "print"
         start()
     }
 
+    override fun callApplicationOnCreate(app: Application) {
+        super.callApplicationOnCreate(app)
+        applicationCreated.countDown()
+    }
+
     override fun onStart() {
         val result = Bundle()
         try {
+            check(applicationCreated.await(30, TimeUnit.SECONDS)) { "Application.onCreate did not finish" }
             check(targetContext.applicationContext is KdeConnect)
             check(KdeConnect.getInstance() === targetContext.applicationContext)
             check(targetContext.applicationInfo.minSdkVersion == 24)
