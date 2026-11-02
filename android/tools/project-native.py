@@ -13,7 +13,7 @@ import sys
 import time
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / 'lean-code'))
-from lean import VERSION, lang_c, project
+from lean import VERSION, identities, lang_c, project
 
 # This file has a second consumer besides the C compiler: FreeRDP's
 # include/CMakeLists.txt parses the trailing numeric comments into settings IDs.
@@ -26,7 +26,23 @@ def digest(data):
     return hashlib.sha256(data).hexdigest()
 
 
+def check_identity():
+    """The vendored engine must be a released renderer: its code is its VERSION's one row of the edition's version
+    table (lean/identities.py), so a projection never runs under a label with another engine's code."""
+    why = identities.toolkit_problem(VERSION, project.IDENTITY, project.CODE_SHA256)
+    if why:
+        raise ValueError(f'vendored Lean Code is not a released renderer: {why}; copy the toolkit again from the '
+                         f'edition build tree')
+    return project.IDENTITY
+
+
+def native(path):
+    """C, C++, assembler sources the C preprocessor reads (.S, .sx, with their case), Java and Kotlin."""
+    return path.suffix in lang_c.ASM_EXTS or path.suffix.lower() in lang_c.EXTS | {'.java', '.kt', '.kts'}
+
+
 def run(root, evidence, component):
+    engine = check_identity()
     if not root.is_dir() or not component.replace('-', '').replace('_', '').isalnum():
         raise ValueError('Need an existing disposable root and an alphanumeric component name')
     if evidence.is_relative_to(root):
@@ -40,7 +56,7 @@ def run(root, evidence, component):
         if pending.exists() or (not manifest.exists() and (evidence / 'authored' / component).exists()):
             raise ValueError(f'{component}: an interrupted projection needs a fresh staging tree')
         previous = json.loads(manifest.read_text()) if manifest.exists() else {'files': {}}
-        if previous.get('engine', f'lean {VERSION}') != f'lean {VERSION}':
+        if previous.get('engine', engine) != engine:
             raise ValueError('Lean engine changed; use a fresh staging tree')
         records = previous['files']
         pending.write_text('Projection in progress; do not reuse partial source as authored input.\n')
@@ -51,7 +67,7 @@ def run(root, evidence, component):
             rel = path.relative_to(root)
             if (not path.is_file() or path.is_symlink() or
                     any(x in {'.git', '.gradle', '.cxx', 'build', 'tools'} for x in rel.parts) or
-                    path.suffix.lower() not in lang_c.EXTS | {'.java', '.kt', '.kts'}):
+                    not native(path)):
                 continue
             name = rel.as_posix()
             if component == 'freerdp' and name.startswith((
@@ -98,8 +114,8 @@ def run(root, evidence, component):
                 original.write_bytes(raw)
                 path.write_bytes(result.lean)
                 os.utime(path, ns=(metadata.st_atime_ns, metadata.st_mtime_ns))
-        report = {'schema': 1, 'engine': f'lean {VERSION}', 'component': component,
-                  'stage': 'before compilation', 'options': 'collapse-blank,no-pointer,C/C++ line directives,JVM source mapping',
+        report = {'schema': 1, 'engine': engine, 'component': component,
+                  'stage': 'before compilation', 'options': f'{project.OPTIONS},no-pointer,JVM source mapping',
                   'seconds': round(time.monotonic() - started, 3), 'files': records}
         temporary = manifest.with_suffix('.json.tmp')
         temporary.write_text(json.dumps(report, indent=2, sort_keys=True) + '\n')
@@ -115,11 +131,17 @@ def run(root, evidence, component):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--root', type=Path, required=True)
-    parser.add_argument('--component', required=True)
-    parser.add_argument('--evidence', type=Path, required=True)
+    parser.add_argument('--check-identity', action='store_true', help='only check the vendored engine is released')
+    parser.add_argument('--root', type=Path)
+    parser.add_argument('--component')
+    parser.add_argument('--evidence', type=Path)
     args = parser.parse_args()
     try:
+        if args.check_identity:
+            print(check_identity())
+            sys.exit(0)
+        if not (args.root and args.component and args.evidence):
+            parser.error('--root, --component and --evidence are required')
         run(args.root.resolve(), args.evidence.resolve(), args.component)
     except (ValueError, OSError) as error:
         parser.exit(1, str(error) + '\n')

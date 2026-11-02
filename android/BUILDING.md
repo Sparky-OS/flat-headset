@@ -43,17 +43,17 @@ The included public debug keystore maintains compatibility with earlier edition 
 
 ## Lean Code and source recovery
 
-`tools/lean-code/` contains the qualified engine. Java uses the JDK compiler lexer; Kotlin uses its compiler lexer. Literal content, documentation/notices, operational directives and token boundaries are checked. C/C++ projections retain `#line` mappings. The evidence directory records per-file input/output hashes, outcomes, reasons and authored copies for transformed files.
+`tools/lean-code/` contains the qualified engine, a copy of the edition's Lean Code toolkit at a released version. The wrapper refuses to run when that copy's renderer code is not the released code of its version (`lean/identities.py`), so update it by copying the whole toolkit again, never by editing one file. Java uses the JDK compiler lexer; Kotlin uses its compiler lexer; C and C++ use GCC's own preprocessor, and assembler sources (`.S`) its assembler-with-cpp mode. Literal content, documentation/notices, operational directives and token boundaries are checked. In C, C++ and assembler sources a comment-only line goes completely and the authored empty lines stay; there is no `#line` and no empty line where a comment was, so compiler locations, `__LINE__` and debug line tables name lean lines. The evidence directory records per-file input/output hashes, outcomes, reasons and authored copies for transformed files.
 
 Not every file is projected. Unsupported formats, generated sources and unqualified inputs remain unchanged. In particular, FreeRDP's `settings_types_private.h` stays authored because CMake reads numeric IDs from its comments. A smaller source tree is not evidence of faster machine code; the release records coverage separately from physical latency observations.
 
-Keep `new-stage/lean-evidence/` with the exact projected tree. To map a Java/Kotlin diagnostic back to authored source:
+Keep `new-stage/lean-evidence/` with the exact projected tree. To map a diagnostic in any projected source (C, C++, assembler, Java, Kotlin) back to authored source:
 
 ```sh
 python3 tools/resolve-lean.py --evidence /absolute/path/to/new-stage/lean-evidence --component android --root /absolute/path/to/new-stage/android src/main/java/path/Example.kt 42
 ```
 
-Use the actual relative source path and projected line. Optional `--column` is one-based Unicode code points, not UTF-16 units. The tool checks both hashes and refuses stale or missing sources. C/C++ compiler locations already remapped by `#line` are authored locations and should not be remapped as physical projected lines. This is source resolution, not reconstruction of comments from a binary.
+Use the actual relative source path and projected line. Optional `--column` is one-based Unicode code points, not UTF-16 units. The tool finds the projected line's content in the authored source, as the edition's `dpkg-stereo --resolve` does (neighbouring lines pick among repeats; a line found nowhere is reported, never guessed); `--by-render` renders the authored source again and reads the render's own line map instead. It checks both hashes and refuses stale or missing sources. This is source resolution, not reconstruction of comments from a binary.
 
 Interrupted projections are refused. Start a new disposable stage rather than treating partially projected files as authored inputs. Preserve failed evidence until the cause is understood. The source bundle and released evidence allow a maintainer to inspect the complete original line without putting every documentation byte in the installed app.
 
