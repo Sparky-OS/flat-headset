@@ -1,0 +1,30 @@
+Description: Guard session window features on older Android versions
+ Contrast enforcement starts at API 29 and display cutout mode at API 28.
+ Keep existing system bar choices on API 24 and later without reaching an
+ absent method or field when the session activity opens or binds its surface.
+Author: Daniel Campos Ramos <Capitain_Jack@yahoo.com>
+Origin: other, Flat Headset Android compatibility work
+Forwarded: no
+Last-Update: 2026-11-02
+
+--- a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionActivity.java
++++ b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionActivity.java
+@@ -172,7 +172,8 @@
+ 
+ 		getWindow().setStatusBarColor(android.graphics.Color.TRANSPARENT);
+ 		getWindow().setNavigationBarColor(android.graphics.Color.TRANSPARENT);
+-		getWindow().setNavigationBarContrastEnforced(false);
++		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
++			getWindow().setNavigationBarContrastEnforced(false);
+ 
+ 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+ 		{
+@@ -213,7 +214,7 @@
+ 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+ 			lp.layoutInDisplayCutoutMode =
+ 			    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
+-		else
++		else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
+ 			lp.layoutInDisplayCutoutMode =
+ 			    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+ 		getWindow().setAttributes(lp);
