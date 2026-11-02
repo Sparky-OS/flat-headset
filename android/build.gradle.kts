@@ -270,6 +270,7 @@ androidComponents {
 }
 
 dependencies {
+    debugImplementation("androidx.room:room-runtime:2.8.4")
     implementation("androidx.media3:media3-exoplayer:1.11.1")
     // It has a bug that causes a crash when using PosixFilePermission and minSdk < 26.
     // It has been used in SSHD Core.
