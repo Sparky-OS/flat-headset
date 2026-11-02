@@ -1,0 +1,30 @@
+Description: Restore the toolbar tooltip API guard for older embedding apps
+ Restore Ibrahim Sevinc's API-26 guard removed by PR 12818 when cleaning up
+ for aFreeRDP's API-29 minimum. Flat Headset embeds this toolbar at API 24.
+ Content descriptions remain present on all versions.
+Author: Daniel Campos Ramos <Capitain_Jack@yahoo.com>
+Origin: other, restore the guard from FreeRDP before PR 12818
+ https://github.com/FreeRDP/FreeRDP/pull/12818
+Forwarded: no
+Last-Update: 2026-11-02
+
+--- a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/FloatingToolbar.java
++++ b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/FloatingToolbar.java
+@@ -11,6 +11,7 @@
+ package com.freerdp.freerdpcore.presentation;
+ 
+ import android.app.Activity;
++import android.os.Build;
+ import android.view.GestureDetector;
+ import android.view.MotionEvent;
+ import android.view.View;
+@@ -170,7 +171,8 @@
+ 
+ 	private static void setTooltip(View v)
+ 	{
+-		v.setTooltipText(v.getContentDescription());
++		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
++			v.setTooltipText(v.getContentDescription());
+ 	}
+ 
+ 	private View.OnTouchListener buildDragListener(Activity activity,

@@ -1,0 +1,141 @@
+Description: Use Parcel's integer boolean representation before API 29
+ Flat Headset supports API 24. Parcel.writeBoolean/readBoolean require API 29;
+ use the same integer representation without calling those newer methods.
+ Preserve the parcel field order and both boolean values in nested settings.
+Author: Daniel Campos Ramos <Capitain_Jack@yahoo.com>
+Origin: other, Flat Headset Android compatibility work
+Forwarded: no
+Last-Update: 2026-11-02
+
+--- a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/domain/BookmarkBase.java
++++ b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/domain/BookmarkBase.java
+@@ -299,9 +299,9 @@
+ 		out.writeParcelable(debugSettings, flags);
+ 		out.writeString(hostname);
+ 		out.writeInt(port);
+-		out.writeBoolean(enableGatewaySettings);
++		out.writeInt(enableGatewaySettings ? 1 : 0);
+ 		out.writeParcelable(gatewaySettings, flags);
+-		out.writeBoolean(directConnect);
++		out.writeInt(directConnect ? 1 : 0);
+ 	}
+ 
+ 	// write to shared preferences
+@@ -460,15 +460,15 @@
+ 
+ 		public PerformanceFlags(Parcel parcel)
+ 		{
+-			remotefx = parcel.readBoolean();
+-			gfx = parcel.readBoolean();
+-			h264 = parcel.readBoolean();
+-			wallpaper = parcel.readBoolean();
+-			theming = parcel.readBoolean();
+-			fullWindowDrag = parcel.readBoolean();
+-			menuAnimations = parcel.readBoolean();
+-			fontSmoothing = parcel.readBoolean();
+-			desktopComposition = parcel.readBoolean();
++			remotefx = (parcel.readInt() != 0);
++			gfx = (parcel.readInt() != 0);
++			h264 = (parcel.readInt() != 0);
++			wallpaper = (parcel.readInt() != 0);
++			theming = (parcel.readInt() != 0);
++			fullWindowDrag = (parcel.readInt() != 0);
++			menuAnimations = (parcel.readInt() != 0);
++			fontSmoothing = (parcel.readInt() != 0);
++			desktopComposition = (parcel.readInt() != 0);
+ 		}
+ 
+ 		public boolean getRemoteFX()
+@@ -568,15 +568,15 @@
+ 
+ 		@Override public void writeToParcel(@NonNull Parcel out, int flags)
+ 		{
+-			out.writeBoolean(remotefx);
+-			out.writeBoolean(gfx);
+-			out.writeBoolean(h264);
+-			out.writeBoolean(wallpaper);
+-			out.writeBoolean(theming);
+-			out.writeBoolean(fullWindowDrag);
+-			out.writeBoolean(menuAnimations);
+-			out.writeBoolean(fontSmoothing);
+-			out.writeBoolean(desktopComposition);
++			out.writeInt(remotefx ? 1 : 0);
++			out.writeInt(gfx ? 1 : 0);
++			out.writeInt(h264 ? 1 : 0);
++			out.writeInt(wallpaper ? 1 : 0);
++			out.writeInt(theming ? 1 : 0);
++			out.writeInt(fullWindowDrag ? 1 : 0);
++			out.writeInt(menuAnimations ? 1 : 0);
++			out.writeInt(fontSmoothing ? 1 : 0);
++			out.writeInt(desktopComposition ? 1 : 0);
+ 		}
+ 	}
+ 
+@@ -848,9 +848,9 @@
+ 		// Session Settings
+ 		public DebugSettings(@NonNull Parcel parcel)
+ 		{
+-			asyncChannel = parcel.readBoolean();
+-			asyncTransport = parcel.readBoolean();
+-			asyncUpdate = parcel.readBoolean();
++			asyncChannel = (parcel.readInt() != 0);
++			asyncTransport = (parcel.readInt() != 0);
++			asyncUpdate = (parcel.readInt() != 0);
+ 			debug = Objects.requireNonNull(parcel.readString());
+ 		}
+ 
+@@ -907,9 +907,9 @@
+ 
+ 		@Override public void writeToParcel(@NonNull Parcel out, int flags)
+ 		{
+-			out.writeBoolean(asyncChannel);
+-			out.writeBoolean(asyncTransport);
+-			out.writeBoolean(asyncUpdate);
++			out.writeInt(asyncChannel ? 1 : 0);
++			out.writeInt(asyncTransport ? 1 : 0);
++			out.writeInt(asyncUpdate ? 1 : 0);
+ 			out.writeString(debug);
+ 		}
+ 	}
+@@ -956,14 +956,14 @@
+ 		public AdvancedSettings(@NonNull Parcel parcel)
+ 		{
+ 			loadBalanceInfo = Objects.requireNonNull(parcel.readString());
+-			redirectSDCard = parcel.readBoolean();
++			redirectSDCard = (parcel.readInt() != 0);
+ 			redirectSound = parcel.readInt();
+-			redirectMicrophone = parcel.readBoolean();
+-			redirectCamera = parcel.readBoolean();
+-			redirectPrinter = parcel.readBoolean();
++			redirectMicrophone = (parcel.readInt() != 0);
++			redirectCamera = (parcel.readInt() != 0);
++			redirectPrinter = (parcel.readInt() != 0);
+ 			security = parcel.readInt();
+-			consoleMode = parcel.readBoolean();
+-			vmConnectMode = parcel.readBoolean();
++			consoleMode = (parcel.readInt() != 0);
++			vmConnectMode = (parcel.readInt() != 0);
+ 			vmConnectGuid = Objects.requireNonNull(parcel.readString());
+ 			remoteProgram = Objects.requireNonNull(parcel.readString());
+ 			alternateShell = Objects.requireNonNull(parcel.readString());
+@@ -1157,14 +1157,14 @@
+ 		@Override public void writeToParcel(@NonNull Parcel out, int flags)
+ 		{
+ 			out.writeString(loadBalanceInfo);
+-			out.writeBoolean(redirectSDCard);
++			out.writeInt(redirectSDCard ? 1 : 0);
+ 			out.writeInt(redirectSound);
+-			out.writeBoolean(redirectMicrophone);
+-			out.writeBoolean(redirectCamera);
+-			out.writeBoolean(redirectPrinter);
++			out.writeInt(redirectMicrophone ? 1 : 0);
++			out.writeInt(redirectCamera ? 1 : 0);
++			out.writeInt(redirectPrinter ? 1 : 0);
+ 			out.writeInt(security);
+-			out.writeBoolean(consoleMode);
+-			out.writeBoolean(vmConnectMode);
++			out.writeInt(consoleMode ? 1 : 0);
++			out.writeInt(vmConnectMode ? 1 : 0);
+ 			out.writeString(vmConnectGuid);
+ 			out.writeString(remoteProgram);
+ 			out.writeString(alternateShell);

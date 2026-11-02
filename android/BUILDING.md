@@ -60,3 +60,35 @@ Interrupted projections are refused. Start a new disposable stage rather than tr
 ## Scope of the build result
 
 Unit tests cover connection policy, stereo fitting, fullscreen behavior, frame pacing decisions and related headset logic. They do not qualify physical H.264/HEVC decoding on every phone, Wi-Fi driver behavior or visual comfort. Repeat the documented USB baseline when testing release bytes and report the exact transport, picture size and media file characteristics.
+
+## Older Android session regression checks
+
+The debug APK includes `SessionCompatibilityInstrumentation` for disposable emulators at API 24, 28 and 29.
+Use an isolated RDP test server displaying a 2400×1080 desktop with changing paired colour markers; never point this proof at a personal desktop.
+The fixture uses public dummy credentials and explicitly selects RDP security for that isolated server.
+The test selects Reduce Motion and the default H.264 headset path.
+
+Run the `save` mode with `-e server SERVER_IP`, force-stop the application, then run `parcel` and `session` in separate instrumentation processes:
+
+```sh
+adb shell am instrument -w -r -e mode save -e server SERVER_IP org.kde.kdeconnect_tp.debug/org.kde.kdeconnect.SessionCompatibilityInstrumentation
+adb shell am force-stop org.kde.kdeconnect_tp.debug
+adb shell am instrument -w -r -e mode parcel org.kde.kdeconnect_tp.debug/org.kde.kdeconnect.SessionCompatibilityInstrumentation
+adb shell am force-stop org.kde.kdeconnect_tp.debug
+adb shell am instrument -w -r -e mode session org.kde.kdeconnect_tp.debug/org.kde.kdeconnect.SessionCompatibilityInstrumentation
+```
+
+`save` writes a real encrypted bookmark database and records its ID.
+`parcel` checks both states of all 20 boolean fields and prints the serialized byte hashes.
+`session` reloads the saved bookmark after process restart and opens the real `HeadsetActivity` through its database-reference path.
+It requires three changing remote markers and a GL submission, captures `files/session-proof.png`, invokes the production disconnect action, and checks that the Activity is destroyed and no native session remains registered.
+Each mode must report `PASS` and instrumentation code `-1`; a successful `adb` process exit alone is insufficient.
+The test never substitutes a fake decoder, framebuffer or connection callback.
+
+The desktop fixture's pixel `(32,32)` has green 96 and blue 32; `(1232,32)` has blue 224.
+Both eyes cycle their red component through multiples of 16, allowing the existing debug frame marker to distinguish real updates.
+The server must allow viewing the desktop; FreeRDP shadow's `-may-view` instead displays its lobby and correctly fails the marker check.
+
+`StartupPrintInstrumentation` independently checks real Application startup (`-e mode startup`) and app-process print-file notifications (`-e mode print`).
+These require the debug APK's storage permissions granted in the disposable emulator and a writable `/sdcard/Download`.
+The session and print proofs do not qualify physical phones, controller input, clipboard transfer, TLS/NLA servers or physical printers.
