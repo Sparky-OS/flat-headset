@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="headset_hevc">HEVC を使用（標準は H.264）</string>
+    <string name="headset_hevc_failed">HEVC を使用できませんでした：\n%1$s</string>
+    <string name="headset_scene_failed">待機シーン「%1$s」を表示できませんでした：\n%2$s</string>
+    <string name="headset_failure_back">戻るを押してヘッドセットモードを終了し、続行方法を選んでください。</string>
+    <string name="headset_use_h264">H.264 を使用</string>
+    <string name="headset_use_still">静止画を使用</string>
+    <string name="headset_another_scene">別のシーンを選択</string>
+</resources>

@@ -78,8 +78,6 @@ android {
         isCoreLibraryDesugaringEnabled = true
     }
 
-    testOptions { unitTests.isIncludeAndroidResources = true }
-
     androidResources {
         generateLocaleConfig = true
     }

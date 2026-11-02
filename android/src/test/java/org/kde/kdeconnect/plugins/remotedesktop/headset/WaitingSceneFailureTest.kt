@@ -3,6 +3,10 @@ package org.kde.kdeconnect.plugins.remotedesktop.headset
 
 import android.app.Application
 import android.content.Context
+import android.content.ContextWrapper
+import android.content.res.AssetManager
+import android.content.res.Resources
+import java.io.FileNotFoundException
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
@@ -43,7 +47,29 @@ class WaitingSceneFailureTest {
     private var view: WaitingSceneView? = null
 
     @Before fun setup() {
-        context = RuntimeEnvironment.getApplication()
+        val application = RuntimeEnvironment.getApplication()
+        val assets = mockk<AssetManager>()
+        val catalogue = """[{"id":"synthetic","connect":"throw.mkv","reconnect":"drop.mkv","still":"rest.png"}]"""
+        every { assets.open(any()) } answers {
+            val path = firstArg<String>()
+            when {
+                path.endsWith("catalog.json") -> catalogue.byteInputStream()
+                path.contains("invalid") && path.endsWith("rest.png") -> byteArrayOf(0).inputStream()
+                path.contains("invalid") -> throw FileNotFoundException(path)
+                path.endsWith("rest.png") -> javaClass.getResourceAsStream("/waiting-scene-still.png")!!
+                else -> byteArrayOf(0).inputStream()
+            }
+        }
+        // Keep these JVM tests independent of the app manifest and native startup.
+        // Device instrumentation exercises the shipped translated resources.
+        val resources = object : Resources(application.assets, application.resources.displayMetrics, application.resources.configuration) {
+            override fun getString(id: Int): String = "Back to choices"
+            override fun getString(id: Int, vararg args: Any): String = args.joinToString(": ")
+        }
+        context = object : ContextWrapper(application) {
+            override fun getAssets(): AssetManager = assets
+            override fun getResources(): Resources = resources
+        }
         context.getSharedPreferences(HeadsetFitOverlay.PREFERENCES, Context.MODE_PRIVATE).edit().clear().commit()
         mockkConstructor(ExoPlayer.Builder::class)
         every { anyConstructed<ExoPlayer.Builder>().build() } returns player

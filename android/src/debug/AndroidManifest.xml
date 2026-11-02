@@ -8,7 +8,12 @@ SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <instrumentation android:name="org.kde.kdeconnect.CodecFailureInstrumentation"
+        android:targetPackage="org.kde.kdeconnect_tp.debug" />
     <application>
+        <activity android:name="org.kde.kdeconnect.CodecFailureProofActivity"
+            android:screenOrientation="landscape" android:exported="false"
+            android:theme="@style/Theme.AppCompat.NoActionBar" />
         <activity
             android:name="org.kde.kdeconnect.QuitActivity"
             android:exported="true"

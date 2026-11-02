@@ -14,6 +14,10 @@ import java.util.concurrent.TimeUnit
 
 /** Live access units on the existing authenticated RDP connection. No file or second socket. */
 class HeadsetVideo(private val panel: PanelView, private val enabled: () -> Boolean) : AutoCloseable {
+    @Volatile var failure: String? = null
+        private set
+    var onFailure: (String) -> Unit = {}
+
     private var codec: MediaCodec? = null
     private var software = false
     private var planeBuffers = emptyList<ByteBuffer>()
@@ -25,12 +29,16 @@ class HeadsetVideo(private val panel: PanelView, private val enabled: () -> Bool
         private set
 
     @Synchronized fun receive(packet: ByteArray): Int {
+        if (failure != null) return -1
         if (packet.isEmpty()) { close(); return 0 }
+        // Zero declines an offer only when H.264 was selected by the person.
+        if (!enabled() && codec == null) return 0
         try {
             require(packet.size in 36..(8 * 1024 * 1024 + 36))
             val input = ByteBuffer.wrap(packet).order(ByteOrder.LITTLE_ENDIAN)
             require(input.int == 1)
             val kind = input.int
+            require(kind != 5) { "Computer stopped the selected HEVC stream" }
             val w = input.int; val h = input.int; val hz = input.int
             val seq = input.int; val flags = input.int; val size = input.int
             require(input.int == 2 && size == packet.size - 36)
@@ -67,7 +75,7 @@ class HeadsetVideo(private val panel: PanelView, private val enabled: () -> Bool
                 Log.i("HeadsetVideo", "HEVC ready ${selected.name} ${w}x$h at $hz mHz software=$software")
                 return 1
             }
-            require(kind == 3 && w == width && h == height && hz == rate && seq == sequence + 1)
+            require(kind == 3 && w == width && h == height && hz == rate && seq == sequence + 1) { "HEVC packet geometry, rate or sequence changed" }
             require(sequence > 0 || flags and 1 != 0)
             val decoder = codec ?: error("HEVC not configured")
             val index = decoder.dequeueInputBuffer(100000)
@@ -126,9 +134,12 @@ class HeadsetVideo(private val panel: PanelView, private val enabled: () -> Bool
             }
             error("HEVC decoder output timeout")
         } catch (error: Exception) {
-            Log.w("HeadsetVideo", "H.264 fallback: ${error.message}")
+            val reason = DecoderFailure.describe(error)
+            failure = reason
+            Log.e("HeadsetVideo", reason, error)
             close()
-            return 0
+            onFailure(reason)
+            return -1
         }
     }
 

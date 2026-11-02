@@ -16,7 +16,6 @@
     <string name="headset_correction_fitted">Shinecon fitted (D)</string>
     <string name="headset_correction_profile">Viewer QR profile</string>
     <string name="headset_correction_hint">The fitted setting matches the D viewing test. Keep the same phone placement, lens spacing and focus. Use an ordinary, uncorrected movie or stream.</string>
-    <string name="headset_hevc">HEVC when supported (H.264 is the default and fallback)</string>
     <string name="headset_link_title">Throw picture size</string>
     <string name="headset_link_sbs720">720p reading preset: full side by side</string>
     <string name="headset_link_tb720">Half top-and-bottom: keeps horizontal detail</string>

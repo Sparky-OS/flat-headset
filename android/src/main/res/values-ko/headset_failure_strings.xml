@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="headset_hevc">HEVC 사용 (기본값은 H.264)</string>
+    <string name="headset_hevc_failed">HEVC를 사용할 수 없습니다:\n%1$s</string>
+    <string name="headset_scene_failed">대기 장면 “%1$s”을 표시할 수 없습니다:\n%2$s</string>
+    <string name="headset_failure_back">뒤로를 눌러 헤드셋 모드를 종료하고 계속할 방법을 선택하세요.</string>
+    <string name="headset_use_h264">H.264 사용</string>
+    <string name="headset_use_still">정지 이미지 사용</string>
+    <string name="headset_another_scene">다른 장면 선택</string>
+</resources>

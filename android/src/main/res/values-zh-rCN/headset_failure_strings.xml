@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="headset_hevc">使用 HEVC（默认为 H.264）</string>
+    <string name="headset_hevc_failed">无法使用 HEVC：\n%1$s</string>
+    <string name="headset_scene_failed">无法显示等待场景“%1$s”：\n%2$s</string>
+    <string name="headset_failure_back">按返回键退出头显模式，然后选择如何继续。</string>
+    <string name="headset_use_h264">使用 H.264</string>
+    <string name="headset_use_still">使用静态图像</string>
+    <string name="headset_another_scene">选择其他场景</string>
+</resources>

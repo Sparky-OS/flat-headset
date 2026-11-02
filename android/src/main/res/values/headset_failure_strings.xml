@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="headset_hevc">Use HEVC (H.264 is the default)</string>
+    <string name="headset_hevc_failed">HEVC could not be used:\n%1$s</string>
+    <string name="headset_scene_failed">Waiting scene “%1$s” could not be shown:\n%2$s</string>
+    <string name="headset_failure_back">Press Back to leave the headset and choose how to continue.</string>
+    <string name="headset_use_h264">Use H.264</string>
+    <string name="headset_use_still">Use the still</string>
+    <string name="headset_another_scene">Choose another scene</string>
+</resources>

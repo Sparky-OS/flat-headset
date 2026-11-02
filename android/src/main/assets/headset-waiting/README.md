@@ -29,7 +29,10 @@ Use a total width divisible by 16 so neither eye needs PNG stereo padding.
 Keep the PNG below 16 MiB and 16 megapixels.
 The existing panel renderer applies the lens profile.
 Reduce motion selects the still directly.
-Missing media or an unavailable hardware decoder falls back to the still; missing or invalid stills leave the identical per-eye status.
+A selected scene that cannot play shows its name and the decoder or asset error in both eyes.
+Back returns to the controls, where the person can choose its still or another scene.
+A failed still shows its error and offers another scene.
+Reduce motion remains a separate preference.
 
 Arrival of the first submitted desktop frame, pause, stop and destruction release waiting media.
 The standalone receiver keeps discovery active after an unexpected disconnect and shows the reconnect wait.
@@ -38,4 +41,4 @@ Back stops discovery; it does not change the computer's outputs.
 Before adding artwork, verify both connection phases, both eye images, reduce motion, decoder rejection, first-frame cleanup and pause/resume in the disposable Android rig.
 The debug build contains synthetic marked fixtures for these checks in a separate catalog.
 Software decoding is injected only by the debug proof activity; it never replaces the production hardware-only selection.
-Unsupported video tracks can be reported without a player error; both paths must fall back to the still.
+Unsupported video tracks can be reported without a player error; both paths must explain the failure without selecting a still automatically.
