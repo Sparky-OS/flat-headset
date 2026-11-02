@@ -14,10 +14,10 @@ import fnmatch
 import os
 import re
 
-from . import lang_c, lang_ini, lang_js, lang_json, lang_perl, lang_python, lang_shell, lang_toml, lang_yaml, lang_java, lang_kotlin
+from . import lang_c, lang_ini, lang_js, lang_json, lang_perl, lang_python, lang_shell, lang_toml, lang_yaml, lang_java, lang_kotlin, lang_zig
 
 HANDLERS = {m.KEY: m for m in (lang_shell, lang_python, lang_js, lang_ini, lang_yaml, lang_toml, lang_json,
-                               lang_c, lang_perl, lang_java, lang_kotlin)}
+                               lang_c, lang_perl, lang_java, lang_kotlin, lang_zig)}
 
 # never projected, with the reason recorded in the manifest
 EXCLUDE = [
@@ -36,6 +36,7 @@ EXCLUDE = [
     ('/boot/*', 'boot files'),
     ('/etc/sudoers*', 'sudoers: `#` starts directives (#include) and user IDs'),
     ('/usr/src/*/.config', 'kernel configuration: "# CONFIG_X is not set" lines are read by Kconfig'),
+    ('/usr/include/wine/*', 'Wine headers are also input to WIDL and WRC; their preprocessor needs separate qualification'),
     ('*/Kconfig*', 'Kconfig language: no qualified adapter'),
     ('/etc/apt/*', 'APT configuration: its own grammar, no qualified adapter yet'),
     ('/usr/lib/python3*/test/*', 'Python test data (some read their own comments)'),
@@ -111,6 +112,10 @@ def choose(path: str, data: bytes):
         return 'kotlin', None, None
     if ext in ('.pl', '.pm'):
         return 'perl', None, None
+    if ext in lang_zig.EXTS:
+        if any(fnmatch.fnmatchcase(path, p) for p in lang_zig.TEMPLATES):
+            return None, None, 'a template: its generator (zig init, tree-sitter init) copies its text into new projects'
+        return 'zig', None, None
     if ext in ('.qml', '.js', '.mjs'):
         return 'js', None, None
     if ext in ('.yaml', '.yml'):
@@ -119,11 +124,13 @@ def choose(path: str, data: bytes):
         return 'toml', None, None
     if ext == '.json':
         return None, None, 'JSON has no comment syntax (RFC 8259)'
+    if os.path.splitext(base)[1] in lang_c.ASM_EXTS:
+        return 'c', 'asm', None
     if ext in lang_c.EXTS:
         return 'c', 'c++' if ext in ('.hh', '.hpp', '.hxx', '.cc', '.cpp', '.cxx', '.inl') or '/c++/' in path \
             or '/qt6/' in path or '/KF6/' in path else 'c', None
     if ext in lang_c.GLSL_EXTS:
-        return 'c', 'glsl', None
+        return None, None, 'GLSL needs a qualified shader preprocessor; preserve the authored shader'
     if ext in SYSTEMD_UNIT or (ext == '.conf' and any(path.startswith(d) for d in SYSTEMD_DIRS)):
         return 'ini', 'systemd', None
     for pat, variant in SDLINE:

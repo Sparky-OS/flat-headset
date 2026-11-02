@@ -8,6 +8,17 @@ cardboard=${2:?Pinned Cardboard checkout with the bundled ZXing patch}
 pupnp=${3:?Pinned pupnp checkout}
 media3=${4:?Pinned edition Media3 checkout}
 source_dir=$(cd "$(dirname "$0")/.." && pwd)
+# The vendored engine must be a released Lean Code renderer, or nothing is projected (lean/identities.py)
+identity=$(python3 "$source_dir/tools/project-native.py" --check-identity)
+echo "Lean Code: $identity"
+# C-family files GCC refuses only in conditional groups are read by clang's raw lexer: the NDK's own clang, the
+# consumer of this build's native code, at the version the build pins
+if [[ -z "${LEAN_CLANG:-}" ]]; then
+    ndk=$(sed -n 's/^ *ndkVersion *= *"\([^"]*\)".*/\1/p' "$source_dir/freerdp-core/build.gradle.kts" | head -1)
+    LEAN_CLANG="${ANDROID_HOME:?Set ANDROID_HOME}/ndk/$ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/clang"
+fi
+[[ -x "$LEAN_CLANG" ]] || { echo "No clang at $LEAN_CLANG: set LEAN_CLANG or install the pinned NDK" >&2; exit 1; }
+export LEAN_CLANG
 [[ "$stage" = /* && ! -e "$stage" ]] || { echo 'Use a new absolute staging path' >&2; exit 2; }
 python3 - "$source_dir" "$stage" "$cardboard" "$pupnp" "$media3" <<'PY'
 from pathlib import Path

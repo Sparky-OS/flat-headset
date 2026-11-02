@@ -7,8 +7,9 @@ output character and its LineMap, generalised so every language handler renders 
 only says where its comments, kept comments and literal regions are (a list of Spans) and how a removed
 comment is replaced; this module removes the comments and the lines they leave empty, never touches a
 literal, records the origin of every MR character, and builds the map from that record, so the map comes
-from the same decisions that made the MR (LEAN-CODE-POLICY.md, "Error locations belong to the authored
-source": never inferred later by searching for matching lines).
+from the same decisions that made the MR. dpkg-stereo --resolve-render reads that map after rendering the
+authored text again; dpkg-stereo --resolve finds a lean line by its content in the authored text instead
+(locate.py), which needs no render of the same engine.
 """
 
 from __future__ import annotations
@@ -147,7 +148,8 @@ def blank(ch: str) -> bool:
     return ch in ' \t\f\v'
 
 
-def render(src: str, spans: list, joiner, *, keep_empty_after=None, collapse_blank=True) -> Rendered:
+def render(src: str, spans: list, joiner, *, keep_empty_after=None, collapse_blank=True,
+           drop_lines=False) -> Rendered:
     """Remove the COMMENT spans of `src` and return the MR, its origin record and its line map.
 
     joiner(src, start, end) -> str: what replaces a removed comment that has code after it on its line
@@ -157,9 +159,20 @@ def render(src: str, spans: list, joiner, *, keep_empty_after=None, collapse_bla
     keep_empty_after(line_text) -> bool: True when the line before a comment-only line continues into
         it (shell's and C's backslash-newline), so the emptied line stays as an empty line instead of
         being deleted; None for formats whose parser skips comment lines inside a continuation (systemd,
-        udev).
+        udev). With drop_lines it says which lines continue, and no emptied line stays.
     collapse_blank: runs of more than one empty line outside literals become one (CGM's MR shape).
+    drop_lines: a line a removal leaves empty goes completely, even inside a backslash continuation (C and
+        C++ from engine 0.1.20, whose lean line numbers differ from the authored ones like every other
+        language's; dpkg-stereo --resolve finds a lean line's authored line by its content): a line left
+        holding only a continuation backslash goes too, and an emptied line that ended a continuation
+        takes the backslash of the line kept before it, so that logical line ends where the authored one
+        did and no empty line stands where a comment was. A line break the joiner gives for a comment
+        with code before and after it follows the code before it (the blanks before it go), and becomes
+        one space where nothing precedes the comment on its line. It needs collapse_blank=False: the
+        authored empty lines stay as they are.
     """
+    if drop_lines and collapse_blank:
+        raise ValueError('drop_lines keeps the authored empty lines: pass collapse_blank=False')
     n = len(src)
     lit = [(sp.start, sp.end) for sp in spans if sp.kind in (LITERAL, KEEP)]
     lit_starts = [a for a, _ in lit]
@@ -181,16 +194,21 @@ def render(src: str, spans: list, joiner, *, keep_empty_after=None, collapse_bla
         if sp.kind == COMMENT:
             nl = src.find('\n', sp.end)
             tail = src[sp.end: nl if nl >= 0 else n]
-            if tail.strip(' \t\f\v') == '':
+            ends_line = tail.strip(' \t\f\v') == ''
+            if ends_line:
+                rep = ''
+            else:
+                rep = joiner(src, sp.start, sp.end)
+                if drop_lines and rep == '\n' and _line_blank(buf, origin, src_in_literal):
+                    rep = ' '          # nothing before it on its line: the code after it stays on this line
+            if ends_line or (drop_lines and rep.startswith('\n')):
+                # the line ends where the comment began: the blanks before it go with it
                 j = len(buf)
                 while (j > 0 and blank(buf[j - 1]) and not (j >= 2 and buf[j - 2] == '\\')
                        and not src_in_literal(origin[j - 1])):
                     j -= 1
                 del buf[j:]
                 del origin[j:]
-                rep = ''
-            else:
-                rep = joiner(src, sp.start, sp.end)
             removed_at.append(len(buf))
             buf.extend(rep)
             origin.extend([sp.start] * len(rep))
@@ -206,6 +224,9 @@ def render(src: str, spans: list, joiner, *, keep_empty_after=None, collapse_bla
         origin.extend(range(i, n))
     text = ''.join(buf)
     assert len(text) == len(origin)
+    if drop_lines:
+        text, origin = drop_emptied_lines(text, origin, removed_at, keep_empty_after, src_in_literal)
+        return Rendered(text, origin, build_line_map(src, text, origin), removed, kept)
 
     # lines a removal left empty (only blanks) go, newline included
     dels = []
@@ -246,6 +267,72 @@ def render(src: str, spans: list, joiner, *, keep_empty_after=None, collapse_bla
             p = q
         text, origin = apply_deletions(text, origin, dels)
     return Rendered(text, origin, build_line_map(src, text, origin), removed, kept)
+
+
+def _line_blank(buf: list, origin: list, src_in_literal) -> bool:
+    """True when the output line being built holds only blanks so far (none of them a literal's)."""
+    j = len(buf)
+    while j > 0 and buf[j - 1] != '\n':
+        if not blank(buf[j - 1]) or src_in_literal(origin[j - 1]):
+            return False
+        j -= 1
+    return True
+
+
+def drop_emptied_lines(text: str, origin: list, removed_at: list, continues, src_in_literal):
+    """The lines a removal left empty, or holding only a continuation backslash, go completely (render's
+    drop_lines). `continues(line)` says whether a line ends in a backslash-newline; an emptied line that ended
+    a continuation also takes the backslash (and the blanks before it) of the nearest line kept before it,
+    so that logical line ends where the authored one did."""
+    starts = sorted({text.rfind('\n', 0, off) + 1 for off in removed_at})
+    touched = set(starts)
+    dels = []
+    kept_end = None           # end (newline position or len) of the nearest line kept before this one
+    ls = 0
+    n = len(text)
+    while ls <= n:
+        le = text.find('\n', ls)
+        line_end = le if le >= 0 else n
+        body = text[ls:line_end]
+        what = None
+        if ls in touched and not any(src_in_literal(origin[x]) for x in range(ls, line_end)):
+            core = body.strip(' \t\f\v')
+            if core == '':
+                what = 'empty'
+            elif core == '\\' and body.rstrip(' \t\f\v').endswith('\\') and continues(body.rstrip(' \t\f\v')):
+                what = 'continuation'
+        if what is None:
+            if le < 0 and body == '' and ls == n:
+                break
+            kept_end = line_end
+        else:
+            if le >= 0:
+                dels.append((ls, le + 1))
+            elif ls > 0:
+                dels.append((ls - 1, line_end))
+            else:
+                dels.append((ls, line_end))
+            if what == 'empty' and kept_end is not None:
+                prev_start = text.rfind('\n', 0, kept_end) + 1
+                prev = text[prev_start:kept_end]
+                if continues(prev) and not src_in_literal(origin[kept_end - 1]):
+                    b = kept_end - 1
+                    while b > prev_start and blank(text[b - 1]) and not src_in_literal(origin[b - 1]):
+                        b -= 1
+                    dels.append((b, kept_end))
+                    # that logical line ends at the kept line now; a later emptied line belongs to no continuation
+                    kept_end = None if b == prev_start else kept_end
+        if le < 0:
+            break
+        ls = le + 1
+    return apply_deletions(text, origin, dels)
+
+
+def held_breaks(src: str, start: int, end: int) -> str:
+    """The line breaks src[start:end] holds, each as it was: a backslash-newline (one that translation
+    phase 2 splices, C23 5.1.1.2) stays one, so the lines it joined stay one logical line."""
+    return ''.join('\\\n' if k > start and src[k - 1] == '\\' else '\n'
+                   for k in range(start, end) if src[k] == '\n')
 
 
 def apply_deletions(text: str, origin: list, dels: list):

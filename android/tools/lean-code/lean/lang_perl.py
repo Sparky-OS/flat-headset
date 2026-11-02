@@ -119,6 +119,15 @@ def deparse(text: str):
         return r.stdout.decode('utf-8', 'surrogateescape').replace(p, 'FILE')
 
 
+def authored_refusal(text: str) -> str | None:
+    """An authored file perl does not compile on its own is retained: B::Deparse, the consumer check, needs it."""
+    if not shutil.which('perl'):
+        return 'perl unavailable; authored script retained'
+    if deparse(text) is None:
+        return 'authored script is not compiled by perl on its own; consumer qualification unavailable'
+    return None
+
+
 def verify(original, lean, interpreter=''):
     a = deparse(original)
     if a is None:

@@ -368,7 +368,9 @@ def refuse(src: str) -> str | None:
 
 
 # The consumer's own parser decides: bash parses the script as one function body and prints it back
-# with `declare -f`, which drops comments and nothing else; equal prints mean equal programs. One bash
+# with `declare -f`, which drops comments and nothing else; equal prints mean equal programs.
+# A fixed `true` statement makes a comment-only script a valid function body too.
+# This statement is only in the comparison wrapper; the function is never called. One bash
 # stays open per projecting process (starting bash per file was most of a projection's cost). It runs
 # with every builtin but the few the loop needs switched off and an empty PATH, as nobody when the
 # projection runs as root, so a broken script whose stray `}` ends the function early cannot run anything.
@@ -385,6 +387,7 @@ while IFS= read -r f; do
 	unset -f __lean_check
 	src=$(<"$f")
 	if eval "__lean_check() {
+true
 $src
 }" 2>/dev/null; then declare -f __lean_check; s=0; else s=1; fi
 	printf '\n%s %s\n' "$tok" "$s"
@@ -444,6 +447,25 @@ def bash_print(text: str) -> str | None:
         os.unlink(p)
 
 
+def syntax_valid(text: str, interpreter: str) -> bool:
+    """Parse without executing; do not guess another interpreter for invalid input."""
+    with tempfile.NamedTemporaryFile('w', suffix='.sh', encoding='utf-8',
+                                     errors='surrogateescape') as stream:
+        stream.write(text)
+        stream.flush()
+        result = subprocess.run([interpreter, '-n', stream.name],
+                                capture_output=True, timeout=60)
+    return result.returncode == 0
+
+
+def authored_refusal(text: str, interpreter: str) -> str | None:
+    if not shutil.which(interpreter):
+        return f'{interpreter} parser unavailable; authored script retained'
+    if not syntax_valid(text, interpreter):
+        return f'authored script is not accepted by {interpreter}; consumer qualification unavailable'
+    return None
+
+
 def verify(original: str, lean: str, interpreter: str = 'bash') -> tuple:
     a = bash_print(original)
     if a is None:
@@ -452,13 +474,6 @@ def verify(original: str, lean: str, interpreter: str = 'bash') -> tuple:
     if b != a:
         return False, 'bash parses the lean script differently'
     if interpreter == 'dash' and shutil.which('dash'):
-        with tempfile.NamedTemporaryFile('w', suffix='.sh', delete=False, encoding='utf-8', errors='surrogateescape') as f:
-            f.write(lean)
-            p = f.name
-        try:
-            r = subprocess.run(['dash', '-n', p], capture_output=True, timeout=60)
-        finally:
-            os.unlink(p)
-        if r.returncode != 0:
+        if not syntax_valid(lean, 'dash'):
             return False, 'dash -n rejects the lean script'
     return True, 'bash declare -f prints the same program'
