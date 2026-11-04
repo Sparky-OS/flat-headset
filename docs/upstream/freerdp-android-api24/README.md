@@ -17,4 +17,5 @@ Master crashes during startup on API 24 and 28 and passes on API 29; the series 
 ## Merged
 
 Armin Novak (akallabeth) merged FreeRDP #14003 on 4 November 2026 as [edcdcee5](https://github.com/FreeRDP/FreeRDP/commit/edcdcee54a8329952dd79c48679152beb71ba778), after the review round above with İbrahim Sevinç.
-From that commit on, FreeRDP's own master runs inside apps built for API 24, so Flat Headset can follow upstream instead of carrying the series.
+From that commit on, the old-phone compatibility comes from FreeRDP itself: its master runs inside apps built for API 24.
+Only that compatibility went upstream. Flat Headset's stereo part stays ours to maintain: each eye drawn on its own half of the phone's screen in the viewer's mode, the HEVC negotiation and the rest of the app.
