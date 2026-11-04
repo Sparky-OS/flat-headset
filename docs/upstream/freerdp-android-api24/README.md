@@ -13,3 +13,8 @@ Master crashes during startup on API 24 and 28 and passes on API 29; the series 
 - freerdp-14003-review1-evidence.zip: the revised series' evidence after Armin Novak's and İbrahim Sevinç's review: the bookmark flags through AndroidX ParcelCompat (with the exact AndroidX 1.19.0 source and the original API 29 Parcel bytes as the control) and the file provider authority taken from the application package in HomeActivity and aFreeRDP's manifest; builds of each commit alone and of the series, and runtime logs and captures on API 24, 28 and 29, for master, the series and Flat Headset's own embedding.
 - SHA-256: a2de620b6cb26099e43af965bb5c4bae5bd7e55f27f3e2c347d7e4e0eee705f8
 - Replay: `python3 build-tools/check-review1.py` inside the archive exits 0.
+
+## Merged
+
+Armin Novak (akallabeth) merged FreeRDP #14003 on 4 November 2026 as [edcdcee5](https://github.com/FreeRDP/FreeRDP/commit/edcdcee54a8329952dd79c48679152beb71ba778), after the review round above with İbrahim Sevinç.
+From that commit on, FreeRDP's own master runs inside apps built for API 24, so Flat Headset can follow upstream instead of carrying the series.
