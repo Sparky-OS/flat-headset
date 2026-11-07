@@ -14,6 +14,8 @@ SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted
         android:targetPackage="org.kde.kdeconnect_tp.debug" />
     <instrumentation android:name="org.kde.kdeconnect.SessionCompatibilityInstrumentation"
         android:targetPackage="org.kde.kdeconnect_tp.debug" />
+    <instrumentation android:name="org.kde.kdeconnect.SensorChannelInstrumentation"
+        android:targetPackage="org.kde.kdeconnect_tp.debug" />
     <application>
         <activity android:name="org.kde.kdeconnect.CodecFailureProofActivity"
             android:screenOrientation="landscape" android:exported="false"
