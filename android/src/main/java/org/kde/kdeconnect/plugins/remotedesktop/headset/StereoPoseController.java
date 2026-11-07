@@ -22,6 +22,12 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /** One latest sensor sample, one network worker, one write in flight. */
 public final class StereoPoseController implements AutoCloseable {
+    static float[] rotationVectorToWire(float[] values) {
+        float[] wxyz=new float[4];SensorManager.getQuaternionFromVector(wxyz,values);
+        float[] xyzw={wxyz[1],wxyz[2],wxyz[3],wxyz[0]};
+        if(!PoseWire.validQuaternion(xyzw))throw new IllegalArgumentException("Invalid fused quaternion");
+        return xyzw;
+    }
     public interface StatusListener { void changed(int state,int reason); }
     private static final String TAG="StereoPose";
     private static final byte[] BOOT_NONCE=new byte[16];
@@ -32,6 +38,26 @@ public final class StereoPoseController implements AutoCloseable {
     private final boolean enabled;
     private volatile boolean resumed=false,closed=false;
     private Connection connection;
+    private volatile boolean proofInjection=false;
+    private volatile int proofWriteDelayMs=0;
+    /** Debug fixture only. Release builds reject injection before accessing a channel. */
+    public synchronized void proofSource(boolean enabled) {
+        if(!org.kde.kdeconnect_tp.BuildConfig.DEBUG)throw new SecurityException("Debug fixture only");
+        proofInjection=enabled;
+    }
+    public synchronized boolean proofReady() { return connection!=null && connection.selected && connection.sourceEpoch!=0; }
+    public synchronized long proofRotation(float[] vector,long ageNs) {
+        if(!org.kde.kdeconnect_tp.BuildConfig.DEBUG || !proofInjection)throw new SecurityException("Debug fixture only");
+        if(connection==null || !connection.selected || connection.stopped)return -1;
+        float[] xyzw=rotationVectorToWire(vector);
+        long capture=SystemClock.elapsedRealtimeNanos()-ageNs;
+        connection.latest.set(new Reading(xyzw,capture,3,connection.sourceEpoch));return capture;
+    }
+    public void proofWriteDelay(int milliseconds) {
+        if(!org.kde.kdeconnect_tp.BuildConfig.DEBUG || milliseconds<0 || milliseconds>600)throw new SecurityException("Debug fixture only");
+        proofWriteDelayMs=milliseconds;
+    }
+
     public volatile int selectedSensor=15,selectedRate=60;
     private final Handler main=new Handler(android.os.Looper.getMainLooper());
     private boolean peerConnected=false;
@@ -109,6 +135,7 @@ public final class StereoPoseController implements AutoCloseable {
         }
         boolean send(int kind,byte[] payload,long time) {
             if(stopped)return false;
+            if(kind==PoseWire.POSE && proofWriteDelayMs>0)SystemClock.sleep(proofWriteDelayMs);
             boolean result=LibFreeRDP.sendStereoPose(instance,cookie,PoseWire.encode(kind,epoch,sequence++,time,payload));
             if(!result) { listener.changed(3,11);close(); }
             return result;
@@ -173,14 +200,14 @@ public final class StereoPoseController implements AutoCloseable {
         }
         synchronized void startSensor() {
             stopSensor();final int source=++sourceEpoch;
+            if(proofInjection) { Log.i(TAG,"INJECTED_SOURCE epoch="+source+" not a physical sensor claim");return; }
             Sensor s=sensor(type);
             sensorListener=new SensorEventListener() {
                 @Override public void onAccuracyChanged(Sensor sensor,int accuracy) {}
                 @Override public void onSensorChanged(SensorEvent event) {
                     if(stopped || !resumed || source!=sourceEpoch)return;
-                    float[] wxyz=new float[4];SensorManager.getQuaternionFromVector(wxyz,event.values);
-                    float[] xyzw={wxyz[1],wxyz[2],wxyz[3],wxyz[0]};
-                    if(PoseWire.validQuaternion(xyzw) && event.accuracy>=-1 && event.accuracy<=3)
+                    float[] xyzw=rotationVectorToWire(event.values);
+                    if(event.accuracy>=-1 && event.accuracy<=3)
                         latest.set(new Reading(xyzw,event.timestamp,event.accuracy,source));
                 }
             };

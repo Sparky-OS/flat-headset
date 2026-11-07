@@ -1,6 +1,7 @@
 /* SPDX-FileCopyrightText: 2026 Daniel Campos Ramos
  * SPDX-License-Identifier: Apache-2.0 */
 #include <freerdp/dvc.h>
+#include <freerdp/freerdp.h>
 #include <freerdp/client/channels.h>
 #include <winpr/stream.h>
 #include <winpr/synch.h>
