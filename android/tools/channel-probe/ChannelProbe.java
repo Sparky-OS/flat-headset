@@ -57,8 +57,9 @@ public final class ChannelProbe extends Instrumentation {
                     if (state == 1) connected.countDown();
                 }
             };
-            activity = startActivitySync(new Intent().setClassName(getTargetContext().getPackageName(),
-                    "org.kde.kdeconnect.SensorChannelProofActivity")
+            String targetActivity = arguments.getString("activity", "org.kde.kdeconnect.SensorChannelProofActivity");
+            if (!targetActivity.startsWith("org.kde.kdeconnect.")) throw new Exception("Expected target fixture activity");
+            activity = startActivitySync(new Intent().setClassName(getTargetContext().getPackageName(), targetActivity)
                 .setData(uri.build()).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 .putExtra("com.freerdp.freerdpcore.CONNECTION_STATE_RECEIVER", receiver));
             if (!connected.await(35, TimeUnit.SECONDS)) throw new Exception("RDP connection timeout: " + states);

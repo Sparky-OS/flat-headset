@@ -18,7 +18,6 @@ import java.nio.ByteBuffer;
 import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.atomic.AtomicReference;
 
 /** One latest sensor sample, one network worker, one write in flight. */
 public final class StereoPoseController implements AutoCloseable {
@@ -51,7 +50,7 @@ public final class StereoPoseController implements AutoCloseable {
         if(connection==null || !connection.selected || connection.stopped)return -1;
         float[] xyzw=rotationVectorToWire(vector);
         long capture=SystemClock.elapsedRealtimeNanos()-ageNs;
-        connection.latest.set(new Reading(xyzw,capture,3,connection.sourceEpoch));return capture;
+        connection.latest.replace(new Reading(xyzw,capture,3,connection.sourceEpoch));return capture;
     }
     public void proofWriteDelay(int milliseconds) {
         if(!org.kde.kdeconnect_tp.BuildConfig.DEBUG || milliseconds<0 || milliseconds>600)throw new SecurityException("Debug fixture only");
@@ -121,7 +120,7 @@ public final class StereoPoseController implements AutoCloseable {
         final long instance,cookie;
         final PoseWire parser=new PoseWire();
         final ArrayBlockingQueue<Control> controls=new ArrayBlockingQueue<>(16);
-        final AtomicReference<Reading> latest=new AtomicReference<>();
+        final LatestPoseSample<Reading> latest=new LatestPoseSample<>();
         final HandlerThread workerThread=new HandlerThread("StereoPoseNetwork"),sensorThread=new HandlerThread("StereoPoseSensor");
         final Handler worker,sensors;
         final byte[] nonce=new byte[16];
@@ -130,7 +129,8 @@ public final class StereoPoseController implements AutoCloseable {
         int epoch=0,rate=60,type=15,mount=1;
         volatile int sourceEpoch=0;
         long sequence=0,lastIncoming=0,lastPublished=Long.MIN_VALUE,nextPublish=0,samples=0,firstPublication=0;
-        boolean haveIncoming=false,selected=false,wasResumed=false;
+        boolean haveIncoming=false,wasResumed=false;
+        volatile boolean selected=false;
         SensorEventListener sensorListener;
         Connection(long instance,long cookie) {
             this.instance=instance;this.cookie=cookie;new SecureRandom().nextBytes(nonce);
@@ -200,7 +200,7 @@ public final class StereoPoseController implements AutoCloseable {
         }
         synchronized void stopSensor() {
             if(sensorListener!=null && manager!=null)manager.unregisterListener(sensorListener);
-            sensorListener=null;latest.set(null);
+            sensorListener=null;latest.clear();
         }
         synchronized void startSensor() {
             stopSensor();final int source=++sourceEpoch;
@@ -213,9 +213,9 @@ public final class StereoPoseController implements AutoCloseable {
                     try {
                         float[] xyzw=rotationVectorToWire(event.values);
                         if(event.accuracy>=-1 && event.accuracy<=3)
-                            latest.set(new Reading(xyzw,event.timestamp,event.accuracy,source));
+                            latest.replace(new Reading(xyzw,event.timestamp,event.accuracy,source));
                         else protocolFailed=true;
-                    } catch(IllegalArgumentException invalid) { latest.set(null);protocolFailed=true; }
+                    } catch(IllegalArgumentException invalid) { latest.clear();protocolFailed=true; }
                 }
             };
             int period=Math.min(10000,1000000/rate);
@@ -237,7 +237,7 @@ public final class StereoPoseController implements AutoCloseable {
                 if(selected && recenterRequested) { recenterRequested=false;status(0,10); }
                 long now=SystemClock.elapsedRealtimeNanos();
                 if(selected && resumed && now>=nextPublish) {
-                    Reading reading=latest.getAndSet(null);
+                    Reading reading=latest.take();
                     if(reading!=null && reading.time>lastPublished && now-reading.time<=100000000 && reading.epoch==sourceEpoch) {
                         ByteBuffer p=PoseWire.buffer(32);
                         for(float f:reading.xyzw)p.putFloat(f);
@@ -257,7 +257,7 @@ public final class StereoPoseController implements AutoCloseable {
         @Override public synchronized void close() {
             if(stopped)return;
             stopped=true;stopSensor();controls.clear();worker.removeCallbacksAndMessages(null);
-            workerThread.quitSafely();sensorThread.quitSafely();latest.set(null);
+            workerThread.quitSafely();sensorThread.quitSafely();latest.clear();
             Log.i(TAG,"CHANNEL_STOP cookie="+cookie+" sensorReleased=true fresh="+samples);
         }
     }
