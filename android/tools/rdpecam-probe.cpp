@@ -288,6 +288,9 @@ int main(int argc, char** argv)
     std::setvbuf(stdout, nullptr, _IOLBF, 0);
     certificate = argv[1];
     privateKey = argv[2];
+    if (!WTSRegisterWtsApiFunctionTable(FreeRDP_InitWtsApi())) {
+        return 2;
+    }
     auto* listener = freerdp_listener_new();
     listener->PeerAccepted = accepted;
     if (!listener->Open(listener, "127.0.0.1", 3389)) {

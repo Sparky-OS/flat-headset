@@ -2025,21 +2025,13 @@ index 0000000..e7fa443
 +	}
 +}
 diff --git a/client/Android/Studio/freeRDPCore/src/main/res/layout/floating_toolbar.xml b/client/Android/Studio/freeRDPCore/src/main/res/layout/floating_toolbar.xml
-index 117fd52..d77fe56 100644
+index 117fd52..128c780 100644
 --- a/client/Android/Studio/freeRDPCore/src/main/res/layout/floating_toolbar.xml
 +++ b/client/Android/Studio/freeRDPCore/src/main/res/layout/floating_toolbar.xml
-@@ -43,6 +43,24 @@
+@@ -43,6 +43,16 @@
              app:tint="#FFFFFF"
              android:src="@drawable/ic_keyboard" />
  
-+        <ImageButton
-+            android:id="@+id/floating_toolbar_disconnect"
-+            android:layout_width="32dp"
-+            android:layout_height="32dp"
-+            android:background="?android:attr/selectableItemBackground"
-+            android:contentDescription="@string/session_disconnect"
-+            app:tint="#FFFFFF"
-+            android:src="@drawable/ic_close" />
 +
 +        <ImageButton
 +            android:id="@+id/floating_toolbar_disconnect"
