@@ -1,0 +1,31 @@
+From fab5692b1eab20eaa7462d495248c6bf779f224f Mon Sep 17 00:00:00 2001
+From: Daniel Campos Ramos <Capitain_Jack@yahoo.com>
+Date: Sat, 7 Nov 2026 02:16:01 -0300
+Subject: [PATCH] Query camera addin support before the first Android session
+
+LibFreeRDP asks during class initialization, before the per-session provider is registered. Use the compiled static addin table directly so the camera capability does not depend on a session having connected already.
+
+Assisted-by: gpt-6.1-sol via Codex
+---
+ .../Studio/freeRDPCore/src/main/cpp/android_freerdp.c        | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/client/Android/Studio/freeRDPCore/src/main/cpp/android_freerdp.c b/client/Android/Studio/freeRDPCore/src/main/cpp/android_freerdp.c
+index 88aab7c9a..99a03708d 100644
+--- a/client/Android/Studio/freeRDPCore/src/main/cpp/android_freerdp.c
++++ b/client/Android/Studio/freeRDPCore/src/main/cpp/android_freerdp.c
+@@ -1290,8 +1290,9 @@ Java_com_freerdp_freerdpcore_services_LibFreeRDP_freerdp_1has_1camera_1redirecti
+ 	 * ordinary receiver usable without the API-24 Camera2 component. */
+ 	if (__builtin_available(android 24, *))
+ 	{
+-		return freerdp_load_channel_addin_entry("rdpecam", nullptr, nullptr,
+-		                                       FREERDP_ADDIN_CHANNEL_DYNAMIC)
++		/* Java queries this before any session registers an addin provider. */
++		return freerdp_channels_load_static_addin_entry("rdpecam", nullptr, nullptr,
++		                                              FREERDP_ADDIN_CHANNEL_DYNAMIC)
+ 		           ? JNI_TRUE
+ 		           : JNI_FALSE;
+ 	}
+-- 
+2.53.0
+

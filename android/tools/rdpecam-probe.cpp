@@ -9,6 +9,7 @@
 #include <freerdp/settings.h>
 #include <freerdp/channels/drdynvc.h>
 #include <freerdp/channels/wtsvc.h>
+#include <freerdp/channels/channels.h>
 #include <freerdp/server/rdpecam.h>
 #include <freerdp/server/rdpecam-enumerator.h>
 #include <winpr/synch.h>
