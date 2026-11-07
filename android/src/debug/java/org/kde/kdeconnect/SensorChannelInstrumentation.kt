@@ -44,6 +44,7 @@ class SensorChannelInstrumentation : Instrumentation() {
             val camera = LibFreeRDP.hasCameraRedirectionSupport()
             val uri = Uri.Builder().scheme("freerdp").encodedAuthority("fixture@10.0.2.2:3389")
                 .appendPath("connect").appendQueryParameter("sec", "tls")
+                .appendQueryParameter("p", "fixture") // Public dummy value; server has no account authentication.
                 .appendQueryParameter("cert", "fingerprint:sha256:$fingerprint")
                 .appendQueryParameter("size", "640x480")
                 .appendQueryParameter("log-level", "DEBUG")
