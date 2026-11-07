@@ -29,6 +29,13 @@ struct CameraProbe {
     CamDevEnumServerContext* enumerator = nullptr;
     CAM_MEDIA_TYPE_DESCRIPTION format{};
     unsigned stage = 0;
+    std::atomic<UINT32> enumeratorId{0};
+    bool connected = false;
+    bool active = false;
+    bool dvcReady = false;
+    bool cameraRejected = false;
+    std::atomic<bool> negotiated{false};
+    unsigned peers = 0;
 };
 
 struct PeerContext {
@@ -40,6 +47,7 @@ struct PeerContext {
 static CameraProbe probe;
 static const char* certificate;
 static const char* privateKey;
+static bool expectNoCamera = false;
 
 static UINT cameraError(CameraDeviceServerContext*, const CAM_ERROR_RESPONSE* error)
 {
@@ -171,8 +179,10 @@ static UINT added(CamDevEnumServerContext* enumerator, const CAM_DEVICE_ADDED_NO
 
 static UINT version(CamDevEnumServerContext* enumerator, const CAM_SELECT_VERSION_REQUEST* request)
 {
+    probe.negotiated = true;
     std::printf("CAMERA_VERSION client=%u\n", unsigned(request->Header.Version));
     CAM_SELECT_VERSION_RESPONSE response{};
+    response.Header.MessageId = CAM_MSG_ID_SelectVersionResponse;
     response.Header.Version = request->Header.Version > 2 ? 2 : request->Header.Version;
     return enumerator->SelectVersionResponse(enumerator, &response);
 }
@@ -182,7 +192,14 @@ static BOOL contextNew(freerdp_peer* peer, rdpContext*)
     auto* context = reinterpret_cast<PeerContext*>(peer->context);
     context->manager = WTSOpenServerA(reinterpret_cast<LPSTR>(peer->context));
     context->probe = &probe;
-    return context->manager && context->manager != INVALID_HANDLE_VALUE;
+    if (!context->manager || context->manager == INVALID_HANDLE_VALUE) return FALSE;
+    WTSVirtualChannelManagerSetDVCCreationCallback(context->manager,
+        [](void*, UINT32 id, INT32 status) -> BOOL {
+            std::printf("DVC_CREATE id=%u status=%d\n", id, status);
+            if (id == probe.enumeratorId && status < 0) probe.cameraRejected = true;
+            return TRUE;
+        }, nullptr);
+    return TRUE;
 }
 
 static void contextFree(freerdp_peer* peer, rdpContext*)
@@ -195,6 +212,7 @@ static void contextFree(freerdp_peer* peer, rdpContext*)
 
 static BOOL accepted(freerdp_listener*, freerdp_peer* peer)
 {
+    ++probe.peers;
     peer->ContextSize = sizeof(PeerContext);
     peer->ContextNew = contextNew;
     peer->ContextFree = contextFree;
@@ -227,8 +245,8 @@ static BOOL accepted(freerdp_listener*, freerdp_peer* peer)
         return FALSE;
     }
     freerdp_settings_set_bool(settings, FreeRDP_SupportDynamicChannels, TRUE);
-    peer->PostConnect = [](freerdp_peer*) -> BOOL { std::puts("RDP_CONNECTED"); return TRUE; };
-    peer->Activate = [](freerdp_peer*) -> BOOL { std::puts("RDP_ACTIVE"); return TRUE; };
+    peer->PostConnect = [](freerdp_peer*) -> BOOL { probe.connected = true; std::puts("RDP_CONNECTED"); return TRUE; };
+    peer->Activate = [](freerdp_peer*) -> BOOL { probe.active = true; std::puts("RDP_ACTIVE"); return TRUE; };
     if (!peer->Initialize(peer)) {
         freerdp_peer_context_free(peer);
         return FALSE;
@@ -254,11 +272,16 @@ static BOOL accepted(freerdp_listener*, freerdp_peer* peer)
         }
         if (!probe.enumerator && WTSVirtualChannelManagerGetDrdynvcState(context->manager) == DRDYNVC_STATE_READY) {
             std::puts("DVC_READY");
+            probe.dvcReady = true;
             auto* camera = cam_dev_enum_server_context_new(context->manager);
             if (!camera) {
                 break;
             }
             probe.enumerator = camera;
+            camera->ChannelIdAssigned = [](CamDevEnumServerContext*, UINT32 id) -> BOOL {
+                probe.enumeratorId = id;
+                return TRUE;
+            };
             camera->SelectVersionRequest = version;
             camera->DeviceAddedNotification = added;
             if (camera->Initialize(camera, FALSE) != CHANNEL_RC_OK || camera->Open(camera) != CHANNEL_RC_OK) {
@@ -282,10 +305,11 @@ static BOOL accepted(freerdp_listener*, freerdp_peer* peer)
 
 int main(int argc, char** argv)
 {
-    if (argc != 3) {
-        std::fprintf(stderr, "Usage: rdpecam-probe CERTIFICATE PRIVATE_KEY\n");
+    if (argc != 3 && (argc != 4 || std::strcmp(argv[3], "--expect-no-camera") != 0)) {
+        std::fprintf(stderr, "Usage: rdpecam-probe CERTIFICATE PRIVATE_KEY [--expect-no-camera]\n");
         return 2;
     }
+    expectNoCamera = argc == 4;
     std::setvbuf(stdout, nullptr, _IOLBF, 0);
     certificate = argv[1];
     privateKey = argv[2];
@@ -300,7 +324,7 @@ int main(int argc, char** argv)
     }
     std::puts("LISTENING_RAW_NV12");
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(90);
-    while (!probe.frames && !probe.failed && std::chrono::steady_clock::now() < deadline) {
+    while (!probe.peers && !probe.failed && std::chrono::steady_clock::now() < deadline) {
         HANDLE events[32]{};
         const DWORD count = listener->GetEventHandles(listener, events, 32);
         if (!count) {
@@ -314,5 +338,11 @@ int main(int argc, char** argv)
     listener->Close(listener);
     freerdp_listener_free(listener);
     std::printf("RESULT frames=%u unique=%zu failed=%d\n", probe.frames.load(), probe.hashes.size(), probe.failed.load());
+    if (expectNoCamera) {
+        const bool passed = probe.connected && probe.active && probe.dvcReady && probe.cameraRejected
+            && !probe.negotiated && probe.frames == 0 && !probe.failed;
+        std::printf("ABSENT_CHANNEL_CONTROL %s\n", passed ? "PASS" : "FAIL");
+        return passed ? 0 : 1;
+    }
     return !probe.failed && probe.frames >= 12 && probe.hashes.size() >= 2 ? 0 : 1;
 }
