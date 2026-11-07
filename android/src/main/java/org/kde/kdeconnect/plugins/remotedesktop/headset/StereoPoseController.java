@@ -91,13 +91,15 @@ public final class StereoPoseController implements AutoCloseable {
             if(connection!=null)connection.close();
             connection=new Connection(instance,cookie);return 1;
         }
-        if(event!=1 || connection==null || connection.cookie!=cookie)return 0;
+        if(connection==null || connection.cookie!=cookie)return 0;
+        if(event==3) { connection.protocolFailed=true;return 1; }
+        if(event!=1)return 0;
         try {
             for(PoseWire.Message msg:connection.parser.receive(packet))
                 if(!connection.controls.offer(new Control(msg,SystemClock.elapsedRealtimeNanos())))throw new IllegalArgumentException("Control queue full");
             return 1;
         } catch(IllegalArgumentException error) {
-            listener.changed(4,9);connection.close();connection=null;return 0;
+            connection.protocolFailed=true;return 0;
         }
     }
     public synchronized void setResumed(boolean value) {
@@ -122,7 +124,7 @@ public final class StereoPoseController implements AutoCloseable {
         final HandlerThread workerThread=new HandlerThread("StereoPoseNetwork"),sensorThread=new HandlerThread("StereoPoseSensor");
         final Handler worker,sensors;
         final byte[] nonce=new byte[16];
-        volatile boolean stopped=false,lifecycleChanged=true,recenterRequested=false;
+        volatile boolean stopped=false,lifecycleChanged=true,recenterRequested=false,protocolFailed=false;
         int epoch=0,rate=60,type=15,mount=1;
         volatile int sourceEpoch=0;
         long sequence=0,lastIncoming=0,lastPublished=Long.MIN_VALUE,nextPublish=0,samples=0,firstPublication=0;
@@ -217,6 +219,7 @@ public final class StereoPoseController implements AutoCloseable {
         }
         void pump() {
             if(stopped)return;
+            if(protocolFailed) { status(4,9);close();return; }
             try {
                 Control c;for(int i=0;i<16 && (c=controls.poll())!=null;++i)control(c);
                 if(stopped)return;

@@ -54,8 +54,9 @@ static UINT pose_received(IWTSVirtualChannelCallback* iface, wStream* stream) {
     const size_t size = Stream_GetRemainingLength(stream);
     if (size > 4096 || pose_java(c, 1, Stream_Pointer(stream), size) != 1) {
         atomic_store(&c->failed, true);
-        // Closing this optional DVC does not abort the RDP display session.
-        return c->base.channel->Close(c->base.channel);
+        // Report on the writer, outside this receive callback. FreeRDP still
+        // owns the receive stream here; synchronous self-close can free it.
+        pose_java(c, 3, NULL, 0);
     }
     return CHANNEL_RC_OK;
 }
@@ -94,7 +95,7 @@ JNIEXPORT jboolean JNICALL Java_com_freerdp_freerdpcore_services_LibFreeRDP_send
     EnterCriticalSection(&lock);
     for (PoseCallback* c = live; c; c = c->next) {
         PosePlugin* plugin = (PosePlugin*)c->base.plugin;
-        if ((jlong)plugin->context->instance == instance && c->cookie == (UINT64)cookie && !atomic_load(&c->failed)) {
+        if ((jlong)plugin->context->instance == instance && c->cookie == (UINT64)cookie ) {
             status = c->base.channel->Write(c->base.channel, (UINT32)size, bytes, NULL);
             break;
         }
