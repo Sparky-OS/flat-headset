@@ -80,6 +80,12 @@ set_target_properties(
 )
 add_dependencies(freerdp3-lib freerdp)
 
+add_library(kdeconnect-uriparser SHARED IMPORTED GLOBAL)
+set_target_properties(kdeconnect-uriparser PROPERTIES
+  IMPORTED_LOCATION "${DEPS_INSTALL_DIR}/${CMAKE_INSTALL_LIBDIR}/liburiparser.so")
+add_dependencies(kdeconnect-uriparser uriparser)
+set_property(TARGET freerdp3-lib APPEND PROPERTY INTERFACE_LINK_LIBRARIES kdeconnect-uriparser)
+
 # ExternalProject libraries are invisible to Android Gradle Plugin's native
 # dependency scanner. Model the non-system ELF dependencies explicitly so the
 # corresponding .so files are packaged in the AAR/APK.

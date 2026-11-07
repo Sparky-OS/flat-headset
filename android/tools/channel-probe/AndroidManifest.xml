@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: 2026 Daniel Campos Ramos
+     SPDX-License-Identifier: Apache-2.0 -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="org.sparky.stereodroid.channelprobe" android:versionCode="1" android:versionName="1">
+    <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="28" />
+    <application android:debuggable="true" />
+    <instrumentation android:name="org.sparky.stereodroid.channelprobe.ChannelProbe"
+        android:targetPackage="org.kde.kdeconnect_tp.debug" />
+</manifest>

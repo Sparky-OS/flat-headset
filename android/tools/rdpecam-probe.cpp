@@ -246,10 +246,10 @@ static BOOL accepted(freerdp_listener*, freerdp_peer* peer)
         if (!peer->CheckFileDescriptor(peer)) {
             break;
         }
-        if (!managerOpened && WTSVirtualChannelManagerIsChannelJoined(context->manager, DRDYNVC_SVC_CHANNEL_NAME)) {
+        if (peer->activated && !managerOpened && WTSVirtualChannelManagerIsChannelJoined(context->manager, DRDYNVC_SVC_CHANNEL_NAME)) {
             managerOpened = WTSVirtualChannelManagerOpen(context->manager);
         }
-        if (!WTSVirtualChannelManagerCheckFileDescriptor(context->manager)) {
+        if (!WTSVirtualChannelManagerCheckFileDescriptorEx(context->manager, FALSE)) {
             break;
         }
         if (!probe.enumerator && WTSVirtualChannelManagerGetDrdynvcState(context->manager) == DRDYNVC_STATE_READY) {
