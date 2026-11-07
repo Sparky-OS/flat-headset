@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: 2026 Daniel Campos Ramos
+SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted-GPL -->
+<resources>
+    <string name="stereopose_enable">Prévia da orientação da cabeça StereoDroid</string>
+    <string name="stereopose_consent">Envia a orientação da cabeça com fusão de sensores ao PC conectado. Desativada, mantém o Flat Headset como está. No PC escolha vetor de rotação sem bússola (padrão), bússola, frequência e montagem. Esta prévia não mede posição.</string>
+    <string name="stereopose_pending">Aguardando rastreamento da cabeça</string>
+    <string name="stereopose_active">Rastreamento da cabeça ativo</string>
+    <string name="stereopose_paused">Rastreamento da cabeça pausado</string>
+    <string name="stereopose_unavailable">Rastreamento da cabeça indisponível</string>
+    <string name="stereopose_stopped">Rastreamento da cabeça parado</string>
+    <string name="stereopose_no_sensor">Sensor selecionado indisponível</string>
+    <string name="stereopose_version">Versão de orientação incompatível</string>
+    <string name="stereopose_denied">Permissão de rastreamento negada</string>
+    <string name="stereopose_timing">Sincronização indisponível</string>
+    <string name="stereopose_stale">Orientação congelada</string>
+    <string name="stereopose_lost">Rastreamento da cabeça perdido</string>
+    <string name="stereopose_invalid">Mensagem de orientação inválida</string>
+    <string name="stereopose_recenter">Olhe à frente e recentralize</string>
+    <string name="stereopose_disconnected">PC desconectado</string>
+    <string name="stereopose_recenter_action">Toque aqui para recentralizar</string>
+    <string name="stereopose_pc_missing">Receptor de orientação do PC indisponível</string>
+    <string name="stereopose_source_game">Rotação sem bússola · %1$d Hz</string>
+    <string name="stereopose_source_compass">Direção da bússola · %1$d Hz</string>
+</resources>

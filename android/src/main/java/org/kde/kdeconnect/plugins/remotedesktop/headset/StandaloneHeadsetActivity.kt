@@ -151,6 +151,13 @@ class StandaloneHeadsetActivity : AppCompatActivity() {
                 addView(fitSwitch(R.string.headset_symmetric_notch, HeadsetFitOverlay.SYMMETRIC_NOTCH))
                 addView(fitSwitch(R.string.headset_alignment, HeadsetFitOverlay.ALIGNMENT))
                 addView(Switch(this@StandaloneHeadsetActivity).apply {
+                    setText(R.string.stereopose_enable)
+                    isChecked = fit.getBoolean("stereodroid-orientation", false)
+                    setOnCheckedChangeListener { _, enabled -> fit.edit().putBoolean("stereodroid-orientation", enabled).apply() }
+                })
+                addView(TextView(this@StandaloneHeadsetActivity).apply { setText(R.string.stereopose_consent) })
+
+                addView(Switch(this@StandaloneHeadsetActivity).apply {
                     hevcSwitch = this
                     setText(R.string.headset_hevc)
                     isChecked = fit.getBoolean("hevc", false)

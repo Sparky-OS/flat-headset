@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: 2026 Daniel Campos Ramos
+SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted-GPL -->
+<resources>
+    <string name="stereopose_enable">StereoDroid head orientation preview</string>
+    <string name="stereopose_consent">Sends fused head orientation to the connected PC. Flat Headset stays unchanged while this is off. On the PC choose game rotation vector (default), compass heading, rate and mounting. This preview measures no position.</string>
+    <string name="stereopose_pending">Head tracking pending</string>
+    <string name="stereopose_active">Head tracking active</string>
+    <string name="stereopose_paused">Head tracking paused</string>
+    <string name="stereopose_unavailable">Head tracking unavailable</string>
+    <string name="stereopose_stopped">Head tracking stopped</string>
+    <string name="stereopose_no_sensor">Selected fused sensor unavailable</string>
+    <string name="stereopose_version">Pose version unsupported</string>
+    <string name="stereopose_denied">Head tracking permission denied</string>
+    <string name="stereopose_timing">Pose timing unavailable</string>
+    <string name="stereopose_stale">Head tracking frozen</string>
+    <string name="stereopose_lost">Head tracking lost</string>
+    <string name="stereopose_invalid">Invalid pose message</string>
+    <string name="stereopose_recenter">Face forward and recenter</string>
+    <string name="stereopose_disconnected">PC disconnected</string>
+    <string name="stereopose_recenter_action">Tap here to recenter</string>
+    <string name="stereopose_pc_missing">PC pose receiver unavailable</string>
+    <string name="stereopose_source_game">Game rotation vector · %1$d Hz</string>
+    <string name="stereopose_source_compass">Compass heading · %1$d Hz</string>
+</resources>

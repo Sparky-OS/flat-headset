@@ -19,6 +19,8 @@ import com.freerdp.freerdpcore.presentation.SessionActivity
 
 class HeadsetActivity : SessionActivity() {
     private var video: HeadsetVideo? = null
+    private var pose: StereoPoseController? = null
+    private var poseStatus: PoseStatusView? = null
     private var waitingScene: WaitingSceneView? = null
     @Volatile private var failureResult: Intent? = null
     private var failureOverlay: View? = null
@@ -36,6 +38,13 @@ class HeadsetActivity : SessionActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val tracking = getSharedPreferences(HeadsetFitOverlay.PREFERENCES, MODE_PRIVATE).getBoolean("stereodroid-orientation", false)
+        if (tracking) {
+            poseStatus = PoseStatusView(this).also { status ->
+                status.setOnClickListener { pose?.requestRecenter() }
+            }
+            pose = StereoPoseController(this, true) { state, reason -> runOnUiThread { poseStatus?.state(state, reason, pose?.selectedSensor ?: 15, pose?.selectedRate ?: 60) } }
+        }
         HeadsetFitOverlay.allowFullPanel(window)
         performance = HeadsetPerformance(this, !org.kde.kdeconnect_tp.BuildConfig.DEBUG || !intent.getBooleanExtra("headsetProofDisableWifiLock", false)).also { it.setConnected(displayConnected) }
         findViewById<ViewGroup>(android.R.id.content).getChildAt(0)?.alpha = 0f
@@ -82,9 +91,13 @@ class HeadsetActivity : SessionActivity() {
             ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         findViewById<ViewGroup>(android.R.id.content).addView(HeadsetFitOverlay(this),
             ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        poseStatus?.let { findViewById<ViewGroup>(android.R.id.content).addView(it,
+            ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (68 * resources.displayMetrics.density).toInt())) }
+
     }
 
     override fun onSessionConnectionChanged(connected: Boolean) {
+        pose?.connected(connected)
         if (!connected) { video?.close(); linkStats?.save() }
         displayConnected = connected
         if (connected) everConnected = true
@@ -95,6 +108,9 @@ class HeadsetActivity : SessionActivity() {
         // preferences. Restore the headset policy without waiting for focus.
         if (connected) hideSystemBars()
     }
+
+    override fun onStereoPosePacket(instance: Long, cookie: Long, event: Int, packet: ByteArray): Int =
+        pose?.nativeEvent(instance, cookie, event, packet) ?: 0
 
     override fun onHeadsetPacket(packet: ByteArray): Int = video?.receive(packet) ?: 0
 
@@ -186,9 +202,9 @@ class HeadsetActivity : SessionActivity() {
         if (hasFocus) hideSystemBars()
     }
 
-    override fun onResume() { super.onResume(); resumed = true; hideSystemBars(); panel?.onResume(); waitingScene?.setResumed(true); performance?.setResumed(true); networkOverlay?.setActive(displayConnected) }
-    override fun onPause() { waitingScene?.setResumed(false); networkOverlay?.setActive(false); linkStats?.save(); resumed = false; video?.close(); performance?.setResumed(false); panel?.onPause(); super.onPause() }
-    override fun onDestroy() { waitingScene?.close(); waitingScene = null; video?.close(); video = null; performance?.close(); performance = null; panel?.release(); panel = null; super.onDestroy() }
+    override fun onResume() { super.onResume(); pose?.setResumed(true); resumed = true; hideSystemBars(); panel?.onResume(); waitingScene?.setResumed(true); performance?.setResumed(true); networkOverlay?.setActive(displayConnected) }
+    override fun onPause() { pose?.setResumed(false); waitingScene?.setResumed(false); networkOverlay?.setActive(false); linkStats?.save(); resumed = false; video?.close(); performance?.setResumed(false); panel?.onPause(); super.onPause() }
+    override fun onDestroy() { pose?.close(); pose = null; waitingScene?.close(); waitingScene = null; video?.close(); video = null; performance?.close(); performance = null; panel?.release(); panel = null; super.onDestroy() }
 
     companion object { const val EXTRA_NO_LENSES = "headsetNoLenses" }
 }

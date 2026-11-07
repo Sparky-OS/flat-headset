@@ -1,0 +1,69 @@
+diff --git a/client/Android/Studio/freeRDPCore/src/main/cpp/android_freerdp.c b/client/Android/Studio/freeRDPCore/src/main/cpp/android_freerdp.c
+index 4e6f3b6..5edf874 100644
+--- a/client/Android/Studio/freeRDPCore/src/main/cpp/android_freerdp.c
++++ b/client/Android/Studio/freeRDPCore/src/main/cpp/android_freerdp.c
+@@ -274,6 +274,8 @@ static BOOL android_pre_connect(freerdp* instance)
+ 		return FALSE;
+ 	}
+ 
++	const char* poseArgs[] = {"stereopose"};
++	if (!freerdp_client_add_dynamic_channel(settings, 1, poseArgs)) return FALSE;
+ 	const char* headsetArgs[] = {"headsetvideo"};
+ 	if (freerdp_register_addin_provider(headset_provider, 0) != CHANNEL_RC_OK ||
+ 	    !freerdp_client_add_dynamic_channel(settings, 1, headsetArgs)) return FALSE;
+diff --git a/client/Android/Studio/freeRDPCore/src/main/cpp/android_headset.c b/client/Android/Studio/freeRDPCore/src/main/cpp/android_headset.c
+index 78fc089..09c39aa 100644
+--- a/client/Android/Studio/freeRDPCore/src/main/cpp/android_headset.c
++++ b/client/Android/Studio/freeRDPCore/src/main/cpp/android_headset.c
+@@ -78,7 +78,9 @@ static UINT headset_entry(IDRDYNVC_ENTRY_POINTS* ep) {
+     return freerdp_generic_DVCPluginEntry(ep, "com.freerdp.channels.headsetvideo", "org.sparky.Headset.Video1",
+         sizeof(HeadsetPlugin), sizeof(HeadsetCallback), &callbacks, headset_initialize, NULL);
+ }
++extern UINT stereopose_entry(IDRDYNVC_ENTRY_POINTS* ep);
+ static PVIRTUALCHANNELENTRY headset_provider(LPCSTR name, LPCSTR sub, LPCSTR type, DWORD flags) {
++    if (name && strcmp(name, "stereopose") == 0) return (PVIRTUALCHANNELENTRY)stereopose_entry;
+     if (name && strcmp(name, "headsetvideo") == 0) return (PVIRTUALCHANNELENTRY)headset_entry;
+     return freerdp_channels_load_static_addin_entry(name, sub, type, flags);
+ }
+diff --git a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/services/LibFreeRDP.java b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/services/LibFreeRDP.java
+index 9d551fb..54b056d 100644
+--- a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/services/LibFreeRDP.java
++++ b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/services/LibFreeRDP.java
+@@ -723,6 +723,15 @@ public class LibFreeRDP
+ 		return uiEventListener.OnExperimentalFeature(feature);
+ 	}
+ 
++	public static native boolean sendStereoPose(long instance, long cookie, byte[] packet);
++
++	private static int OnStereoPosePacket(long instance, long cookie, int event, byte[] packet)
++	{
++		SessionState session = GlobalApp.getSession(instance);
++		if (session == null || session.getUIEventListener() == null) return 0;
++		return session.getUIEventListener().OnStereoPosePacket(instance, cookie, event, packet);
++	}
++
+ 	private static int OnHeadsetPacket(long inst, byte[] packet)
+ 	{
+ 		SessionState s = GlobalApp.getSession(inst);
+@@ -919,6 +928,7 @@ public class LibFreeRDP
+ 
+ 		boolean OnExperimentalFeature(int feature);
+ 
++		default int OnStereoPosePacket(long instance, long cookie, int event, byte[] packet) { return 0; }
+ 		default int OnHeadsetPacket(byte[] packet) { return 0; }
+ 
+ 		void OnGraphicsUpdate(int x, int y, int width, int height);
+diff --git a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionActivity.java b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionActivity.java
+index dc4f185..329251a 100644
+--- a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionActivity.java
++++ b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionActivity.java
+@@ -829,6 +829,9 @@ public class SessionActivity extends AppCompatActivity
+ 		                                     getResources().getText(R.string.info_reconnecting)));
+ 	}
+ 
++	@Override public int OnStereoPosePacket(long instance, long cookie, int event, byte[] packet) { return onStereoPosePacket(instance, cookie, event, packet); }
++	protected int onStereoPosePacket(long instance, long cookie, int event, byte[] packet) { return 0; }
++
+ 	@Override public int OnHeadsetPacket(byte[] packet) { return onHeadsetPacket(packet); }
+ 	protected int onHeadsetPacket(byte[] packet) { return 0; }
+ 

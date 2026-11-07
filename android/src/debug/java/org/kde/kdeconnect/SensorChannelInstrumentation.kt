@@ -79,6 +79,17 @@ class SensorChannelInstrumentation : Instrumentation() {
 
 /** The fixture explicitly approves the experimental camera channel on its pinned local peer. */
 class SensorChannelProofActivity : SessionActivity() {
+    private var pose: org.kde.kdeconnect.plugins.remotedesktop.headset.StereoPoseController? = null
+    override fun onCreate(state: Bundle?) {
+        super.onCreate(state)
+        pose = org.kde.kdeconnect.plugins.remotedesktop.headset.StereoPoseController(this,
+            intent.data?.host == "10.0.2.2") { status, reason -> android.util.Log.i("PoseProof", "STATE $status reason=$reason") }
+    }
+    override fun onStereoPosePacket(instance: Long, cookie: Long, event: Int, packet: ByteArray): Int =
+        pose?.nativeEvent(instance, cookie, event, packet) ?: 0
+    override fun onResume() { super.onResume(); pose?.setResumed(true) }
+    override fun onPause() { pose?.setResumed(false); super.onPause() }
+    override fun onDestroy() { pose?.close(); pose = null; super.onDestroy() }
     override fun OnExperimentalFeature(feature: Int): Boolean =
         feature == LibFreeRDP.EXPERIMENTAL_CAMERA && intent.data?.host == "10.0.2.2"
 }

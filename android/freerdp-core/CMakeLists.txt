@@ -9,3 +9,6 @@ if(NOT IS_DIRECTORY "${FLAT_HEADSET_FREERDP_CORE}/src/main/cpp")
   message(FATAL_ERROR "Prepare the pinned FreeRDP core before configuring")
 endif()
 add_subdirectory("${FLAT_HEADSET_FREERDP_CORE}/src/main/cpp" upstream)
+
+target_sources(freerdp-android PRIVATE overlay/android_stereopose.c)
+target_include_directories(freerdp-android PRIVATE "${FLAT_HEADSET_FREERDP_CORE}/src/main/cpp")
