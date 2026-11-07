@@ -1,0 +1,2152 @@
+From: Daniel Campos Ramos <Capitain_Jack@yahoo.com>
+Subject: [PATCH] Retain the embedded session, headset and input interfaces
+
+Rebase the previous 22 embedding patches on FreeRDP 8cbbd9f5275f.
+Keep upstream reconnect, keyboard and pure-move coalescing. The upstream
+API-24 compatibility work supersedes the previous parcel/window patches.
+The individual original changes remain in this integration's git history.
+
+Assisted-by: gpt-6.1-sol via Codex
+---
+diff --git a/channels/rdpgfx/client/rdpgfx_main.c b/channels/rdpgfx/client/rdpgfx_main.c
+index 13fa8c8..f779341 100644
+--- a/channels/rdpgfx/client/rdpgfx_main.c
++++ b/channels/rdpgfx/client/rdpgfx_main.c
+@@ -44,6 +44,20 @@
+ 
+ #include "rdpgfx_main.h"
+ 
++
++#if defined(HEADSET_TIMING)
++#include <time.h>
++static UINT64 headset_clock_ns(void)
++{
++    struct timespec now;
++    clock_gettime(CLOCK_MONOTONIC, &now);
++    return (UINT64)now.tv_sec * 1000000000ULL + now.tv_nsec;
++}
++#define HEADSET_STAGE(stage, id) WLog_Print(WLog_Get("HeadsetStage"), WLOG_INFO, "stage=%s ns=%" PRIu64 " id=%" PRIu64, stage, headset_clock_ns(), (UINT64)(id))
++#else
++#define HEADSET_STAGE(stage, id) do { } while (0)
++#endif
++
+ #define GFXTAG CHANNELS_TAG("rdpgfx.client")
+ 
+ #define RDPGFX_NUMBER_CAPSETS 0x100
+@@ -671,6 +685,7 @@ static UINT rdpgfx_send_frame_acknowledge_pdu(RdpgfxClientContext* context,
+ 		                           .pduLength = RDPGFX_HEADER_SIZE + 12 };
+ 
+ 	WLog_Print(gfx->base.log, WLOG_TRACE, "SendFrameAcknowledgePdu: %" PRIu32 "", pdu->frameId);
++	HEADSET_STAGE("ack_write", pdu->frameId);
+ 
+ 	wStream* s = Stream_New(nullptr, header.pduLength);
+ 
+@@ -1369,6 +1384,7 @@ static UINT rdpgfx_recv_start_frame_pdu(GENERIC_CHANNEL_CALLBACK* callback, wStr
+ 	WLog_Print(gfx->base.log, WLOG_TRACE,
+ 	           "RecvStartFramePdu: frameId: %" PRIu32 " timestamp: 0x%08" PRIX32 "", pdu.frameId,
+ 	           pdu.timestamp);
++	HEADSET_STAGE("frame_begin", pdu.frameId);
+ 	gfx->StartDecodingTime = GetTickCount64();
+ 
+ 	if (context)
+@@ -1406,6 +1422,7 @@ static UINT rdpgfx_recv_end_frame_pdu(GENERIC_CHANNEL_CALLBACK* callback, wStrea
+ 	Stream_Read_UINT32(s, pdu.frameId); /* frameId (4 bytes) */
+ 	WLog_Print(gfx->base.log, WLOG_TRACE, "RecvEndFramePdu: frameId: %" PRIu32 "", pdu.frameId);
+ 
++	HEADSET_STAGE("bitmap_begin", pdu.frameId);
+ 	const UINT64 start = GetTickCount64();
+ 	if (context)
+ 	{
+@@ -1419,6 +1436,7 @@ static UINT rdpgfx_recv_end_frame_pdu(GENERIC_CHANNEL_CALLBACK* callback, wStrea
+ 		}
+ 	}
+ 	const UINT64 end = GetTickCount64();
++	HEADSET_STAGE("bitmap_end", pdu.frameId);
+ 	const UINT64 EndFrameTime = end - start;
+ 	gfx->TotalDecodedFrames++;
+ 	rdpgfx_stats_frame_decoded(context);
+diff --git a/client/Android/Studio/freeRDPCore/src/main/cpp/android_event.c b/client/Android/Studio/freeRDPCore/src/main/cpp/android_event.c
+index 614f85a..10196e6 100644
+--- a/client/Android/Studio/freeRDPCore/src/main/cpp/android_event.c
++++ b/client/Android/Studio/freeRDPCore/src/main/cpp/android_event.c
+@@ -57,14 +57,13 @@ BOOL android_push_event(freerdp* inst, ANDROID_EVENT* event)
+ 
+ 	androidContext* aCtx = (androidContext*)inst->context;
+ 	ANDROID_EVENT_QUEUE* queue = aCtx->event_queue;
+-	if (!queue)
++	if (!queue || !queue->isSet)
+ 		return FALSE;
+ 
+ 	EnterCriticalSection(&queue->lock);
+ 
+ 	if (android_coalesce_cursor_move(queue, event))
+ 	{
+-		/* the queued move is still pending, no need to signal */
+ 		LeaveCriticalSection(&queue->lock);
+ 		android_event_free(event);
+ 		return TRUE;
+@@ -83,7 +82,8 @@ BOOL android_push_event(freerdp* inst, ANDROID_EVENT* event)
+ 
+ 			new_size += 128ull;
+ 		} while (new_size <= queue->count);
+-		void* new_events = realloc((void*)queue->events, sizeof(ANDROID_EVENT*) * new_size);
++		void* new_events =
++		    realloc((void*)queue->events, sizeof(ANDROID_EVENT*) * new_size);
+ 
+ 		if (!new_events)
+ 		{
+@@ -91,41 +91,43 @@ BOOL android_push_event(freerdp* inst, ANDROID_EVENT* event)
+ 			return FALSE;
+ 		}
+ 
+-		queue->events = (ANDROID_EVENT**)new_events;
++		queue->events = new_events;
+ 		queue->size = new_size;
+ 	}
+ 
+ 	queue->events[queue->count++] = event;
++	const BOOL rc = SetEvent(queue->isSet);
++	if (!rc)
++	{
++		queue->count--;
++		queue->events[queue->count] = nullptr;
++	}
+ 	LeaveCriticalSection(&queue->lock);
+-
+-	/* the queue owns the event now, the caller must not free it */
+-	if (!SetEvent(queue->isSet))
+-		WLog_WARN(TAG, "SetEvent failed");
+-	return TRUE;
++	return rc;
+ }
+ 
+-WINPR_ATTR_NODISCARD
+ static ANDROID_EVENT* android_pop_event(ANDROID_EVENT_QUEUE* queue)
+ {
+-	ANDROID_EVENT* event = nullptr;
+-
+ 	WINPR_ASSERT(queue);
++	EnterCriticalSection(&queue->lock);
+ 
+ 	if (queue->count < 1)
++	{
++		LeaveCriticalSection(&queue->lock);
+ 		return nullptr;
++	}
+ 
+-	event = queue->events[0];
++	ANDROID_EVENT* event = queue->events[0];
+ 	(queue->count)--;
+ 
+ 	for (size_t i = 0; i < queue->count; i++)
+-	{
+ 		queue->events[i] = queue->events[i + 1];
+-	}
++	queue->events[queue->count] = nullptr;
+ 
++	LeaveCriticalSection(&queue->lock);
+ 	return event;
+ }
+ 
+-WINPR_ATTR_NODISCARD
+ static BOOL android_process_event(ANDROID_EVENT_QUEUE* queue, freerdp* inst)
+ {
+ 	rdpContext* context;
+@@ -136,19 +138,14 @@ static BOOL android_process_event(ANDROID_EVENT_QUEUE* queue, freerdp* inst)
+ 	context = inst->context;
+ 	WINPR_ASSERT(context);
+ 
+-	for (;;)
++	ANDROID_EVENT* event = nullptr;
++	while ((event = android_pop_event(queue)) != nullptr)
+ 	{
+-		BOOL rc = FALSE;
++		BOOL rc = TRUE;
+ 		androidContext* afc = (androidContext*)context;
++		const int eventType = event->type;
+ 
+-		EnterCriticalSection(&queue->lock);
+-		ANDROID_EVENT* event = android_pop_event(queue);
+-		LeaveCriticalSection(&queue->lock);
+-
+-		if (!event)
+-			break;
+-
+-		switch (event->type)
++		switch (eventType)
+ 		{
+ 			case EVENT_TYPE_KEY:
+ 			{
+@@ -179,6 +176,12 @@ static BOOL android_process_event(ANDROID_EVENT_QUEUE* queue, freerdp* inst)
+ 
+ 			case EVENT_TYPE_CLIPBOARD:
+ 			{
++				if (!afc->clipboard || !afc->cliprdr)
++				{
++					WLog_DBG(TAG, "Dropping clipboard event because clipboard redirection is disabled");
++					break;
++				}
++
+ 				ANDROID_EVENT_CLIPBOARD* clipboard_event = (ANDROID_EVENT_CLIPBOARD*)event;
+ 				const char* mimeType = clipboard_event->mimeType;
+ 				UINT32 formatId = ClipboardRegisterFormat(afc->clipboard, mimeType);
+@@ -194,14 +197,33 @@ static BOOL android_process_event(ANDROID_EVENT_QUEUE* queue, freerdp* inst)
+ 			break;
+ 
+ 			case EVENT_TYPE_DISCONNECT:
++				afc->disconnect_requested = TRUE;
++				WLog_DBG(TAG, "Processing requested Android disconnect");
++				break;
++
+ 			default:
++				rc = FALSE;
+ 				break;
+ 		}
+ 
+ 		android_event_free(event);
+ 
+ 		if (!rc)
++		{
++			/* Input and clipboard events are auxiliary to the RDP transport. A rejected
++			 * event must not tear down an otherwise healthy desktop session; transport
++			 * failures are reported by freerdp_check_event_handles(). */
++			if (eventType == EVENT_TYPE_KEY || eventType == EVENT_TYPE_KEY_UNICODE ||
++			    eventType == EVENT_TYPE_CURSOR || eventType == EVENT_TYPE_CLIPBOARD)
++			{
++				WLog_WARN(TAG, "Android event type %d was rejected; keeping the RDP session alive",
++				          eventType);
++				continue;
++			}
++
++			WLog_ERR(TAG, "Unknown Android event type %d", eventType);
+ 			return FALSE;
++		}
+ 	}
+ 
+ 	return TRUE;
+@@ -340,7 +362,7 @@ ANDROID_EVENT_CLIPBOARD* android_event_clipboard_new(const void* data, size_t da
+ 
+ 	if (data && data_length > 0)
+ 	{
+-		const BOOL isText = !mimeType || strcmp(mimeType, "text/plain;charset=utf-8") == 0;
++		const BOOL isText = !mimeType || strcmp(mimeType, "text/plain") == 0;
+ 		/* Text data needs a null terminator; image data is stored as-is. */
+ 		event->data = isText ? calloc(data_length + 1, sizeof(char)) : malloc(data_length);
+ 
+@@ -382,10 +404,12 @@ BOOL android_event_queue_init(freerdp* inst)
+ 
+ 	queue->size = 16;
+ 	queue->count = 0;
++	InitializeCriticalSection(&queue->lock);
+ 	queue->isSet = CreateEventA(nullptr, TRUE, FALSE, nullptr);
+ 
+ 	if (!queue->isSet)
+ 	{
++		DeleteCriticalSection(&queue->lock);
+ 		free(queue);
+ 		return FALSE;
+ 	}
+@@ -395,18 +419,8 @@ BOOL android_event_queue_init(freerdp* inst)
+ 	if (!queue->events)
+ 	{
+ 		WLog_ERR(TAG, "android_event_queue_init: memory allocation failed");
+-		if (!CloseHandle(queue->isSet))
+-			WLog_WARN(TAG, "CloseHandle failed");
+-		free(queue);
+-		return FALSE;
+-	}
+-
+-	if (!InitializeCriticalSectionAndSpinCount(&queue->lock, 4000))
+-	{
+-		WLog_ERR(TAG, "android_event_queue_init: failed to initialize lock");
+-		free((void*)queue->events);
+-		if (!CloseHandle(queue->isSet))
+-			WLog_WARN(TAG, "CloseHandle failed");
++		(void)CloseHandle(queue->isSet);
++		DeleteCriticalSection(&queue->lock);
+ 		free(queue);
+ 		return FALSE;
+ 	}
+@@ -428,12 +442,9 @@ void android_event_queue_uninit(freerdp* inst)
+ 
+ 	if (queue)
+ 	{
+-		aCtx->event_queue = nullptr;
+-
+ 		if (queue->isSet)
+ 		{
+-			if (!CloseHandle(queue->isSet))
+-				WLog_WARN(TAG, "CloseHandle failed");
++			(void)CloseHandle(queue->isSet);
+ 			queue->isSet = nullptr;
+ 		}
+ 
+@@ -441,7 +452,7 @@ void android_event_queue_uninit(freerdp* inst)
+ 		{
+ 			for (size_t i = 0; i < queue->count; i++)
+ 				android_event_free(queue->events[i]);
+-			free((void*)queue->events);
++			free(queue->events);
+ 			queue->events = nullptr;
+ 			queue->size = 0;
+ 			queue->count = 0;
+@@ -449,6 +460,7 @@ void android_event_queue_uninit(freerdp* inst)
+ 
+ 		DeleteCriticalSection(&queue->lock);
+ 		free(queue);
++		aCtx->event_queue = nullptr;
+ 	}
+ }
+ 
+diff --git a/client/Android/Studio/freeRDPCore/src/main/cpp/android_freerdp.c b/client/Android/Studio/freeRDPCore/src/main/cpp/android_freerdp.c
+index 8bf7f7c..1bad45c 100644
+--- a/client/Android/Studio/freeRDPCore/src/main/cpp/android_freerdp.c
++++ b/client/Android/Studio/freeRDPCore/src/main/cpp/android_freerdp.c
+@@ -24,8 +24,10 @@
+ 
+ #include <winpr/assert.h>
+ #include <winpr/image.h>
++#include <winpr/wtsapi.h>
+ 
+ #include <freerdp/graphics.h>
++#include <freerdp/codecs.h>
+ #include <freerdp/codec/rfx.h>
+ #include <freerdp/gdi/gdi.h>
+ #include <freerdp/gdi/gfx.h>
+@@ -74,7 +76,6 @@ static UINT android_UpdateWindowFromSurface(RdpgfxClientContext* context, gdiGfx
+ static void android_OnChannelConnectedEventHandler(void* context,
+                                                    const ChannelConnectedEventArgs* e)
+ {
+-	rdpSettings* settings;
+ 	androidContext* afc;
+ 
+ 	if (!context || !e)
+@@ -84,7 +85,6 @@ static void android_OnChannelConnectedEventHandler(void* context,
+ 	}
+ 
+ 	afc = (androidContext*)context;
+-	settings = afc->common.context.settings;
+ 
+ 	if (strcmp(e->name, CLIPRDR_SVC_CHANNEL_NAME) == 0)
+ 	{
+@@ -100,10 +100,28 @@ static void android_OnChannelConnectedEventHandler(void* context,
+ 	}
+ 	else if (strcmp(e->name, RDPGFX_DVC_CHANNEL_NAME) == 0)
+ 	{
+-		freerdp_client_OnChannelConnectedEventHandler(context, e);
+ 		RdpgfxClientContext* gfx = (RdpgfxClientContext*)e->pInterface;
+-		if (gfx)
+-			gfx->UpdateWindowFromSurface = android_UpdateWindowFromSurface;
++		afc->gfx_pipeline_initialized = FALSE;
++		if (!gfx || !gdi_graphics_pipeline_init(afc->common.context.gdi, gfx))
++		{
++			/* gdi_graphics_pipeline_init can fail after wiring the context but before
++			 * its critical section is initialized. Undo only those partial assignments;
++			 * the regular disconnect handler must not uninitialize that incomplete object. */
++			if (gfx)
++			{
++				if (afc->common.context.gdi)
++					afc->common.context.gdi->gfx = nullptr;
++				gfx->custom = nullptr;
++				freerdp_client_codecs_free(gfx->codecs);
++				gfx->codecs = nullptr;
++			}
++			setChannelError(&afc->common.context, CHANNEL_RC_INITIALIZATION_ERROR,
++			                "Android RDPGFX GDI pipeline initialization failed");
++			return;
++		}
++
++		afc->gfx_pipeline_initialized = TRUE;
++		gfx->UpdateWindowFromSurface = android_UpdateWindowFromSurface;
+ 	}
+ 	else
+ 		freerdp_client_OnChannelConnectedEventHandler(context, e);
+@@ -112,7 +130,6 @@ static void android_OnChannelConnectedEventHandler(void* context,
+ static void android_OnChannelDisconnectedEventHandler(void* context,
+                                                       const ChannelDisconnectedEventArgs* e)
+ {
+-	rdpSettings* settings;
+ 	androidContext* afc;
+ 
+ 	if (!context || !e)
+@@ -122,7 +139,6 @@ static void android_OnChannelDisconnectedEventHandler(void* context,
+ 	}
+ 
+ 	afc = (androidContext*)context;
+-	settings = afc->common.context.settings;
+ 
+ 	if (strcmp(e->name, CLIPRDR_SVC_CHANNEL_NAME) == 0)
+ 	{
+@@ -136,6 +152,12 @@ static void android_OnChannelDisconnectedEventHandler(void* context,
+ 	{
+ 		android_rail_uninit(afc, (RailClientContext*)e->pInterface);
+ 	}
++	else if (strcmp(e->name, RDPGFX_DVC_CHANNEL_NAME) == 0)
++	{
++		if (afc->gfx_pipeline_initialized)
++			freerdp_client_OnChannelDisconnectedEventHandler(context, e);
++		afc->gfx_pipeline_initialized = FALSE;
++	}
+ 	else
+ 		freerdp_client_OnChannelDisconnectedEventHandler(context, e);
+ }
+@@ -221,6 +243,8 @@ static BOOL android_desktop_resize(rdpContext* context)
+ 	return TRUE;
+ }
+ 
++#include "android_headset.c"
++
+ static BOOL android_pre_connect(freerdp* instance)
+ {
+ 	WINPR_ASSERT(instance);
+@@ -249,6 +273,9 @@ static BOOL android_pre_connect(freerdp* instance)
+ 		return FALSE;
+ 	}
+ 
++	const char* headsetArgs[] = {"headsetvideo"};
++	if (freerdp_register_addin_provider(headset_provider, 0) != CHANNEL_RC_OK ||
++	    !freerdp_client_add_dynamic_channel(settings, 1, headsetArgs)) return FALSE;
+ 	freerdp_callback("OnPreConnect", "(J)V", (jlong)instance);
+ 	return TRUE;
+ }
+@@ -473,7 +500,6 @@ static BOOL android_post_connect(freerdp* instance)
+ 	                 freerdp_settings_get_uint32(settings, FreeRDP_DesktopWidth),
+ 	                 freerdp_settings_get_uint32(settings, FreeRDP_DesktopHeight),
+ 	                 freerdp_settings_get_uint32(settings, FreeRDP_ColorDepth));
+-	freerdp_callback("OnConnectionSuccess", "(J)V", (jlong)instance);
+ 	return TRUE;
+ }
+ 
+@@ -631,23 +657,106 @@ static SSIZE_T android_retry_dialog(freerdp* instance, const char* what, size_t
+ 	return delay;
+ }
+ 
+-static int android_freerdp_run(freerdp* instance)
++static void android_clear_session_error(androidContext* afc)
++{
++	WINPR_ASSERT(afc);
++	afc->last_session_error = FREERDP_ERROR_SUCCESS;
++	ZeroMemory(afc->last_session_error_text, sizeof(afc->last_session_error_text));
++}
++
++static DWORD android_resolve_session_status(const rdpContext* context, DWORD fallback)
++{
++	WINPR_ASSERT(context);
++
++	const UINT channelError = getChannelError(context);
++	if (channelError != CHANNEL_RC_OK)
++		return channelError;
++
++	const UINT32 lastError = freerdp_get_last_error(context);
++	if (lastError == FREERDP_ERROR_CONNECT_CANCELLED)
++		return CHANNEL_RC_OK;
++	if (lastError != FREERDP_ERROR_SUCCESS)
++		return lastError;
++
++	return fallback;
++}
++
++static DWORD android_snapshot_session_error(freerdp* instance, DWORD fallback,
++                                            const char* fallbackDescription)
+ {
+ 	WINPR_ASSERT(instance);
++	WINPR_ASSERT(instance->context);
++
++	rdpContext* context = instance->context;
++	androidContext* afc = (androidContext*)context;
++	const UINT channelError = getChannelError(context);
++	const UINT32 lastError = freerdp_get_last_error(context);
++	const DWORD status = android_resolve_session_status(context, fallback);
++
++	if (status == CHANNEL_RC_OK)
++	{
++		android_clear_session_error(afc);
++		return CHANNEL_RC_OK;
++	}
++
++	afc->last_session_error = status;
++	if (channelError != CHANNEL_RC_OK)
++	{
++		const char* name = WTSErrorToString(channelError);
++		const char* description = getChannelErrorDescription(context);
++		(void)snprintf(afc->last_session_error_text, sizeof(afc->last_session_error_text),
++		               "Channel error %s [0x%08" PRIX32 "]: %s", name ? name : "unknown",
++		               (UINT32)channelError,
++		               (description && description[0]) ? description : "No channel details");
++	}
++	else if ((lastError != FREERDP_ERROR_SUCCESS) &&
++	         (lastError != FREERDP_ERROR_CONNECT_CANCELLED))
++	{
++		(void)snprintf(afc->last_session_error_text, sizeof(afc->last_session_error_text),
++		               "%s [0x%08" PRIX32 "]", freerdp_get_last_error_string(lastError), lastError);
++	}
++	else
++	{
++		(void)snprintf(afc->last_session_error_text, sizeof(afc->last_session_error_text),
++		               "%s [0x%08" PRIX32 "]",
++		               fallbackDescription ? fallbackDescription : "RDP session failed",
++		               (UINT32)status);
++	}
+ 
+-	DWORD status = WAIT_FAILED;
++	WLog_ERR(TAG, "Session failure snapshot: %s", afc->last_session_error_text);
++	return status;
++}
++
++static DWORD android_freerdp_run(freerdp* instance)
++{
++	DWORD count;
++	DWORD sessionStatus = CHANNEL_RC_OK;
+ 	HANDLE handles[MAXIMUM_WAIT_OBJECTS];
+ 	HANDLE inputEvent = nullptr;
+ 	rdpContext* context = instance->context;
+ 	WINPR_ASSERT(context);
+ 
+-	const rdpSettings* settings = context->settings;
++	androidContext* afc = (androidContext*)context;
+ 
+ 	inputEvent = android_get_handle(instance);
+ 
+-	while (!freerdp_shall_disconnect_context(context))
++	for (;;)
+ 	{
+-		DWORD count = 0;
++		DWORD waitStatus;
++
++		if (afc->disconnect_requested)
++		{
++			sessionStatus = CHANNEL_RC_OK;
++			break;
++		}
++
++		if (freerdp_shall_disconnect_context(context))
++		{
++			sessionStatus = android_resolve_session_status(context, CHANNEL_RC_OK);
++			break;
++		}
++
++		count = 0;
+ 
+ 		handles[count++] = inputEvent;
+ 
+@@ -656,16 +765,20 @@ static int android_freerdp_run(freerdp* instance)
+ 		if (tmp == 0)
+ 		{
+ 			WLog_ERR(TAG, "freerdp_get_event_handles failed");
++			sessionStatus = android_resolve_session_status(context, ERROR_INTERNAL_ERROR);
+ 			break;
+ 		}
+ 
+ 		count += tmp;
+-		status = WaitForMultipleObjects(count, handles, FALSE, INFINITE);
++		waitStatus = WaitForMultipleObjects(count, handles, FALSE, INFINITE);
+ 
+-		if (status == WAIT_FAILED)
++		if (waitStatus == WAIT_FAILED)
+ 		{
+-			WLog_ERR(TAG, "WaitForMultipleObjects failed with %u [%08X]", status,
++			const DWORD waitError = GetLastError();
++			WLog_ERR(TAG, "WaitForMultipleObjects failed with %u [%08X]", waitStatus,
+ 			         (unsigned)GetLastError());
++			sessionStatus = android_resolve_session_status(
++			    context, waitError != ERROR_SUCCESS ? waitError : ERROR_INTERNAL_ERROR);
+ 			break;
+ 		}
+ 
+@@ -674,57 +787,93 @@ static int android_freerdp_run(freerdp* instance)
+ 			if (!client_auto_reconnect(instance))
+ 			{
+ 				WLog_ERR(TAG, "Failed to check FreeRDP file descriptor");
+-				status = GetLastError();
++				sessionStatus = android_resolve_session_status(
++				    context, FREERDP_ERROR_CONNECT_TRANSPORT_FAILED);
+ 				break;
+ 			}
+ 		}
+ 
+-		if (freerdp_shall_disconnect_context(instance->context))
++		if (afc->disconnect_requested)
++		{
++			sessionStatus = CHANNEL_RC_OK;
+ 			break;
++		}
++
++		if (freerdp_shall_disconnect_context(context))
++		{
++			sessionStatus = android_resolve_session_status(context, CHANNEL_RC_OK);
++			break;
++		}
+ 
+ 		if (android_check_handle(instance) != TRUE)
+ 		{
++			const DWORD handleError = GetLastError();
+ 			WLog_ERR(TAG, "Failed to check android file descriptor");
+-			status = GetLastError();
++			sessionStatus = android_resolve_session_status(
++			    context, handleError != ERROR_SUCCESS ? handleError : ERROR_INTERNAL_ERROR);
++			break;
++		}
++
++		if (afc->disconnect_requested)
++		{
++			sessionStatus = CHANNEL_RC_OK;
+ 			break;
+ 		}
+ 	}
+ 
+-disconnect:
+ 	WLog_INFO(TAG, "Prepare shutdown...");
+ 
+-	return status;
++	return sessionStatus;
+ }
+ 
+ static DWORD WINAPI android_thread_func(LPVOID param)
+ {
+ 	DWORD status = ERROR_BAD_ARGUMENTS;
+ 	freerdp* instance = param;
++	androidContext* afc = nullptr;
+ 	WLog_DBG(TAG, "Start...");
+ 
+ 	WINPR_ASSERT(instance);
+ 	WINPR_ASSERT(instance->context);
++	afc = (androidContext*)instance->context;
+ 
+-	if (freerdp_client_start(instance->context) != CHANNEL_RC_OK)
++	const UINT startStatus = freerdp_client_start(instance->context);
++	if (startStatus != CHANNEL_RC_OK)
++	{
++		status = android_snapshot_session_error(instance, startStatus,
++		                                        "FreeRDP client startup failed");
+ 		goto fail;
++	}
+ 
+ 	WLog_DBG(TAG, "Connect...");
+ 
+ 	if (!freerdp_connect(instance))
+-		status = GetLastError();
++		status = android_snapshot_session_error(instance, FREERDP_ERROR_CONNECT_FAILED,
++		                                        "FreeRDP connection failed");
+ 	else
+ 	{
++		afc->is_connected = TRUE;
++		freerdp_callback("OnConnectionSuccess", "(J)V", (jlong)instance);
+ 		status = android_freerdp_run(instance);
++		if (status != CHANNEL_RC_OK)
++			status = android_snapshot_session_error(instance, status, "RDP event loop failed");
+ 		WLog_DBG(TAG, "Disconnect...");
+ 
+ 		if (!freerdp_disconnect(instance))
+-			status = GetLastError();
++		{
++			if (status == CHANNEL_RC_OK)
++				status = android_snapshot_session_error(instance, ERROR_INTERNAL_ERROR,
++				                                        "FreeRDP disconnect failed");
++		}
++		afc->is_connected = FALSE;
+ 	}
+ 
+ 	WLog_DBG(TAG, "Stop...");
+ 
+-	if (freerdp_client_stop(instance->context) != CHANNEL_RC_OK)
+-		goto fail;
++	const UINT stopStatus = freerdp_client_stop(instance->context);
++	if ((stopStatus != CHANNEL_RC_OK) && (status == CHANNEL_RC_OK))
++		status = android_snapshot_session_error(instance, stopStatus,
++		                                        "FreeRDP client shutdown failed");
+ 
+ fail:
+ 	WLog_DBG(TAG, "Session ended with %08" PRIX32 "", status);
+@@ -926,6 +1075,10 @@ Java_com_freerdp_freerdpcore_services_LibFreeRDP_freerdp_1get_1last_1error_1stri
+ 	if (!inst || !inst->context)
+ 		return (*env)->NewStringUTF(env, "");
+ 
++	const androidContext* afc = (const androidContext*)inst->context;
++	if (afc->last_session_error_text[0])
++		return (*env)->NewStringUTF(env, afc->last_session_error_text);
++
+ 	return (*env)->NewStringUTF(
+ 	    env, freerdp_get_last_error_string(freerdp_get_last_error(inst->context)));
+ }
+@@ -980,6 +1133,10 @@ JNIEXPORT jboolean JNICALL Java_com_freerdp_freerdpcore_services_LibFreeRDP_free
+ 	}
+ 
+ 	androidContext* ctx = (androidContext*)inst->context;
++	android_clear_session_error(ctx);
++	ctx->is_connected = FALSE;
++	ctx->disconnect_requested = FALSE;
++	ctx->gfx_pipeline_initialized = FALSE;
+ 
+ 	if (!(ctx->thread = CreateThread(nullptr, 0, android_thread_func, inst, 0, nullptr)))
+ 	{
+@@ -1012,6 +1169,7 @@ JNIEXPORT jboolean JNICALL Java_com_freerdp_freerdpcore_services_LibFreeRDP_free
+ 		android_event_free((ANDROID_EVENT*)event);
+ 		return JNI_FALSE;
+ 	}
++	ctx->disconnect_requested = TRUE;
+ 
+ 	/* The abort keeps an existing error, so force the cancel. */
+ 	freerdp_set_last_error_log(inst->context, FREERDP_ERROR_CONNECT_CANCELLED);
+@@ -1206,9 +1364,8 @@ Java_com_freerdp_freerdpcore_services_LibFreeRDP_freerdp_1send_1clipboard_1data(
+ 	freerdp* inst = (freerdp*)instance;
+ 	const char* data = jdata != nullptr ? (*env)->GetStringUTFChars(env, jdata, nullptr) : nullptr;
+ 	const size_t data_length = data ? (*env)->GetStringUTFLength(env, jdata) : 0;
+-	jboolean ret =
+-	    android_push_clipboard_event(inst, data, data_length, "text/plain;charset=utf-8");
+-	WLog_DBG(TAG, "send_clipboard_data: (%s)", data);
++	jboolean ret = android_push_clipboard_event(inst, data, data_length, "text/plain;charset=utf-8");
++	WLog_DBG(TAG, "send_clipboard_data: %" PRIuz " bytes", data_length);
+ 
+ 	if (data)
+ 		(*env)->ReleaseStringUTFChars(env, jdata, data);
+diff --git a/client/Android/Studio/freeRDPCore/src/main/cpp/android_freerdp.h b/client/Android/Studio/freeRDPCore/src/main/cpp/android_freerdp.h
+index 93b3103..9d73743 100644
+--- a/client/Android/Studio/freeRDPCore/src/main/cpp/android_freerdp.h
++++ b/client/Android/Studio/freeRDPCore/src/main/cpp/android_freerdp.h
+@@ -31,6 +31,10 @@ typedef struct
+ 	HANDLE thread;
+ 
+ 	BOOL is_connected;
++	BOOL disconnect_requested;
++	BOOL gfx_pipeline_initialized;
++	UINT32 last_session_error;
++	char last_session_error_text[768];
+ 
+ 	BOOL clipboardSync;
+ 	wClipboard* clipboard;
+diff --git a/client/Android/Studio/freeRDPCore/src/main/cpp/android_headset.c b/client/Android/Studio/freeRDPCore/src/main/cpp/android_headset.c
+new file mode 100644
+index 0000000..78fc089
+--- /dev/null
++++ b/client/Android/Studio/freeRDPCore/src/main/cpp/android_headset.c
+@@ -0,0 +1,84 @@
++/* SPDX-License-Identifier: MPL-2.0
++ * Uses the FreeRDP Android receiver by its contributors and KDE Connect integration.
++ */
++#include <freerdp/dvc.h>
++#include <freerdp/client/channels.h>
++#include <freerdp/client/cmdline.h>
++#include <winpr/stream.h>
++#include "android_jni_callback.h"
++
++#define HEADSET_HEADER 36
++#define HEADSET_LIMIT (8 * 1024 * 1024)
++typedef struct { GENERIC_DYNVC_PLUGIN base; rdpContext* context; } HeadsetPlugin;
++typedef struct { GENERIC_CHANNEL_CALLBACK base; BOOL failed; UINT32 sequence; } HeadsetCallback;
++
++static UINT32 headset_word(const BYTE* p) {
++    return p[0] | ((UINT32)p[1] << 8) | ((UINT32)p[2] << 16) | ((UINT32)p[3] << 24);
++}
++static void headset_put(BYTE* p, UINT32 value) {
++    for (int i = 0; i < 4; i++) p[i] = (BYTE)(value >> (i * 8));
++}
++static int headset_java(HeadsetCallback* callback, const BYTE* p, size_t length) {
++    HeadsetPlugin* plugin = (HeadsetPlugin*)callback->base.plugin;
++    JNIEnv* env = NULL;
++    const jboolean attached = jni_attach_thread(&env);
++    if (!env) return 0;
++    jbyteArray data = (*env)->NewByteArray(env, (jsize)length);
++    if (!data) { if (attached) jni_detach_thread(); return 0; }
++    if (length) (*env)->SetByteArrayRegion(env, data, 0, (jsize)length, (const jbyte*)p);
++    int result = freerdp_callback_int_result("OnHeadsetPacket", "(J[B)I", (jlong)plugin->context->instance, data);
++    (*env)->DeleteLocalRef(env, data);
++    if (attached) jni_detach_thread();
++    return result;
++}
++static UINT headset_received(IWTSVirtualChannelCallback* iface, wStream* stream) {
++    HeadsetCallback* c = (HeadsetCallback*)iface;
++    const BYTE* p = Stream_Pointer(stream);
++    size_t size = Stream_GetRemainingLength(stream);
++    if (c->failed) return CHANNEL_RC_OK;
++    if (size < HEADSET_HEADER || size > HEADSET_LIMIT + HEADSET_HEADER || headset_word(p) != 1
++        || headset_word(p + 28) != size - HEADSET_HEADER || headset_word(p + 32) != 2) {
++        c->failed = TRUE; headset_java(c, NULL, 0); return CHANNEL_RC_OK;
++    }
++    UINT32 kind = headset_word(p + 4), seq = headset_word(p + 20);
++    // Deliver a host rejection to the selected decoder; do not silently resume AVC.
++    BOOL valid = (kind == 1 && seq == 0 && size == HEADSET_HEADER && c->sequence == 0)
++        || (kind == 3 && seq == c->sequence + 1 && size > HEADSET_HEADER);
++    const int result = headset_java(c, p, size);
++    if (result < 0 || (!valid && kind != 5)) {
++        HeadsetPlugin* plugin = (HeadsetPlugin*)c->base.plugin;
++        c->failed = TRUE;
++        setChannelError(plugin->context, ERROR_INTERNAL_ERROR,
++                        "Selected HEVC decoder failed; see the headset session error");
++        return ERROR_INTERNAL_ERROR;
++    }
++    if (kind == 5) { c->failed = TRUE; return CHANNEL_RC_OK; }
++    const int accepted = result == 1;
++    BYTE reply[HEADSET_HEADER]; memcpy(reply, p, sizeof(reply));
++    headset_put(reply + 4, accepted ? (kind == 1 ? 2 : 4) : 5);
++    headset_put(reply + 24, accepted && kind == 1 ? 1 : 0);
++    headset_put(reply + 28, 0);
++    if (!accepted) { c->failed = TRUE; headset_java(c, NULL, 0); }
++    else c->sequence = seq;
++    // A frame is acknowledged only after decode and a bounded GL presentation wait.
++    if (c->base.channel->Write(c->base.channel, sizeof(reply), reply, NULL) != CHANNEL_RC_OK) {
++        c->failed = TRUE; headset_java(c, NULL, 0);
++    }
++    return CHANNEL_RC_OK; // This optional channel must never abort ordinary RDP.
++}
++static UINT headset_closed(IWTSVirtualChannelCallback* iface) {
++    HeadsetCallback* c = (HeadsetCallback*)iface;
++    headset_java(c, NULL, 0); free(c); return CHANNEL_RC_OK;
++}
++static UINT headset_initialize(GENERIC_DYNVC_PLUGIN* base, rdpContext* context, rdpSettings* settings) {
++    (void)settings; ((HeadsetPlugin*)base)->context = context; return CHANNEL_RC_OK;
++}
++static UINT headset_entry(IDRDYNVC_ENTRY_POINTS* ep) {
++    static const IWTSVirtualChannelCallback callbacks = { .OnDataReceived = headset_received, .OnClose = headset_closed };
++    return freerdp_generic_DVCPluginEntry(ep, "com.freerdp.channels.headsetvideo", "org.sparky.Headset.Video1",
++        sizeof(HeadsetPlugin), sizeof(HeadsetCallback), &callbacks, headset_initialize, NULL);
++}
++static PVIRTUALCHANNELENTRY headset_provider(LPCSTR name, LPCSTR sub, LPCSTR type, DWORD flags) {
++    if (name && strcmp(name, "headsetvideo") == 0) return (PVIRTUALCHANNELENTRY)headset_entry;
++    return freerdp_channels_load_static_addin_entry(name, sub, type, flags);
++}
+diff --git a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/FloatingToolbar.java b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/FloatingToolbar.java
+index b6f9c36..8259e29 100644
+--- a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/FloatingToolbar.java
++++ b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/FloatingToolbar.java
+@@ -26,6 +26,7 @@ public class FloatingToolbar
+ 	{
+ 		void onToggleTouchPointer();
+ 		void onToggleKeyboard();
++		void onDisconnect();
+ 	}
+ 
+ 	private enum Edge
+@@ -75,6 +76,7 @@ public class FloatingToolbar
+ 
+ 		bindButton(activity, R.id.floating_toolbar_touch_pointer, listener::onToggleTouchPointer);
+ 		bindButton(activity, R.id.floating_toolbar_sys_keyboard, listener::onToggleKeyboard);
++		bindButton(activity, R.id.floating_toolbar_disconnect, listener::onDisconnect);
+ 
+ 		ViewTreeObserver vto = container.getViewTreeObserver();
+ 		vto.addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+diff --git a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionActivity.java b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionActivity.java
+index ab7d063..dc4f185 100644
+--- a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionActivity.java
++++ b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionActivity.java
+@@ -26,6 +26,7 @@ import android.os.Bundle;
+ import android.os.Handler;
+ import android.os.Looper;
+ import android.os.Message;
++import android.os.ResultReceiver;
+ 
+ import androidx.activity.OnBackPressedCallback;
+ import androidx.annotation.NonNull;
+@@ -63,6 +64,17 @@ public class SessionActivity extends AppCompatActivity
+ {
+ 	public static final String PARAM_CONNECTION_REFERENCE = "conRef";
+ 	public static final String PARAM_INSTANCE = "instance";
++	public static final String EXTRA_CONNECTION_ERROR = "com.freerdp.freerdpcore.CONNECTION_ERROR";
++	public static final String EXTRA_CONNECTION_STATE_RECEIVER =
++	    "com.freerdp.freerdpcore.CONNECTION_STATE_RECEIVER";
++	public static final String EXTRA_CONNECTION_STATE_DETAIL =
++	    "com.freerdp.freerdpcore.CONNECTION_STATE_DETAIL";
++	public static final String EXTRA_INPUT_MODE = "com.freerdp.freerdpcore.INPUT_MODE";
++	public static final String INPUT_MODE_KDE_TOUCHPAD = "kdeTouchpad";
++	public static final int CONNECTION_STATE_CONNECTED = 1;
++	public static final int CONNECTION_STATE_FAILED = 2;
++	public static final int CONNECTION_STATE_DISCONNECTED = 3;
++	public static final int CONNECTION_STATE_INPUT_DIAGNOSTIC = 4;
+ 	private static final String TAG = "FreeRDP.SessionActivity";
+ 	static volatile SessionActivity activeSession;
+ 	private Bitmap bitmap;
+@@ -266,6 +278,14 @@ public class SessionActivity extends AppCompatActivity
+ 		sessionView.requestFocus();
+ 
+ 		touchPointerView = findViewById(R.id.touchPointerView);
++		boolean kdeTouchpadMode = INPUT_MODE_KDE_TOUCHPAD.equals(
++		    getIntent().getStringExtra(EXTRA_INPUT_MODE));
++		sessionView.setKdeTouchpadMode(kdeTouchpadMode);
++		if (kdeTouchpadMode)
++		{
++			touchPointerView.setVisibility(View.GONE);
++			findViewById(R.id.floating_toolbar_touch_pointer).setVisibility(View.GONE);
++		}
+ 
+ 		floatingToolbar = new FloatingToolbar(this, new FloatingToolbar.Listener() {
+ 			@Override public void onToggleTouchPointer()
+@@ -278,6 +298,10 @@ public class SessionActivity extends AppCompatActivity
+ 				if (inputManager != null)
+ 					inputManager.toggleKeyboard();
+ 			}
++			@Override public void onDisconnect()
++			{
++				requestDisconnect();
++			}
+ 		});
+ 
+ 		ExtendedKeyboardView keyboard = findViewById(R.id.extended_keyboard);
+@@ -322,7 +346,8 @@ public class SessionActivity extends AppCompatActivity
+ 		if (hasFocus)
+ 		{
+ 			hideSystemBars();
+-			mClipboardManager.getPrimaryClipManually();
++			if (isClipboardRedirectionEnabled())
++				mClipboardManager.getPrimaryClipManually();
+ 		}
+ 	}
+ 
+@@ -630,13 +655,19 @@ public class SessionActivity extends AppCompatActivity
+ 
+ 	private ConnectThread connectThread = null;
+ 
++	protected boolean showConnectionProgress()
++	{
++		return true;
++	}
++
+ 	private void connectWithTitle(String title)
+ 	{
+ 		session.setUIEventListener(this);
+ 
+ 		sessionViewModel.register(session.getInstance());
+ 
+-		dialogs.showProgress(title, () -> {
++		if (showConnectionProgress())
++			dialogs.showProgress(title, () -> {
+ 			connectCancelledByUser = true;
+ 			LibFreeRDP.cancelConnection(session.getInstance());
+ 		});
+@@ -670,6 +701,16 @@ public class SessionActivity extends AppCompatActivity
+ 		finish();
+ 	}
+ 
++	private void requestDisconnect()
++	{
++		connectCancelledByUser = true;
++		if (session != null)
++			LibFreeRDP.disconnect(session.getInstance());
++		// Do not leave the user trapped in the session UI if the native disconnect
++		// callback is delayed or the server has already disappeared.
++		closeSessionActivity(RESULT_OK);
++	}
++
+ 	public void handleBackPressed()
+ 	{
+ 		// hide keyboards (if any visible) or send alt+f4 to the session
+@@ -770,6 +811,7 @@ public class SessionActivity extends AppCompatActivity
+ 	{
+ 		LibFreeRDP.updateGraphics(session.getInstance(), bitmap, x, y, width, height);
+ 
++		onDesktopFrame(bitmap);
+ 		sessionView.addInvalidRegion(new Rect(x, y, x + width, y + height));
+ 
+ 		/*
+@@ -787,6 +829,13 @@ public class SessionActivity extends AppCompatActivity
+ 		                                     getResources().getText(R.string.info_reconnecting)));
+ 	}
+ 
++	@Override public int OnHeadsetPacket(byte[] packet) { return onHeadsetPacket(packet); }
++	protected int onHeadsetPacket(byte[] packet) { return 0; }
++
++	protected void onDesktopFrame(Bitmap frame)
++	{
++	}
++
+ 	@Override public void OnGraphicsResize(int width, int height, int bpp)
+ 	{
+ 		// replace bitmap
+@@ -867,14 +916,16 @@ public class SessionActivity extends AppCompatActivity
+ 
+ 	@Override public void OnRemoteClipboardChanged(String data)
+ 	{
+-		Log.v(TAG, "OnRemoteClipboardChanged: " + data);
+-		mClipboardManager.setClipboardData(data);
++		Log.v(TAG, "OnRemoteClipboardChanged: " + (data == null ? 0 : data.length()) + " chars");
++		if (isClipboardRedirectionEnabled())
++			mClipboardManager.setClipboardData(data);
+ 	}
+ 
+ 	@Override public void OnRemoteClipboardImageChanged(byte[] data)
+ 	{
+-		Log.v(TAG, "OnRemoteClipboardImageChanged: " + data.length + " bytes");
+-		mClipboardManager.setClipboardImage(data);
++		Log.v(TAG, "OnRemoteClipboardImageChanged: " + (data == null ? 0 : data.length) + " bytes");
++		if (isClipboardRedirectionEnabled() && data != null)
++			mClipboardManager.setClipboardImage(data);
+ 	}
+ 
+ 	@Override public void OnPointerSet(int[] pixels, int width, int height, int hotX, int hotY)
+@@ -944,17 +995,30 @@ public class SessionActivity extends AppCompatActivity
+ 	// ClipboardManagerProxy.OnClipboardChangedListener
+ 	@Override public void onClipboardChanged(String data)
+ 	{
+-		Log.v(TAG, "onClipboardChanged: " + data);
+-		if (session != null)
++		Log.v(TAG, "onClipboardChanged: " + (data == null ? 0 : data.length()) + " chars");
++		if (isClipboardRedirectionEnabled())
+ 			LibFreeRDP.sendClipboardData(session.getInstance(), data);
+ 	}
+ 
+ 	@Override public void onClipboardImageChanged(byte[] data, String mimeType)
+ 	{
+-		if (session != null && data != null)
++		if (isClipboardRedirectionEnabled() && data != null)
+ 			LibFreeRDP.sendClipboardImageData(session.getInstance(), data, mimeType);
+ 	}
+ 
++	private boolean isClipboardRedirectionEnabled()
++	{
++		if (session == null)
++			return false;
++
++		Uri openUri = session.getOpenUri();
++		if (openUri == null)
++			return true; // Saved bookmarks explicitly enable /clipboard.
++
++		String clipboard = openUri.getQueryParameter("clipboard");
++		return clipboard != null && !"-".equals(clipboard);
++	}
++
+ 	private void onConnectionStateChanged(SessionViewModel.ConnectionState state)
+ 	{
+ 		if (session == null)
+@@ -988,6 +1052,7 @@ public class SessionActivity extends AppCompatActivity
+ 
+ 		// bind session
+ 		bindSession();
++		reportConnectionState(CONNECTION_STATE_CONNECTED, "");
+ 
+ 		if (ApplicationSettingsActivity.getKeepScreenOnWhenConnected(this))
+ 		{
+@@ -1017,7 +1082,9 @@ public class SessionActivity extends AppCompatActivity
+ 
+ 	private void onSessionFailed()
+ 	{
+-		Log.v(TAG, "onSessionFailed");
++		String nativeError = LibFreeRDP.getLastErrorString(session.getInstance()).trim();
++		Log.e(TAG, "onSessionFailed" + (nativeError.isEmpty() ? "" : ": " + nativeError));
++		reportConnectionState(CONNECTION_STATE_FAILED, nativeError);
+ 
+ 		// cancel any pending input events
+ 		if (inputManager != null)
+@@ -1030,12 +1097,52 @@ public class SessionActivity extends AppCompatActivity
+ 			uiHandler.sendMessage(Message.obtain(
+ 			    null, DISPLAY_TOAST, getResources().getText(R.string.error_connection_failure)));
+ 
+-		closeSessionActivity(RESULT_CANCELED);
++		Intent result = new Intent();
++		if (!nativeError.isEmpty())
++			result.putExtra(EXTRA_CONNECTION_ERROR, nativeError);
++		setResult(RESULT_CANCELED, result);
++		finish();
++	}
++
++	/** A specialized viewer can stop a session with its own decoder diagnostic. */
++	protected void failSession(String detail)
++	{
++		reportConnectionState(CONNECTION_STATE_FAILED, detail);
++		if (session != null)
++			LibFreeRDP.disconnect(session.getInstance());
++		Intent result = new Intent();
++		result.putExtra(EXTRA_CONNECTION_ERROR, detail);
++		setResult(RESULT_CANCELED, result);
++		finish();
++	}
++
++	protected void onSessionConnectionChanged(boolean connected)
++	{
++	}
++
++	@SuppressWarnings("deprecation")
++	private void reportConnectionState(int state, String detail)
++	{
++		if (state == CONNECTION_STATE_CONNECTED || state == CONNECTION_STATE_DISCONNECTED || state == CONNECTION_STATE_FAILED)
++			onSessionConnectionChanged(state == CONNECTION_STATE_CONNECTED);
++		ResultReceiver receiver = getIntent().getParcelableExtra(EXTRA_CONNECTION_STATE_RECEIVER);
++		if (receiver == null)
++			return;
++		Bundle result = new Bundle();
++		if (detail != null && !detail.isEmpty())
++			result.putString(EXTRA_CONNECTION_STATE_DETAIL, detail);
++		receiver.send(state, result);
++	}
++
++	void reportInputDiagnostic(String detail)
++	{
++		reportConnectionState(CONNECTION_STATE_INPUT_DIAGNOSTIC, detail);
+ 	}
+ 
+ 	private void onSessionDisconnected()
+ 	{
+ 		Log.v(TAG, "onSessionDisconnected");
++		reportConnectionState(CONNECTION_STATE_DISCONNECTED, "");
+ 
+ 		// cancel any pending input events
+ 		if (inputManager != null)
+diff --git a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionInputManager.java b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionInputManager.java
+index 0d956bd..33529f0 100644
+--- a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionInputManager.java
++++ b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionInputManager.java
+@@ -260,12 +260,14 @@ public class SessionInputManager
+ 		{
+ 			touchPointerView.setVisibility(View.INVISIBLE);
+ 			sessionView.setTouchPointerPadding(0, 0);
++			sessionView.setSoftwareCursorVisible(true);
+ 		}
+ 		else
+ 		{
+ 			touchPointerView.setVisibility(View.VISIBLE);
+ 			sessionView.setTouchPointerPadding(touchPointerView.getPointerWidth(),
+ 			                                   touchPointerView.getPointerHeight());
++			sessionView.setSoftwareCursorVisible(false);
+ 		}
+ 	}
+ 
+@@ -353,6 +355,68 @@ public class SessionInputManager
+ 		LibFreeRDP.sendCursorEvent(instance, x, y, Mouse.getRightButtonEvent(context, down));
+ 	}
+ 
++	@Override public void onSessionViewClick(int x, int y, int button)
++	{
++		if (instance == 0)
++		{
++			reportPointerClick("ignored", x, y, button, false, false, false);
++			return;
++		}
++
++		/* A tap is one logical operation. Flush a pending relative movement first and
++		 * explicitly synchronize the server-side pointer position before the button PDUs.
++		 * Keep PTR_FLAGS_MOVE out of down/up: RDP servers commonly dispatch a PDU with
++		 * MOVE as mouse motion before considering it a button release. */
++		cancelDelayedMoveEvent();
++		final int moveFlags = Mouse.getMoveEvent();
++		final int downFlags;
++		final int upFlags;
++		switch (button)
++		{
++			case SessionView.SessionViewListener.BUTTON_RIGHT:
++				downFlags = Mouse.getRightButtonEvent(context, true);
++				upFlags = Mouse.getRightButtonEvent(context, false);
++				break;
++			case SessionView.SessionViewListener.BUTTON_MIDDLE:
++				downFlags = Mouse.getMiddleButtonEvent(true);
++				upFlags = Mouse.getMiddleButtonEvent(false);
++				break;
++			case SessionView.SessionViewListener.BUTTON_LEFT:
++			default:
++				downFlags = Mouse.getLeftButtonEvent(context, true);
++				upFlags = Mouse.getLeftButtonEvent(context, false);
++				break;
++		}
++
++		boolean moveQueued = LibFreeRDP.sendCursorEvent(instance, x, y, moveFlags);
++		boolean downQueued = LibFreeRDP.sendCursorEvent(instance, x, y, downFlags);
++		boolean upQueued = LibFreeRDP.sendCursorEvent(instance, x, y, upFlags);
++		reportPointerClick("queued", x, y, button, moveQueued, downQueued, upQueued);
++	}
++
++	private void reportPointerClick(String state, int x, int y, int button, boolean move,
++	                                boolean down, boolean up)
++	{
++		String buttonName;
++		switch (button)
++		{
++			case SessionView.SessionViewListener.BUTTON_RIGHT:
++				buttonName = "right";
++				break;
++			case SessionView.SessionViewListener.BUTTON_MIDDLE:
++				buttonName = "middle";
++				break;
++			default:
++				buttonName = "left";
++				break;
++		}
++		String detail = "RDP pointer click " + state + ": button=" + buttonName + " x=" + x +
++		                " y=" + y + " move=" + move + " down=" + down + " up=" + up;
++		Log.i(TAG, detail);
++		if (context instanceof SessionActivity)
++			((SessionActivity)context).reportInputDiagnostic(detail);
++	}
++
+ 	@Override public void onSessionViewMove(int x, int y)
+ 	{
+ 		if (instance == 0)
+@@ -381,6 +445,11 @@ public class SessionInputManager
+ 		LibFreeRDP.sendCursorEvent(instance, 0, 0, Mouse.getHScrollEvent(context, right));
+ 	}
+ 
++	@Override public void onSessionViewPan(float distanceX, float distanceY)
++	{
++		scrollView.scrollBy(Math.round(distanceX), Math.round(distanceY));
++	}
++
+ 	// ****************************************************************************
+ 	// TouchPointerView.TouchPointerListener
+ 
+@@ -388,6 +457,7 @@ public class SessionInputManager
+ 	{
+ 		touchPointerView.setVisibility(View.INVISIBLE);
+ 		sessionView.setTouchPointerPadding(0, 0);
++		sessionView.setSoftwareCursorVisible(true);
+ 	}
+ 
+ 	@Override public void onTouchPointerLeftClick(int x, int y, boolean down)
+@@ -395,6 +465,7 @@ public class SessionInputManager
+ 		if (instance == 0)
+ 			return;
+ 		Point p = mapScreenCoordToSessionCoord(x, y);
++		sessionView.setTouchpadCursorPosition(p.x, p.y);
+ 		LibFreeRDP.sendCursorEvent(instance, p.x, p.y, Mouse.getLeftButtonEvent(context, down));
+ 	}
+ 
+@@ -403,6 +474,7 @@ public class SessionInputManager
+ 		if (instance == 0)
+ 			return;
+ 		Point p = mapScreenCoordToSessionCoord(x, y);
++		sessionView.setTouchpadCursorPosition(p.x, p.y);
+ 		LibFreeRDP.sendCursorEvent(instance, p.x, p.y, Mouse.getRightButtonEvent(context, down));
+ 	}
+ 
+@@ -419,6 +491,7 @@ public class SessionInputManager
+ 		if (instance == 0)
+ 			return;
+ 		Point p = mapScreenCoordToSessionCoord(x, y);
++		sessionView.setTouchpadCursorPosition(p.x, p.y);
+ 		LibFreeRDP.sendCursorEvent(instance, p.x, p.y, Mouse.getMoveEvent());
+ 
+ 		if (ApplicationSettingsActivity.getAutoScrollTouchPointer(context) &&
+diff --git a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionView.java b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionView.java
+index f207200..93e8daa 100644
+--- a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionView.java
++++ b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/presentation/SessionView.java
+@@ -11,10 +11,13 @@
+ package com.freerdp.freerdpcore.presentation;
+ 
+ import android.content.Context;
++import android.content.SharedPreferences;
+ import android.graphics.Bitmap;
+ import android.graphics.Canvas;
+ import android.graphics.Color;
+ import android.graphics.Matrix;
++import android.graphics.Paint;
++import android.graphics.Path;
+ import android.graphics.Rect;
+ import android.graphics.RectF;
+ import android.graphics.drawable.BitmapDrawable;
+@@ -34,10 +37,12 @@ import android.view.inputmethod.InputConnection;
+ 
+ import androidx.annotation.NonNull;
+ import androidx.core.view.ViewConfigurationCompat;
++import androidx.preference.PreferenceManager;
+ 
+ import com.freerdp.freerdpcore.application.SessionState;
+ import com.freerdp.freerdpcore.utils.DoubleGestureDetector;
+ import com.freerdp.freerdpcore.utils.GestureDetector;
++import com.freerdp.freerdpcore.utils.TouchpadPointerController;
+ 
+ import java.util.Stack;
+ 
+@@ -47,7 +52,7 @@ public class SessionView extends View
+ 	public static final float MIN_SCALE_FACTOR = 0.75f;
+ 	private static final String TAG = "SessionView";
+ 	private static final float SCALE_FACTOR_DELTA = 0.0001f;
+-	private static final float TOUCH_SCROLL_DELTA = 10.0f;
++	private static final float TOUCH_SCROLL_MIN_DISTANCE = 2.5f;
+ 	private int width;
+ 	private int height;
+ 	private BitmapDrawable surface;
+@@ -64,6 +69,25 @@ public class SessionView extends View
+ 	private RectF invalidRegionF;
+ 	private GestureDetector gestureDetector;
+ 	private SessionState currentSession;
++	private final TouchpadPointerController touchpadPointer = new TouchpadPointerController();
++	private float previousTouchX;
++	private float previousTouchY;
++	private float accumulatedScrollY;
++	private int scrollDirection = 1;
++	private double scrollCoefficient = 1.0;
++	private boolean doubleTapDragEnabled = true;
++	private boolean dragging = false;
++	private String singleTapAction = "left";
++	private String doubleFingerTapAction = "right";
++	private String tripleFingerTapAction = "middle";
++	private long gestureDownTime;
++	private float gestureDownX;
++	private float gestureDownY;
++	private int maximumPointerCount;
++	private boolean multiFingerMoved;
++	private boolean multiFingerTapHandled;
++	private int touchSlop;
++	private int multiFingerTapTimeout;
+ 
+ 	// Pixels of touchpad travel per wheel notch, and leftover between events.
+ 	private float notchPxX = 1.0f;
+@@ -76,6 +100,14 @@ public class SessionView extends View
+ 	private int cursorHeight = 0;
+ 	private int cursorHotX = 0;
+ 	private int cursorHotY = 0;
++	private Bitmap cursorBitmap = null;
++	private boolean cursorVisible = true;
++	private boolean defaultCursor = true;
++	private boolean softwareCursorVisible = false;
++	private boolean kdeTouchpadMode = false;
++	private final Paint defaultCursorFill = new Paint(Paint.ANTI_ALIAS_FLAG);
++	private final Paint defaultCursorStroke = new Paint(Paint.ANTI_ALIAS_FLAG);
++	private final Path defaultCursorPath = new Path();
+ 
+ 	// private static final String TAG = "FreeRDP.SessionView";
+ 	private DoubleGestureDetector doubleGestureDetector;
+@@ -117,6 +149,22 @@ public class SessionView extends View
+ 		scaleMatrix = new Matrix();
+ 		invScaleMatrix = new Matrix();
+ 		invalidRegionF = new RectF();
++		touchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
++		multiFingerTapTimeout = ViewConfiguration.getTapTimeout() + 100;
++		configureTouchpadFromRemoteInputPreferences();
++		defaultCursorFill.setColor(Color.WHITE);
++		defaultCursorFill.setStyle(Paint.Style.FILL);
++		defaultCursorStroke.setColor(Color.BLACK);
++		defaultCursorStroke.setStyle(Paint.Style.STROKE);
++		defaultCursorStroke.setStrokeWidth(1.5f);
++		defaultCursorPath.moveTo(0, 0);
++		defaultCursorPath.lineTo(0, 18);
++		defaultCursorPath.lineTo(5, 13);
++		defaultCursorPath.lineTo(9, 21);
++		defaultCursorPath.lineTo(13, 19);
++		defaultCursorPath.lineTo(9, 11);
++		defaultCursorPath.lineTo(16, 11);
++		defaultCursorPath.close();
+ 	}
+ 
+ 	/* External Mouse Hover */
+@@ -124,11 +172,14 @@ public class SessionView extends View
+ 	{
+ 		if (event.getAction() == MotionEvent.ACTION_HOVER_MOVE)
+ 		{
++			softwareCursorVisible = false;
++			invalidate();
+ 			// Handle hover move event
+ 			float x = event.getX();
+ 			float y = event.getY();
+ 			// Perform actions based on the hover position (x, y)
+ 			MotionEvent mappedEvent = mapTouchEvent(event);
++			touchpadPointer.setPosition((int)mappedEvent.getX(), (int)mappedEvent.getY());
+ 			sessionViewListener.onSessionViewMouseMove((int)mappedEvent.getX(),
+ 			                                           (int)mappedEvent.getY());
+ 			mappedEvent.recycle();
+@@ -175,6 +226,23 @@ public class SessionView extends View
+ 
+ 		requestLayout();
+ 		currentSession = session;
++		touchpadPointer.setBounds(width, height);
++	}
++
++	private void configureTouchpadFromRemoteInputPreferences()
++	{
++		SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getContext());
++		String sensitivity = preferences.getString("mousepad_sensitivity_key", "default");
++		String acceleration =
++		    preferences.getString("mousepad_acceleration_profile_key", "medium");
++		touchpadPointer.configure(getResources().getDisplayMetrics().xdpi, sensitivity, acceleration);
++		singleTapAction = preferences.getString("mousepad_single_tap_key", "left");
++		doubleFingerTapAction = preferences.getString("mousepad_double_tap_key", "right");
++		tripleFingerTapAction = preferences.getString("mousepad_triple_tap_key", "middle");
++		doubleTapDragEnabled = preferences.getBoolean("doubletap_drag_enabled", true);
++		scrollDirection = preferences.getBoolean("mousepad_scroll_direction", false) ? -1 : 1;
++		int scrollSensitivity = Math.max(1, preferences.getInt("mousepad_scroll_sensitivity", 100));
++		scrollCoefficient = Math.pow(scrollSensitivity / 100.0f, 1.5);
+ 	}
+ 
+ 	public float getZoom()
+@@ -286,6 +354,21 @@ public class SessionView extends View
+ 		{
+ 			surface.draw(canvas);
+ 		}
++		if (softwareCursorVisible && cursorVisible)
++		{
++			TouchpadPointerController.Position position = touchpadPointer.getPosition();
++			if (!defaultCursor && cursorBitmap != null)
++				canvas.drawBitmap(cursorBitmap, position.x - cursorHotX, position.y - cursorHotY,
++				                  null);
++			else
++			{
++				canvas.save();
++				canvas.translate(position.x, position.y);
++				canvas.drawPath(defaultCursorPath, defaultCursorFill);
++				canvas.drawPath(defaultCursorPath, defaultCursorStroke);
++				canvas.restore();
++			}
++		}
+ 		canvas.restore();
+ 	}
+ 
+@@ -299,17 +382,6 @@ public class SessionView extends View
+ 		return mappedEvent;
+ 	}
+ 
+-	// perform mapping on the double touch event's coordinates according to the current scaling
+-	private MotionEvent mapDoubleTouchEvent(MotionEvent event)
+-	{
+-		MotionEvent mappedEvent = MotionEvent.obtain(event);
+-		float[] coordinates = { (mappedEvent.getX(0) + mappedEvent.getX(1)) / 2,
+-			                    (mappedEvent.getY(0) + mappedEvent.getY(1)) / 2 };
+-		invScaleMatrix.mapPoints(coordinates);
+-		mappedEvent.setLocation(coordinates[0], coordinates[1]);
+-		return mappedEvent;
+-	}
+-
+ 	@Override public boolean onTouchEvent(MotionEvent event)
+ 	{
+ 		// Physical mouse events: bypass gesture detector entirely.
+@@ -329,7 +401,10 @@ public class SessionView extends View
+ 			}
+ 			if (action == MotionEvent.ACTION_MOVE && event.getButtonState() != 0)
+ 			{
++				softwareCursorVisible = false;
++				invalidate();
+ 				MotionEvent mapped = mapTouchEvent(event);
++				touchpadPointer.setPosition((int)mapped.getX(), (int)mapped.getY());
+ 				sessionViewListener.onSessionViewMouseMove((int)mapped.getX(), (int)mapped.getY());
+ 				mapped.recycle();
+ 				return true;
+@@ -337,8 +412,38 @@ public class SessionView extends View
+ 			return true;
+ 		}
+ 
++		int action = event.getActionMasked();
++		if (action == MotionEvent.ACTION_DOWN)
++		{
++			softwareCursorVisible = true;
++			invalidate();
++			configureTouchpadFromRemoteInputPreferences();
++			gestureDownTime = event.getEventTime();
++			gestureDownX = event.getX();
++			gestureDownY = event.getY();
++			maximumPointerCount = 1;
++			multiFingerMoved = false;
++			multiFingerTapHandled = false;
++		}
++		else
++		{
++			maximumPointerCount = Math.max(maximumPointerCount, event.getPointerCount());
++			if (action == MotionEvent.ACTION_MOVE &&
++			    (Math.abs(event.getX() - gestureDownX) > touchSlop ||
++			     Math.abs(event.getY() - gestureDownY) > touchSlop))
++				multiFingerMoved = true;
++		}
++
+ 		boolean res = gestureDetector.onTouchEvent(event);
+ 		res |= doubleGestureDetector.onTouchEvent(event);
++		if (action == MotionEvent.ACTION_POINTER_UP && event.getPointerCount() >= 3 &&
++		    !multiFingerTapHandled && !multiFingerMoved &&
++		    event.getEventTime() - gestureDownTime <= multiFingerTapTimeout)
++		{
++			performConfiguredClick(tripleFingerTapAction);
++			multiFingerTapHandled = true;
++			res = true;
++		}
+ 		return res;
+ 	}
+ 
+@@ -378,6 +483,57 @@ public class SessionView extends View
+ 		return distance + event.getAxisValue(axis);
+ 	}
+ 
++	public void setTouchpadCursorPosition(int x, int y)
++	{
++		touchpadPointer.setPosition(x, y);
++		invalidate();
++	}
++
++	public void setKdeTouchpadMode(boolean enabled)
++	{
++		kdeTouchpadMode = enabled;
++	}
++
++	public void setSoftwareCursorVisible(boolean visible)
++	{
++		softwareCursorVisible = visible;
++		invalidate();
++	}
++
++	private void moveTouchpadPointer(float deltaX, float deltaY, long eventTime)
++	{
++		TouchpadPointerController.Position position =
++		    touchpadPointer.moveBy(deltaX, deltaY, eventTime);
++		sessionViewListener.onSessionViewMouseMove(position.x, position.y);
++		invalidate();
++	}
++
++	private void performConfiguredClick(String action)
++	{
++		TouchpadPointerController.Position position = touchpadPointer.getPosition();
++		if ("left".equals(action))
++		{
++			if (dragging)
++			{
++				sessionViewListener.onSessionViewLeftTouch(position.x, position.y, false);
++				dragging = false;
++				sessionViewListener.onSessionViewEndTouch();
++			}
++			else
++				sendClick(position, SessionViewListener.BUTTON_LEFT);
++		}
++		else if ("right".equals(action))
++			sendClick(position, SessionViewListener.BUTTON_RIGHT);
++		else if ("middle".equals(action))
++			sendClick(position, SessionViewListener.BUTTON_MIDDLE);
++	}
++
++	private void sendClick(TouchpadPointerController.Position position, int button)
++	{
++		performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY);
++		sessionViewListener.onSessionViewClick(position.x, position.y, button);
++	}
++
+ 	// Handle all physical mouse buttons here; finger taps come via onSingleTapUp.
+ 	@Override public boolean onGenericMotionEvent(MotionEvent event)
+ 	{
+@@ -391,10 +547,13 @@ public class SessionView extends View
+ 		if (isMouse && (action == MotionEvent.ACTION_BUTTON_PRESS ||
+ 		                action == MotionEvent.ACTION_BUTTON_RELEASE))
+ 		{
++			softwareCursorVisible = false;
++			invalidate();
+ 			boolean down = action == MotionEvent.ACTION_BUTTON_PRESS;
+ 			MotionEvent mapped = mapTouchEvent(event);
+ 			int x = (int)mapped.getX();
+ 			int y = (int)mapped.getY();
++			touchpadPointer.setPosition(x, y);
+ 			mapped.recycle();
+ 
+ 			switch (event.getActionButton())
+@@ -435,6 +594,10 @@ public class SessionView extends View
+ 
+ 	public interface SessionViewListener
+ 	{
++		int BUTTON_LEFT = 1;
++		int BUTTON_MIDDLE = 2;
++		int BUTTON_RIGHT = 3;
++
+ 		void onSessionViewBeginTouch();
+ 
+ 		void onSessionViewEndTouch();
+@@ -445,6 +608,8 @@ public class SessionView extends View
+ 
+ 		void onSessionViewRightTouch(int x, int y, boolean down);
+ 
++		void onSessionViewClick(int x, int y, int button);
++
+ 		void onSessionViewMove(int x, int y);
+ 
+ 		void onSessionViewMouseMove(int x, int y);
+@@ -452,6 +617,8 @@ public class SessionView extends View
+ 		void onSessionViewScroll(boolean down);
+ 
+ 		void onSessionViewHScroll(boolean right);
++
++		void onSessionViewPan(float distanceX, float distanceY);
+ 	}
+ 
+ 	public void setRemoteCursor(int[] pixels, int width, int height, int hotX, int hotY)
+@@ -459,7 +626,10 @@ public class SessionView extends View
+ 		if (pixels == null || width == 0 || height == 0)
+ 		{
+ 			cursorPixels = null;
++			cursorBitmap = null;
++			cursorVisible = false;
+ 			setPointerIcon(PointerIcon.getSystemIcon(getContext(), PointerIcon.TYPE_NULL));
++			invalidate();
+ 			return;
+ 		}
+ 		cursorPixels = pixels;
+@@ -467,7 +637,12 @@ public class SessionView extends View
+ 		cursorHeight = height;
+ 		cursorHotX = hotX;
+ 		cursorHotY = hotY;
++		cursorBitmap =
++		    Bitmap.createBitmap(cursorPixels, cursorWidth, cursorHeight, Bitmap.Config.ARGB_8888);
++		cursorVisible = true;
++		defaultCursor = false;
+ 		applyScaledCursor();
++		invalidate();
+ 	}
+ 
+ 	private void applyScaledCursor()
+@@ -484,7 +659,11 @@ public class SessionView extends View
+ 
+ 	public void setDefaultCursor()
+ 	{
++		cursorBitmap = null;
++		cursorVisible = true;
++		defaultCursor = true;
+ 		setPointerIcon(PointerIcon.getSystemIcon(getContext(), PointerIcon.TYPE_ARROW));
++		invalidate();
+ 	}
+ 
+ 	private class SessionGestureListener extends GestureDetector.SimpleOnGestureListener
+@@ -493,74 +672,78 @@ public class SessionView extends View
+ 
+ 		public boolean onDown(MotionEvent e)
+ 		{
++			previousTouchX = e.getX();
++			previousTouchY = e.getY();
++			sessionViewListener.onSessionViewBeginTouch();
+ 			return true;
+ 		}
+ 
+ 		public boolean onUp(MotionEvent e)
+ 		{
+-			sessionViewListener.onSessionViewEndTouch();
++			if (!dragging && !longPressInProgress)
++				sessionViewListener.onSessionViewEndTouch();
+ 			return true;
+ 		}
+ 
+ 		public void onLongPress(MotionEvent e)
+ 		{
+-			MotionEvent mappedEvent = mapTouchEvent(e);
+-			sessionViewListener.onSessionViewBeginTouch();
+-			sessionViewListener.onSessionViewLeftTouch((int)mappedEvent.getX(),
+-			                                           (int)mappedEvent.getY(), true);
+-			longPressInProgress = true;
++			if (!doubleTapDragEnabled)
++			{
++				performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY);
++				TouchpadPointerController.Position position = touchpadPointer.getPosition();
++				sessionViewListener.onSessionViewLeftTouch(position.x, position.y, true);
++				longPressInProgress = true;
++			}
+ 		}
+ 
+ 		public void onLongPressUp(MotionEvent e)
+-		{
+-			MotionEvent mappedEvent = mapTouchEvent(e);
+-			sessionViewListener.onSessionViewLeftTouch((int)mappedEvent.getX(),
+-			                                           (int)mappedEvent.getY(), false);
+-			longPressInProgress = false;
+-			sessionViewListener.onSessionViewEndTouch();
+-		}
+-
+-		public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY)
+ 		{
+ 			if (longPressInProgress)
+ 			{
+-				MotionEvent mappedEvent = mapTouchEvent(e2);
+-				sessionViewListener.onSessionViewMove((int)mappedEvent.getX(),
+-				                                      (int)mappedEvent.getY());
+-				return true;
++				TouchpadPointerController.Position position = touchpadPointer.getPosition();
++				sessionViewListener.onSessionViewLeftTouch(position.x, position.y, false);
++				longPressInProgress = false;
++				sessionViewListener.onSessionViewEndTouch();
+ 			}
++		}
+ 
+-			return false;
++		public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY)
++		{
++			if (maximumPointerCount > 1)
++				return false;
++			float deltaX = e2.getX() - previousTouchX;
++			float deltaY = e2.getY() - previousTouchY;
++			previousTouchX = e2.getX();
++			previousTouchY = e2.getY();
++			moveTouchpadPointer(deltaX, deltaY, e2.getEventTime());
++			return true;
+ 		}
+ 
+ 		public boolean onDoubleTap(MotionEvent e)
+ 		{
+-			// send 2nd click for double click
+-			MotionEvent mappedEvent = mapTouchEvent(e);
+-			sessionViewListener.onSessionViewLeftTouch((int)mappedEvent.getX(),
+-			                                           (int)mappedEvent.getY(), true);
+-			sessionViewListener.onSessionViewLeftTouch((int)mappedEvent.getX(),
+-			                                           (int)mappedEvent.getY(), false);
++			TouchpadPointerController.Position position = touchpadPointer.getPosition();
++			if (doubleTapDragEnabled)
++			{
++				sessionViewListener.onSessionViewLeftTouch(position.x, position.y, true);
++				dragging = true;
++			}
++			else
++				sendClick(position, SessionViewListener.BUTTON_LEFT);
+ 			return true;
+ 		}
+ 
+ 		public boolean onSingleTapUp(MotionEvent e)
+ 		{
+-			// Physical mouse buttons are handled via ACTION_BUTTON_PRESS in onGenericMotionEvent.
+-			// If buttonState is non-zero this event came from a physical mouse button
+-			if (e.getButtonState() != 0)
++			if (e.getButtonState() != 0 || maximumPointerCount > 1)
+ 				return false;
+-
+-			// Finger touch -> left click
+-			MotionEvent mappedEvent = mapTouchEvent(e);
+-			sessionViewListener.onSessionViewBeginTouch();
+-			sessionViewListener.onSessionViewLeftTouch((int)mappedEvent.getX(),
+-			                                           (int)mappedEvent.getY(), true);
+-			sessionViewListener.onSessionViewLeftTouch((int)mappedEvent.getX(),
+-			                                           (int)mappedEvent.getY(), false);
+-			sessionViewListener.onSessionViewEndTouch();
++			performConfiguredClick(singleTapAction);
+ 			return true;
+ 		}
++
++		public boolean onSingleTapConfirmed(MotionEvent e)
++		{
++			return false;
++		}
+ 	}
+ 
+ 	private class SessionDoubleGestureListener
+@@ -571,6 +754,7 @@ public class SessionView extends View
+ 		public boolean onDoubleTouchDown(MotionEvent e)
+ 		{
+ 			sessionViewListener.onSessionViewBeginTouch();
++			accumulatedScrollY = 0;
+ 			prevEvent = MotionEvent.obtain(e);
+ 			return true;
+ 		}
+@@ -588,31 +772,34 @@ public class SessionView extends View
+ 
+ 		public boolean onDoubleTouchScroll(MotionEvent e1, MotionEvent e2)
+ 		{
+-			// calc if user scrolled up or down (or if any scrolling happened at all)
++			float deltaX = e2.getX() - prevEvent.getX();
+ 			float deltaY = e2.getY() - prevEvent.getY();
+-			if (deltaY > TOUCH_SCROLL_DELTA)
++			prevEvent.recycle();
++			prevEvent = MotionEvent.obtain(e2);
++			if (kdeTouchpadMode)
+ 			{
+-				sessionViewListener.onSessionViewScroll(true);
+-				prevEvent.recycle();
+-				prevEvent = MotionEvent.obtain(e2);
++				sessionViewListener.onSessionViewPan(-deltaX, -deltaY);
++				return true;
+ 			}
+-			else if (deltaY < -TOUCH_SCROLL_DELTA)
++
++			accumulatedScrollY += deltaY * scrollCoefficient;
++			if (accumulatedScrollY > TOUCH_SCROLL_MIN_DISTANCE)
+ 			{
+-				sessionViewListener.onSessionViewScroll(false);
+-				prevEvent.recycle();
+-				prevEvent = MotionEvent.obtain(e2);
++				sessionViewListener.onSessionViewScroll(scrollDirection > 0);
++				accumulatedScrollY = 0;
++			}
++			else if (accumulatedScrollY < -TOUCH_SCROLL_MIN_DISTANCE)
++			{
++				sessionViewListener.onSessionViewScroll(scrollDirection < 0);
++				accumulatedScrollY = 0;
+ 			}
+ 			return true;
+ 		}
+ 
+ 		public boolean onDoubleTouchSingleTap(MotionEvent e)
+ 		{
+-			// send single click
+-			MotionEvent mappedEvent = mapDoubleTouchEvent(e);
+-			sessionViewListener.onSessionViewRightTouch((int)mappedEvent.getX(),
+-			                                            (int)mappedEvent.getY(), true);
+-			sessionViewListener.onSessionViewRightTouch((int)mappedEvent.getX(),
+-			                                            (int)mappedEvent.getY(), false);
++			if (maximumPointerCount < 3)
++				performConfiguredClick(doubleFingerTapAction);
+ 			return true;
+ 		}
+ 	}
+diff --git a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/services/LibFreeRDP.java b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/services/LibFreeRDP.java
+index 87e6f45..9d551fb 100644
+--- a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/services/LibFreeRDP.java
++++ b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/services/LibFreeRDP.java
+@@ -723,6 +723,13 @@ public class LibFreeRDP
+ 		return uiEventListener.OnExperimentalFeature(feature);
+ 	}
+ 
++	private static int OnHeadsetPacket(long inst, byte[] packet)
++	{
++		SessionState s = GlobalApp.getSession(inst);
++		if (s == null || s.getUIEventListener() == null) return 0;
++		return s.getUIEventListener().OnHeadsetPacket(packet);
++	}
++
+ 	private static void OnGraphicsUpdate(long inst, int x, int y, int width, int height)
+ 	{
+ 		SessionState s = GlobalApp.getSession(inst);
+@@ -870,6 +877,14 @@ public class LibFreeRDP
+ 		return freerdp_get_version();
+ 	}
+ 
++	public static String getLastErrorString(long instance)
++	{
++		if (instance == 0)
++			return "";
++		String error = freerdp_get_last_error_string(instance);
++		return error == null ? "" : error;
++	}
++
+ 	public interface EventListener
+ 	{
+ 		void OnPreConnect(long instance);
+@@ -904,6 +919,8 @@ public class LibFreeRDP
+ 
+ 		boolean OnExperimentalFeature(int feature);
+ 
++		default int OnHeadsetPacket(byte[] packet) { return 0; }
++
+ 		void OnGraphicsUpdate(int x, int y, int width, int height);
+ 
+ 		void OnGraphicsResize(int width, int height, int bpp);
+diff --git a/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/utils/TouchpadPointerController.java b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/utils/TouchpadPointerController.java
+new file mode 100644
+index 0000000..e7fa443
+--- /dev/null
++++ b/client/Android/Studio/freeRDPCore/src/main/java/com/freerdp/freerdpcore/utils/TouchpadPointerController.java
+@@ -0,0 +1,221 @@
++/*
++   Android relative touchpad pointer controller
++
++   Copyright 2026 KDE Connect Developers
++
++   This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.
++   If a copy of the MPL was not distributed with this file, You can obtain one at
++   http://mozilla.org/MPL/2.0/.
++*/
++
++package com.freerdp.freerdpcore.utils;
++
++/**
++ * Converts touch deltas into a bounded absolute RDP cursor position.
++ *
++ * RDP pointer PDUs use absolute coordinates, while KDE Connect's Remote Input UI behaves like a
++ * relative touchpad. This class bridges the two models and intentionally mirrors Remote Input's
++ * DPI normalization, sensitivity steps, and speed-based polynomial acceleration profiles.
++ */
++public final class TouchpadPointerController
++{
++	private static final float STANDARD_DPI = 240.0f;
++
++	private int width = 1;
++	private int height = 1;
++	private int x;
++	private int y;
++	private boolean positionInitialized;
++	private float dpiMultiplier = 1.0f;
++	private float sensitivity = 1.0f;
++	private AccelerationProfile accelerationProfile = new PolynomialProfile(1.0f);
++	private String accelerationProfileName = "medium";
++
++	public void setBounds(int width, int height)
++	{
++		this.width = Math.max(1, width);
++		this.height = Math.max(1, height);
++		if (!positionInitialized)
++		{
++			x = this.width / 2;
++			y = this.height / 2;
++			positionInitialized = true;
++		}
++		else
++			setPosition(x, y);
++	}
++
++	public void configure(float displayDpi, String sensitivityName, String profileName)
++	{
++		dpiMultiplier = displayDpi > 0 ? STANDARD_DPI / displayDpi : 1.0f;
++		sensitivity = sensitivityForName(sensitivityName);
++
++		String normalizedProfile = profileName == null ? "medium" : profileName;
++		if (!normalizedProfile.equals(accelerationProfileName))
++		{
++			accelerationProfileName = normalizedProfile;
++			accelerationProfile = createAccelerationProfile(normalizedProfile);
++		}
++	}
++
++	public Position moveBy(float touchDeltaX, float touchDeltaY, long eventTime)
++	{
++		float normalizedX = touchDeltaX * dpiMultiplier * sensitivity;
++		float normalizedY = touchDeltaY * dpiMultiplier * sensitivity;
++		accelerationProfile.touchMoved(normalizedX, normalizedY, eventTime);
++		Position delta = accelerationProfile.commit();
++		setPosition(x + delta.x, y + delta.y);
++		return getPosition();
++	}
++
++	public void setPosition(int x, int y)
++	{
++		this.x = Math.max(0, Math.min(width - 1, x));
++		this.y = Math.max(0, Math.min(height - 1, y));
++		positionInitialized = true;
++	}
++
++	public Position getPosition()
++	{
++		return new Position(x, y);
++	}
++
++	private static float sensitivityForName(String name)
++	{
++		if ("slowest".equals(name))
++			return 0.2f;
++		if ("aboveSlowest".equals(name))
++			return 0.5f;
++		if ("aboveDefault".equals(name))
++			return 1.5f;
++		if ("fastest".equals(name))
++			return 2.0f;
++		return 1.0f;
++	}
++
++	private static AccelerationProfile createAccelerationProfile(String name)
++	{
++		switch (name)
++		{
++			case "weaker":
++				return new PolynomialProfile(0.25f);
++			case "weak":
++				return new PolynomialProfile(0.5f);
++			case "medium":
++				return new PolynomialProfile(1.0f);
++			case "strong":
++				return new PolynomialProfile(1.5f);
++			case "stronger":
++				return new PolynomialProfile(2.0f);
++			case "noacceleration":
++			default:
++				return new DefaultProfile();
++		}
++	}
++
++	public static final class Position
++	{
++		public final int x;
++		public final int y;
++
++		public Position(int x, int y)
++		{
++			this.x = x;
++			this.y = y;
++		}
++	}
++
++	private interface AccelerationProfile
++	{
++		void touchMoved(float deltaX, float deltaY, long eventTime);
++
++		Position commit();
++	}
++
++	private static final class DefaultProfile implements AccelerationProfile
++	{
++		private float accumulatedX;
++		private float accumulatedY;
++
++		@Override public void touchMoved(float deltaX, float deltaY, long eventTime)
++		{
++			accumulatedX += deltaX;
++			accumulatedY += deltaY;
++		}
++
++		@Override public Position commit()
++		{
++			int deltaX = (int)accumulatedX;
++			int deltaY = (int)accumulatedY;
++			accumulatedX %= 1.0f;
++			accumulatedY %= 1.0f;
++			return new Position(deltaX, deltaY);
++		}
++	}
++
++	private static final class PolynomialProfile implements AccelerationProfile
++	{
++		private static final int HISTORY_SIZE = 32;
++		private static final long FRESH_THRESHOLD_MS = 150;
++
++		private final float exponent;
++		private final TouchDeltaEvent[] history = new TouchDeltaEvent[HISTORY_SIZE];
++		private float accumulatedX;
++		private float accumulatedY;
++
++		private PolynomialProfile(float exponent)
++		{
++			this.exponent = exponent;
++		}
++
++		@Override public void touchMoved(float deltaX, float deltaY, long eventTime)
++		{
++			float multiplier = multiplierFromHistory(eventTime);
++			accumulatedX += deltaX * multiplier;
++			accumulatedY += deltaY * multiplier;
++			System.arraycopy(history, 0, history, 1, history.length - 1);
++			history[0] = new TouchDeltaEvent(deltaX, deltaY, eventTime);
++		}
++
++		private float multiplierFromHistory(long eventTime)
++		{
++			float distanceMoved = 0;
++			long deltaTime = 0;
++			for (TouchDeltaEvent event : history)
++			{
++				if (event == null || eventTime - event.time > FRESH_THRESHOLD_MS)
++					break;
++				distanceMoved += Math.hypot(event.x, event.y);
++				deltaTime = eventTime - event.time;
++			}
++
++			if (deltaTime == 0)
++				return 0.01f;
++			float speed = distanceMoved / (deltaTime / 1000.0f);
++			return Math.max(0.01f, (float)Math.pow(speed / 600.0f, exponent));
++		}
++
++		@Override public Position commit()
++		{
++			int deltaX = (int)accumulatedX;
++			int deltaY = (int)accumulatedY;
++			accumulatedX %= 1.0f;
++			accumulatedY %= 1.0f;
++			return new Position(deltaX, deltaY);
++		}
++
++		private static final class TouchDeltaEvent
++		{
++			private final float x;
++			private final float y;
++			private final long time;
++
++			private TouchDeltaEvent(float x, float y, long time)
++			{
++				this.x = x;
++				this.y = y;
++				this.time = time;
++			}
++		}
++	}
++}
+diff --git a/client/Android/Studio/freeRDPCore/src/main/res/layout/floating_toolbar.xml b/client/Android/Studio/freeRDPCore/src/main/res/layout/floating_toolbar.xml
+index 117fd52..d77fe56 100644
+--- a/client/Android/Studio/freeRDPCore/src/main/res/layout/floating_toolbar.xml
++++ b/client/Android/Studio/freeRDPCore/src/main/res/layout/floating_toolbar.xml
+@@ -43,6 +43,24 @@
+             app:tint="#FFFFFF"
+             android:src="@drawable/ic_keyboard" />
+ 
++        <ImageButton
++            android:id="@+id/floating_toolbar_disconnect"
++            android:layout_width="32dp"
++            android:layout_height="32dp"
++            android:background="?android:attr/selectableItemBackground"
++            android:contentDescription="@string/session_disconnect"
++            app:tint="#FFFFFF"
++            android:src="@drawable/ic_close" />
++
++        <ImageButton
++            android:id="@+id/floating_toolbar_disconnect"
++            android:layout_width="32dp"
++            android:layout_height="32dp"
++            android:background="?android:attr/selectableItemBackground"
++            android:contentDescription="@string/session_disconnect"
++            app:tint="#FFFFFF"
++            android:src="@drawable/ic_close" />
++
+     </LinearLayout>
+ 
+ </LinearLayout>
+diff --git a/client/Android/Studio/freeRDPCore/src/main/res/values/strings.xml b/client/Android/Studio/freeRDPCore/src/main/res/values/strings.xml
+index d68ff65..1d0273a 100644
+--- a/client/Android/Studio/freeRDPCore/src/main/res/values/strings.xml
++++ b/client/Android/Studio/freeRDPCore/src/main/res/values/strings.xml
+@@ -233,6 +233,7 @@
+     <string name="settings_security_clear_certificate_cache">Clear Certificate Cache</string>
+     <!-- Session strings -->
+     <string name="session_double_back_to_exit">Press back again to disconnect</string>
++    <string name="session_disconnect">Disconnect</string>
+     <!-- Activity titles -->
+     <string name="title_bookmark_settings">Connection Settings</string>
+     <string name="title_application_settings">Settings</string>
+diff --git a/libfreerdp/codec/h264.c b/libfreerdp/codec/h264.c
+index 00110b4..fb992a2 100644
+--- a/libfreerdp/codec/h264.c
++++ b/libfreerdp/codec/h264.c
+@@ -19,6 +19,22 @@
+  */
+ 
+ #include <freerdp/config.h>
++#include <winpr/wlog.h>
++#include <winpr/print.h>
++
++#if defined(HEADSET_TIMING)
++#include <time.h>
++static UINT64 headset_clock_ns(void)
++{
++    struct timespec now;
++    clock_gettime(CLOCK_MONOTONIC, &now);
++    return (UINT64)now.tv_sec * 1000000000ULL + now.tv_nsec;
++}
++#define HEADSET_STAGE(stage, id) WLog_Print(WLog_Get("HeadsetStage"), WLOG_INFO, "stage=%s ns=%" PRIu64 " id=%" PRIu64, stage, headset_clock_ns(), (UINT64)(id))
++#else
++#define HEADSET_STAGE(stage, id) do { } while (0)
++#endif
++
+ 
+ #include <winpr/crt.h>
+ #include <winpr/print.h>
+@@ -189,7 +205,14 @@ INT32 avc420_decompress(H264_CONTEXT* h264, const BYTE* pSrcData, UINT32 SrcSize
+ 	if (!areRectsValid(h264->log, nDstWidth, nDstHeight, regionRects, numRegionRects))
+ 		return -1013;
+ 
++#if defined(HEADSET_TIMING)
++    UINT64 identity = 14695981039346656037ULL;
++    for (UINT32 i = 0; i < SrcSize; ++i)
++        identity = (identity ^ pSrcData[i]) * 1099511628211ULL;
++#endif
++    HEADSET_STAGE("decode_start", identity);
+ 	status = log_decompress(h264, pSrcData, SrcSize, regionRects, numRegionRects);
++    HEADSET_STAGE("decode_end", identity);
+ 
+ 	if (status == 0)
+ 		return 1;
+@@ -204,6 +227,7 @@ INT32 avc420_decompress(H264_CONTEXT* h264, const BYTE* pSrcData, UINT32 SrcSize
+ 	                           pDstData, nDstStep, regionRects, numRegionRects))
+ 		return -1002;
+ 
++    HEADSET_STAGE("color_end", identity);
+ 	return 1;
+ }
+ 
+diff --git a/libfreerdp/core/tcp.c b/libfreerdp/core/tcp.c
+index 02e1f7e..a178242 100644
+--- a/libfreerdp/core/tcp.c
++++ b/libfreerdp/core/tcp.c
+@@ -1376,6 +1376,30 @@ int freerdp_tcp_default_connect(rdpContext* context, rdpSettings* settings, cons
+ 		(void)freerdp_tcp_set_nodelay(WLog_Get(TAG), WLOG_ERROR, sockfd);
+ 	}
+ 
++#if defined(__ANDROID__)
++    /* AF41 is video; RFC 8325 maps it to UP 4. AP policy remains authoritative. */
++    if (!ipcSocket)
++    {
++        struct sockaddr_storage address = { 0 };
++        socklen_t length = sizeof(address);
++        int readback = -1;
++        if (getsockname(sockfd, (struct sockaddr*)&address, &length) == 0 &&
++            (address.ss_family == AF_INET || address.ss_family == AF_INET6))
++        {
++            const int level = address.ss_family == AF_INET6 ? IPPROTO_IPV6 : IPPROTO_IP;
++            const int option = address.ss_family == AF_INET6 ? IPV6_TCLASS : IP_TOS;
++            int value = 34 << 2;
++            if (setsockopt(sockfd, level, option, &value, sizeof(value)) == 0)
++            {
++                length = sizeof(value);
++                if (getsockopt(sockfd, level, option, &value, &length) == 0)
++                    readback = value >> 2;
++            }
++        }
++        WLog_Print(WLog_Get("HeadsetNetwork"), WLOG_INFO, "videoPriorityDscp=%d", readback);
++    }
++#endif
++
+ 	/* receive buffer must be a least 32 K */
+ 	UINT32 optval = 1;
+ 	socklen_t optlen = sizeof(optval);

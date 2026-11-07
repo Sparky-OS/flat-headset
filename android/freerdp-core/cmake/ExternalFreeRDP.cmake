@@ -5,7 +5,7 @@
 #
 # Licensed under the Apache License, Version 2.0.
 # KDE Connect override: keep the upstream Android build but omit redirection channels that are
-# neither exposed by this integration nor available on KDE Connect's Android 6 minimum API.
+# exposed by this integration. Camera2 APIs are resolved lazily on API 24 and newer.
 
 include(ExternalProject)
 
@@ -41,7 +41,6 @@ set(FREERDP_EXTRA_CMAKE_ARGS
     -DWITH_OPUS:BOOL=${WITH_OPUS}
     -DWITH_CJSON_REQUIRED:BOOL=${WITH_CJSON}
     -DCHANNEL_PRINTER_CLIENT:BOOL=OFF
-    -DCHANNEL_RDPECAM_CLIENT:BOOL=OFF
 )
 
 if(FREERDP_NATIVE_OPTIMIZED)

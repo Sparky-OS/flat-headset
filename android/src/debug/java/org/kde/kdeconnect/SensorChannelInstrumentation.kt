@@ -57,7 +57,7 @@ class SensorChannelInstrumentation : Instrumentation() {
                     if (code == SessionActivity.CONNECTION_STATE_CONNECTED) connected.countDown()
                 }
             }
-            activity = startActivitySync(Intent(targetContext, SessionActivity::class.java)
+            activity = startActivitySync(Intent(targetContext, SensorChannelProofActivity::class.java)
                 .setData(uri.build()).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 .putExtra(SessionActivity.EXTRA_CONNECTION_STATE_RECEIVER, receiver))
             check(connected.await(30, TimeUnit.SECONDS)) { "RDP did not connect: $states" }
@@ -74,4 +74,10 @@ class SensorChannelInstrumentation : Instrumentation() {
             activity?.let { current -> runOnMainSync { if (!current.isFinishing) current.finish() } }
         }
     }
+}
+
+/** The fixture explicitly approves the experimental camera channel on its pinned local peer. */
+class SensorChannelProofActivity : SessionActivity() {
+    override fun OnExperimentalFeature(feature: Int): Boolean =
+        feature == LibFreeRDP.EXPERIMENTAL_CAMERA && intent.data?.host == "10.0.2.2"
 }
