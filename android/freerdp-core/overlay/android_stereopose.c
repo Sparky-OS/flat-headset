@@ -42,8 +42,15 @@ static UINT pose_open(IWTSVirtualChannelCallback* iface) {
     if (!InitOnceExecuteOnce(&once, init_lock, NULL, NULL)) return CHANNEL_RC_NO_MEMORY;
     EnterCriticalSection(&lock);
     c->cookie = next_cookie++;
+    BOOL duplicate = FALSE;
+    PosePlugin* plugin = (PosePlugin*)c->base.plugin;
+    for (PoseCallback* entry = live; entry; entry = entry->next) {
+        PosePlugin* owner = (PosePlugin*)entry->base.plugin;
+        if (owner->context->instance == plugin->context->instance && !atomic_load(&entry->failed)) duplicate = TRUE;
+    }
     c->next = live; live = c;
     LeaveCriticalSection(&lock);
+    if (duplicate) { atomic_store(&c->failed, true); return CHANNEL_RC_OK; }
     // No local consent means no HELLO, no sensor registration and no sample.
     atomic_store(&c->failed, pose_java(c, 0, NULL, 0) != 1);
     return CHANNEL_RC_OK;
@@ -79,8 +86,8 @@ UINT stereopose_entry(IDRDYNVC_ENTRY_POINTS* ep) {
     static const IWTSVirtualChannelCallback callbacks = {
         .OnDataReceived = pose_received, .OnOpen = pose_open, .OnClose = pose_closed
     };
-    return freerdp_generic_DVCPluginEntry(ep, "com.freerdp.channels.stereopose", "Sparky.StereoDroid.Pose.1",
-        sizeof(PosePlugin), sizeof(PoseCallback), &callbacks, pose_initialize, NULL);
+    return freerdp_generic_DVCPluginEntryWithOptions(ep, "com.freerdp.channels.stereopose", "Sparky.StereoDroid.Pose.1",
+        sizeof(PosePlugin), sizeof(PoseCallback), &callbacks, pose_initialize, NULL, GENERIC_CHANNEL_ENTRY_OPTION_MULTI_INSTANCE);
 }
 JNIEXPORT jboolean JNICALL Java_com_freerdp_freerdpcore_services_LibFreeRDP_sendStereoPose(
     JNIEnv* env, jclass cls, jlong instance, jlong cookie, jbyteArray packet) {

@@ -21,8 +21,34 @@ class PoseEndpointInstrumentation : Instrumentation() {
     private lateinit var args: Bundle
     override fun onCreate(arguments: Bundle?) { super.onCreate(arguments); args = arguments ?: Bundle(); start() }
     override fun callApplicationOnCreate(app: Application) { super.callApplicationOnCreate(app); created.countDown() }
+    private fun runUi(result: Bundle) {
+        var activity: Activity? = null
+        var code = Activity.RESULT_CANCELED
+        val prefs = targetContext.getSharedPreferences("headset-fit", 0)
+        val previous = prefs.getBoolean("stereodroid-orientation", false)
+        try {
+            check(created.await(30, TimeUnit.SECONDS))
+            prefs.edit().putBoolean("stereodroid-orientation", true).commit()
+            val fp = requireNotNull(args.getString("fingerprint"))
+            require(fp.matches(Regex("[a-fA-F0-9]{64}")))
+            val uri = Uri.Builder().scheme("freerdp").encodedAuthority("fixture@10.0.2.2:3389").appendPath("connect")
+                .appendQueryParameter("sec", "tls").appendQueryParameter("p", "fixture")
+                .appendQueryParameter("cert", "fingerprint:sha256:$fp").appendQueryParameter("size", "640x480").build()
+            activity = startActivitySync(Intent(targetContext, org.kde.kdeconnect.plugins.remotedesktop.headset.HeadsetActivity::class.java)
+                .setData(uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK).putExtra("headsetProofDisableWifiLock", true))
+            SystemClock.sleep(12000)
+            result.putString("stream", "PASS HEADSET_UI fixture; see captured two-eye status and server pose assertions\n")
+            code = Activity.RESULT_OK
+        } catch (failure: Throwable) { result.putString("stream",failure.stackTraceToString()) }
+        finally {
+            activity?.let { current -> runOnMainSync { if (!current.isFinishing) current.finish() } }
+            prefs.edit().putBoolean("stereodroid-orientation", previous).commit()
+        }
+        finish(code,result)
+    }
     override fun onStart() {
         val result = Bundle()
+        if (args.getString("ui", "false") == "true") { runUi(result); return }
         var activity: SensorChannelProofActivity? = null
         var code = Activity.RESULT_CANCELED
         try {

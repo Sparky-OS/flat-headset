@@ -99,6 +99,7 @@ public final class StereoPoseController implements AutoCloseable {
                 if(!connection.controls.offer(new Control(msg,SystemClock.elapsedRealtimeNanos())))throw new IllegalArgumentException("Control queue full");
             return 1;
         } catch(IllegalArgumentException error) {
+            connection.protocolReason=error.getCause()!=null && "Unsupported pose version".equals(error.getCause().getMessage()) ? 2 : 9;
             connection.protocolFailed=true;return 0;
         }
     }
@@ -125,6 +126,7 @@ public final class StereoPoseController implements AutoCloseable {
         final Handler worker,sensors;
         final byte[] nonce=new byte[16];
         volatile boolean stopped=false,lifecycleChanged=true,recenterRequested=false,protocolFailed=false;
+        volatile int protocolReason=9;
         int epoch=0,rate=60,type=15,mount=1;
         volatile int sourceEpoch=0;
         long sequence=0,lastIncoming=0,lastPublished=Long.MIN_VALUE,nextPublish=0,samples=0,firstPublication=0;
@@ -208,9 +210,12 @@ public final class StereoPoseController implements AutoCloseable {
                 @Override public void onAccuracyChanged(Sensor sensor,int accuracy) {}
                 @Override public void onSensorChanged(SensorEvent event) {
                     if(stopped || !resumed || source!=sourceEpoch)return;
-                    float[] xyzw=rotationVectorToWire(event.values);
-                    if(event.accuracy>=-1 && event.accuracy<=3)
-                        latest.set(new Reading(xyzw,event.timestamp,event.accuracy,source));
+                    try {
+                        float[] xyzw=rotationVectorToWire(event.values);
+                        if(event.accuracy>=-1 && event.accuracy<=3)
+                            latest.set(new Reading(xyzw,event.timestamp,event.accuracy,source));
+                        else protocolFailed=true;
+                    } catch(IllegalArgumentException invalid) { latest.set(null);protocolFailed=true; }
                 }
             };
             int period=Math.min(10000,1000000/rate);
@@ -219,7 +224,7 @@ public final class StereoPoseController implements AutoCloseable {
         }
         void pump() {
             if(stopped)return;
-            if(protocolFailed) { status(4,9);close();return; }
+            if(protocolFailed) { status(4,protocolReason);close();return; }
             try {
                 Control c;for(int i=0;i<16 && (c=controls.poll())!=null;++i)control(c);
                 if(stopped)return;

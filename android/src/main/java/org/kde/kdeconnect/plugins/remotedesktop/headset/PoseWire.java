@@ -40,7 +40,8 @@ public final class PoseWire {
                 if(used!=expected)continue;
                 ByteBuffer h=wrap(storage);
                 if(expected==32) {
-                    if(h.getInt(0)!=0x31504453 || h.getShort(4)!=1)throw new IllegalArgumentException("Unsupported pose version");
+                    if(h.getInt(0)!=0x31504453)throw new IllegalArgumentException("Invalid pose magic");
+                    if(h.getShort(4)!=1)throw new IllegalArgumentException("Unsupported pose version");
                     expected=h.getInt(8);
                     if(expected<32 || expected>4096)throw new IllegalArgumentException("Invalid total length");
                     if(expected>32)continue;
@@ -67,6 +68,5 @@ public final class PoseWire {
         double sum=0;for(float f:xyzw) { if(Float.isNaN(f)||Float.isInfinite(f))return false;sum+=(double)f*f; }
         return sum>=.99*.99 && sum<=1.01*1.01;
     }
-    private PoseWire(boolean unused) {}
     public PoseWire() {}
 }
