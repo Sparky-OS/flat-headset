@@ -134,6 +134,7 @@ android {
                     arguments += "-DFREERDP_NATIVE_OPTIMIZED=ON"
                 }
                 arguments += listOf(
+                    "-DFLAT_HEADSET_FREERDP_CORE:PATH=${upstreamCore.absolutePath}",
                     "-DCMAKE_MODULE_PATH=${file("cmake").absolutePath}",
                     // FreeRDP's MediaCodec backend is explicitly experimental.
                     // Use its stable, NEON-optimized OpenH264 backend instead; a
@@ -199,7 +200,7 @@ android {
 
     externalNativeBuild {
         cmake {
-            path = upstreamCore.resolve("src/main/cpp/CMakeLists.txt")
+            path = file("CMakeLists.txt")
             version = "4.1.2"
         }
     }
