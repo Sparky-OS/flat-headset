@@ -48,7 +48,7 @@ public final class ChannelProbe extends Instrumentation {
                 .appendQueryParameter("p", "fixture") // Public dummy; isolated server does not authenticate accounts.
                 .appendQueryParameter("cert", "fingerprint:sha256:" + fingerprint)
                 .appendQueryParameter("size", "640x480").appendQueryParameter("log-level", "DEBUG");
-            if (camera) uri.appendQueryParameter("dvc", "rdpecam");
+            if (camera && !"true".equals(arguments.getString("skipCamera", "false"))) uri.appendQueryParameter("dvc", "rdpecam");
             CountDownLatch connected = new CountDownLatch(1);
             StringBuffer states = new StringBuffer();
             ResultReceiver receiver = new ResultReceiver(new Handler(Looper.getMainLooper())) {
