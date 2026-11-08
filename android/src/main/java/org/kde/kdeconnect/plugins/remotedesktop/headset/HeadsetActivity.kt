@@ -92,7 +92,9 @@ class HeadsetActivity : SessionActivity() {
         findViewById<ViewGroup>(android.R.id.content).addView(HeadsetFitOverlay(this),
             ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         poseStatus?.let { findViewById<ViewGroup>(android.R.id.content).addView(it,
-            ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (68 * resources.displayMetrics.density).toInt())) }
+            android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (68 * resources.displayMetrics.density).toInt()).apply {
+                gravity = android.view.Gravity.BOTTOM
+            }) }
 
     }
 

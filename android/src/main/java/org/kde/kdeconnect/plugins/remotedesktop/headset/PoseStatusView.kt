@@ -42,7 +42,7 @@ class PoseStatusView(context: Context) : View(context) {
         for (eye in 0..1) {
             val x = eye * width / 2f + 12 * resources.displayMetrics.density
             paint.color = Color.BLACK; paint.alpha = 190
-            canvas.drawRect(eye * width / 2f, 0f, (eye + 1) * width / 2f, height.toFloat(), paint)
+            canvas.drawRect(eye * width / 2f + 12 * resources.displayMetrics.density, 0f, (eye + 1) * width / 2f - 12 * resources.displayMetrics.density, height.toFloat(), paint)
             paint.color = Color.WHITE; paint.alpha = 255
             canvas.drawText(text, x, 20 * resources.displayMetrics.density, paint)
             canvas.drawText(source, x, 38 * resources.displayMetrics.density, paint)
