@@ -29,6 +29,13 @@ Sound stays on the PC by default and plays through its headphones or speakers.
 
 The full VR mode with head tracking is a separate project, [StereoDroid](https://github.com/Sparky-OS/stereodroid).
 
+## The viewer
+
+The phone goes into a Cardboard-style viewer: a holder with two lenses.
+We test with a VR Shinecon viewer.
+Such viewers cost little and are sold almost everywhere: a [search for "vr glasses for smartphone" on AliExpress](https://www.aliexpress.com/w/wholesale-vr-glasses-for-smartphone.html) opens in your own country and shows what is on sale there.
+A phone with a higher-resolution screen can show a sharper picture, because the link can carry the phone's native resolution.
+
 ## Status
 
 Throw and Catch work, and the PC side ships in Sparky Stereo OS beta 1: KWin's phone monitor, KRdp, KPipeWire, KDE Connect, and KRDC with Catch, built for amd64, and Catch for arm64 too.
