@@ -34,6 +34,7 @@ The full VR mode with head tracking is a separate project, [StereoDroid](https:/
 The phone goes into a Cardboard-style viewer: a holder with two lenses.
 We test with a VR Shinecon viewer.
 Such viewers cost little and are sold almost everywhere: a [search for "vr glasses for smartphone" on AliExpress](https://www.aliexpress.com/w/wholesale-vr-glasses-for-smartphone.html) opens in your own country and shows what is on sale there.
+The same search also lists headsets that come with their own screens: the kind meant here is the open one, with a front that opens so a phone fits inside.
 A phone with a higher-resolution screen can show a sharper picture, because the link can carry the phone's native resolution.
 
 ## Status
