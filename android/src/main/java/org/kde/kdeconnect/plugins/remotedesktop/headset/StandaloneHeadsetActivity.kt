@@ -76,7 +76,10 @@ class StandaloneHeadsetActivity : AppCompatActivity() {
     override fun onCreate(state: Bundle?) {
         super.onCreate(state)
         title = getString(R.string.headset_title)
-        status = TextView(this).apply { setText(R.string.headset_discovery_description) }
+        status = TextView(this).apply {
+            setText(if (org.kde.kdeconnect.helpers.TrustedDevices.getAllTrustedDevices(this@StandaloneHeadsetActivity).isEmpty())
+                R.string.headset_pair_first else R.string.headset_discovery_description)
+        }
         val fit = getSharedPreferences(HeadsetFitOverlay.PREFERENCES, MODE_PRIVATE)
         transport = Spinner(this).apply {
             adapter = ArrayAdapter(this@StandaloneHeadsetActivity, android.R.layout.simple_spinner_dropdown_item,
@@ -243,6 +246,7 @@ class StandaloneHeadsetActivity : AppCompatActivity() {
         if (active) return
         if (org.kde.kdeconnect.helpers.TrustedDevices.getAllTrustedDevices(this).isEmpty()) {
             status.setText(R.string.headset_pair_first)
+            status.requestRectangleOnScreen(android.graphics.Rect(0, 0, status.width, status.height))
             return
         }
         val direct = transport.selectedItemPosition == 1
