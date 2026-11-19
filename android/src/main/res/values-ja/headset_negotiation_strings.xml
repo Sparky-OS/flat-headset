@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="headset_hevc_no_offer">コンピューターからHEVCの提案がありませんでした。選択する間はH.264の映像を表示します。戻って「H.264を使用」を選ぶか、コンピューターを更新して再接続し、HEVCをもう一度試してください。</string>
+</resources>

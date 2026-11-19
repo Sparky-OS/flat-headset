@@ -5,6 +5,8 @@ import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
@@ -22,6 +24,16 @@ class HeadsetActivity : SessionActivity() {
     private var waitingScene: WaitingSceneView? = null
     @Volatile private var failureResult: Intent? = null
     private var failureOverlay: View? = null
+    @Volatile private var codecNotice: Intent? = null
+    private var codecNoticeView: View? = null
+    private val negotiationHandler = Handler(Looper.getMainLooper())
+    private val missingOffer = Runnable {
+        if (displayConnected && failureResult == null && video?.offered != true &&
+            getSharedPreferences(HeadsetFitOverlay.PREFERENCES, MODE_PRIVATE).getBoolean("hevc", false) &&
+            video?.expireOffer() == true) {
+            showMissingOffer()
+        }
+    }
     private var userStopped = false
     private var everConnected = false
     @Volatile private var firstFrame = true
@@ -85,7 +97,9 @@ class HeadsetActivity : SessionActivity() {
     }
 
     override fun onSessionConnectionChanged(connected: Boolean) {
+        negotiationHandler.removeCallbacks(missingOffer)
         if (!connected) { video?.close(); linkStats?.save() }
+        else armOfferDeadline()
         displayConnected = connected
         if (connected) everConnected = true
         if (!connected && failureResult == null) { firstFrame = true; waitingScene?.setWaiting(true, true) }
@@ -96,7 +110,8 @@ class HeadsetActivity : SessionActivity() {
         if (connected) hideSystemBars()
     }
 
-    override fun onHeadsetPacket(packet: ByteArray): Int = video?.receive(packet) ?: 0
+    override fun onHeadsetPacket(packet: ByteArray): Int =
+        if (codecNotice != null) 0 else video?.receive(packet) ?: 0
 
     override fun onDesktopFrame(frame: Bitmap) {
         if (failureResult != null || video?.active == true) return
@@ -135,8 +150,24 @@ class HeadsetActivity : SessionActivity() {
         return true
     }
 
+    private fun armOfferDeadline() {
+        negotiationHandler.removeCallbacks(missingOffer)
+        if (codecNotice == null) negotiationHandler.postDelayed(missingOffer, HeadsetVideo.NEGOTIATION_TIMEOUT_MS)
+    }
+
+    private fun showMissingOffer() {
+        if (codecNotice != null) return
+        val reason = getString(R.string.headset_hevc_no_offer)
+        codecNotice = Intent().putExtra(SessionActivity.EXTRA_CONNECTION_ERROR, reason)
+            .putExtra(HeadsetFailure.CODEC, true)
+        codecNoticeView = HeadsetFailure.view(this, reason, fullScreen = false).also {
+            window.decorView.findViewById<ViewGroup>(android.R.id.content).addView(it, ViewGroup.LayoutParams(-1, -2))
+        }
+    }
+
     private fun showFailure(result: Intent) {
         if (failureResult != null) return
+        negotiationHandler.removeCallbacks(missingOffer)
         failureResult = result
         runOnUiThread {
             waitingScene?.setWaiting(false)
@@ -155,7 +186,10 @@ class HeadsetActivity : SessionActivity() {
             setResult(RESULT_CANCELED, it)
             // Keep the explanation in both eyes until Back returns to the choices.
             if (!userStopped) return
-        } ?: run { if (!userStopped && everConnected) setResult(RESULT_CANCELED) }
+        } ?: run {
+            codecNotice?.let { setResult(RESULT_CANCELED, it) }
+                ?: run { if (!userStopped && everConnected) setResult(RESULT_CANCELED) }
+        }
         super.finish()
     }
 
@@ -185,9 +219,9 @@ class HeadsetActivity : SessionActivity() {
         if (hasFocus) hideSystemBars()
     }
 
-    override fun onResume() { super.onResume(); resumed = true; hideSystemBars(); panel?.onResume(); waitingScene?.setResumed(true); performance?.setResumed(true); networkOverlay?.setActive(displayConnected) }
-    override fun onPause() { waitingScene?.setResumed(false); networkOverlay?.setActive(false); linkStats?.save(); resumed = false; video?.close(); performance?.setResumed(false); panel?.onPause(); super.onPause() }
-    override fun onDestroy() { waitingScene?.close(); waitingScene = null; video?.close(); video = null; performance?.close(); performance = null; panel?.release(); panel = null; super.onDestroy() }
+    override fun onResume() { super.onResume(); resumed = true; if (displayConnected) armOfferDeadline(); hideSystemBars(); panel?.onResume(); waitingScene?.setResumed(true); performance?.setResumed(true); networkOverlay?.setActive(displayConnected) }
+    override fun onPause() { negotiationHandler.removeCallbacks(missingOffer); waitingScene?.setResumed(false); networkOverlay?.setActive(false); linkStats?.save(); resumed = false; video?.close(); performance?.setResumed(false); panel?.onPause(); super.onPause() }
+    override fun onDestroy() { negotiationHandler.removeCallbacks(missingOffer); waitingScene?.close(); waitingScene = null; video?.close(); video = null; performance?.close(); performance = null; panel?.release(); panel = null; super.onDestroy() }
 
     companion object { const val EXTRA_NO_LENSES = "headsetNoLenses" }
 }

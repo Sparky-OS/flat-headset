@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="headset_hevc_no_offer">计算机未提供 HEVC。选择期间将显示 H.264 画面。请返回并选择“使用 H.264”，或更新计算机后重新连接，再次尝试 HEVC。</string>
+</resources>

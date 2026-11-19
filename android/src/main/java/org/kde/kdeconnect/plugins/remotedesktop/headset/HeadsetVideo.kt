@@ -18,6 +18,18 @@ class HeadsetVideo(private val panel: PanelView, private val enabled: () -> Bool
         private set
     var onFailure: (String) -> Unit = {}
 
+    companion object { const val NEGOTIATION_TIMEOUT_MS = 5000L }
+    @Volatile var offered = false
+        private set
+
+    private var offerExpired = false
+
+    @Synchronized fun expireOffer(): Boolean {
+        if (offered) return false
+        offerExpired = true
+        return true
+    }
+
     private var codec: MediaCodec? = null
     private var software = false
     private var planeBuffers = emptyList<ByteBuffer>()
@@ -29,6 +41,7 @@ class HeadsetVideo(private val panel: PanelView, private val enabled: () -> Bool
         private set
 
     @Synchronized fun receive(packet: ByteArray): Int {
+        if (offerExpired) return 0
         if (failure != null) return -1
         if (packet.isEmpty()) { close(); return 0 }
         // Zero declines an offer only when H.264 was selected by the person.
@@ -43,6 +56,7 @@ class HeadsetVideo(private val panel: PanelView, private val enabled: () -> Bool
             val seq = input.int; val flags = input.int; val size = input.int
             require(input.int == 2 && size == packet.size - 36)
             if (kind == 1) {
+                offered = true
                 require(enabled() && codec == null && seq == 0 && size == 0)
                 require(w > 0 && h > 0 && hz in 1000..240000)
                 val selected = MediaCodecList(MediaCodecList.REGULAR_CODECS).codecInfos.firstOrNull { info ->

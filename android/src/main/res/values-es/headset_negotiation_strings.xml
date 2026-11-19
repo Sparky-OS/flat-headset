@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="headset_hevc_no_offer">El ordenador no ha ofrecido HEVC. Se muestra H.264 mientras elige. Vuelva atrás para elegir Usar H.264, o actualice el ordenador y vuelva a conectarse para probar HEVC de nuevo.</string>
+</resources>

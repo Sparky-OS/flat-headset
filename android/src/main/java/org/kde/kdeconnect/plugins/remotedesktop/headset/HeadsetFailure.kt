@@ -17,9 +17,9 @@ internal object HeadsetFailure {
     const val SCENE = "headsetSceneFailure"
     const val STILL = "headsetStillFailure"
 
-    fun view(context: Context, message: String): LinearLayout = LinearLayout(context).apply {
+    fun view(context: Context, message: String, fullScreen: Boolean = true): LinearLayout = LinearLayout(context).apply {
         orientation = LinearLayout.HORIZONTAL
-        setBackgroundColor(Color.BLACK)
+        setBackgroundColor(if (fullScreen) Color.BLACK else 0xCC000000.toInt())
         repeat(2) {
             addView(TextView(context).apply {
                 text = message + "\n\n" + context.getString(R.string.headset_failure_back)
@@ -27,7 +27,7 @@ internal object HeadsetFailure {
                 textSize = 16f
                 gravity = Gravity.CENTER
                 setPadding(24, 16, 24, 16)
-            }, LinearLayout.LayoutParams(0, -1, 1f))
+            }, LinearLayout.LayoutParams(0, if (fullScreen) -1 else -2, 1f))
         }
     }
 

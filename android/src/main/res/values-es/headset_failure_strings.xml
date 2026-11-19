@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="headset_hevc">Usar HEVC (H.264 es la opción predeterminada)</string>
+    <string name="headset_hevc_failed">No se ha podido usar HEVC:\n%1$s</string>
+    <string name="headset_scene_failed">No se ha podido mostrar la escena de espera «%1$s»:\n%2$s</string>
+    <string name="headset_failure_back">Pulse Atrás para salir del visor y elegir cómo continuar.</string>
+    <string name="headset_use_h264">Usar H.264</string>
+    <string name="headset_use_still">Usar la imagen fija</string>
+    <string name="headset_another_scene">Elegir otra escena</string>
+</resources>

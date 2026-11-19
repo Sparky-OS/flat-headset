@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="headset_hevc_no_offer">컴퓨터가 HEVC를 제안하지 않았습니다. 선택하는 동안 H.264 화면을 표시합니다. 뒤로 가서 H.264 사용을 선택하거나, 컴퓨터를 업데이트하고 다시 연결하여 HEVC를 다시 시도하세요.</string>
+</resources>
