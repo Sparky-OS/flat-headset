@@ -9,6 +9,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.kde.kdeconnect.helpers.TrustedDevices
 import org.kde.kdeconnect.helpers.DeviceHelper
 import org.kde.kdeconnect.helpers.security.RsaHelper
 import org.kde.kdeconnect.helpers.security.SslHelper
@@ -23,16 +24,26 @@ import java.util.concurrent.TimeUnit
 import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLSocket
 import javax.net.ssl.TrustManagerFactory
+import javax.net.ssl.KeyManagerFactory
 
 @RunWith(RobolectricTestRunner::class)
 @Config(application = Application::class, sdk = [28])
 @ConscryptMode(ConscryptMode.Mode.OFF)
 class PanelControlServerTest {
+    private lateinit var clientKeys: java.security.KeyPair
+    private lateinit var clientCertificate: java.security.cert.Certificate
     @Before fun prepareIdentity() {
         val context = RuntimeEnvironment.getApplication()
         DeviceHelper.initializeDeviceId(context)
         RsaHelper.initialiseRsaKeys(context)
         SslHelper.initialiseCertificate(context)
+        clientKeys = java.security.KeyPairGenerator.getInstance("RSA").apply { initialize(2048) }.generateKeyPair()
+        val name = org.bouncycastle.asn1.x500.X500Name("CN=paired-pc")
+        val now = System.currentTimeMillis()
+        val builder = org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder(name, java.math.BigInteger.ONE,
+            java.util.Date(now - 60000), java.util.Date(now + 86400000), name, clientKeys.public)
+        clientCertificate = SslHelper.parseCertificate(builder.build(
+            org.bouncycastle.operator.jcajce.JcaContentSignerBuilder("SHA256withRSA").build(clientKeys.private)).encoded)
     }
 
     /** Exercise the actual TLS listener and measured descriptor, not a direct viewer intent. */
@@ -43,6 +54,9 @@ class PanelControlServerTest {
             activity.getSharedPreferences(HeadsetFitOverlay.PREFERENCES, Activity.MODE_PRIVATE)
                 .edit().putString(HeadsetLink.PREFERENCE, format).commit()
             val panel = PanelDescriptor.measure(activity, true)
+            TrustedDevices.getDeviceSettings(activity, "paired-pc").edit()
+                .putString("certificate", android.util.Base64.encodeToString(clientCertificate.encoded, 0)).commit()
+            TrustedDevices.addTrustedDevice(activity, "paired-pc")
             assertTrue(panel.get("scale") is Double)
             val events = LinkedBlockingQueue<String>()
             PanelControlServer(activity, panel, { _, message ->
@@ -55,7 +69,9 @@ class PanelControlServerTest {
                 val trust = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm()).apply {
                     init(store)
                 }
-                val tls = SSLContext.getInstance("TLSv1.2").apply { init(null, trust.trustManagers, null) }
+                store.setKeyEntry("client", clientKeys.private, charArrayOf(), arrayOf(clientCertificate))
+                val keys = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm()).apply { init(store, charArrayOf()) }
+                val tls = SSLContext.getInstance("TLSv1.2").apply { init(keys.keyManagers, trust.trustManagers, null) }
                 (tls.socketFactory.createSocket("127.0.0.1", server.port) as SSLSocket).use { socket ->
                     socket.soTimeout = 5000
                     socket.startHandshake()
@@ -83,6 +99,7 @@ class PanelControlServerTest {
                         events.poll(5, TimeUnit.SECONDS))
                 }
             }
+            TrustedDevices.removeTrustedDevice(activity, "paired-pc")
         }
     }
 
@@ -104,7 +121,8 @@ class PanelControlServerTest {
                     try {
                         socket.startHandshake()
                         received = socket.inputStream.read() >= 0
-                    } catch (_: javax.net.ssl.SSLException) {
+                    } catch (error: java.io.IOException) {
+                        if (error is java.net.SocketTimeoutException) throw error
                         // The peer must be refused before the panel descriptor is disclosed.
                     }
                 }
@@ -112,6 +130,10 @@ class PanelControlServerTest {
                 assertEquals(null, events.poll())
             }
         }
+    }
+
+    @Test fun revokedPairCannotConnectOnAnEstablishedChannel() = exchange(HeadsetLink.SBS_720, false) {
+        TrustedDevices.removeTrustedDevice(RuntimeEnvironment.getApplication(), "paired-pc")
     }
 
     @Test fun nativeStillConnectsWithoutDescriptorEcho() = exchange(HeadsetLink.NATIVE)

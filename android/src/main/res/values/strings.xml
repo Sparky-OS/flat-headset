@@ -7,6 +7,7 @@ SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted
 -->
 
 <resources>
+    <string name="headset_pair_first">Pair this phone with your computer in KDE Connect before sharing its display.</string>
   <!--  # Dear potential translators:
 
         Thank you for your interest in KDE Connect! We do not actually handle our own translations.

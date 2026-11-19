@@ -3,11 +3,14 @@ package org.kde.kdeconnect.plugins.remotedesktop.headset
 
 import android.content.Context
 import org.json.JSONObject
+import org.kde.kdeconnect.helpers.TrustedDevices
 import org.kde.kdeconnect.helpers.security.RsaHelper
 import org.kde.kdeconnect.helpers.security.SslHelper
 import java.io.Closeable
 import java.net.InetAddress
 import java.security.KeyStore
+import java.security.cert.CertificateException
+import java.security.cert.X509Certificate
 import java.util.concurrent.Executors
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Semaphore
@@ -15,11 +18,13 @@ import javax.net.ssl.KeyManagerFactory
 import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLServerSocket
 import javax.net.ssl.SSLSocket
+import javax.net.ssl.X509TrustManager
 
-/** Certificate-pinned control channel, active only while the user opens the viewer. */
+/** Mutually authenticated control channel using the current KDE Connect pairing. */
 class PanelControlServer(context: Context, private val panel: JSONObject,
                          private val connect: (InetAddress, JSONObject) -> Unit,
                          private val disconnected: () -> Unit) : Closeable {
+    private val pairingContext = context.applicationContext
     private val worker = Executors.newSingleThreadExecutor()
     private val channels = Executors.newFixedThreadPool(4)
     private val slots = Semaphore(4)
@@ -34,8 +39,19 @@ class PanelControlServer(context: Context, private val panel: JSONObject,
             setKeyEntry("panel", RsaHelper.getPrivateKey(context), charArrayOf(), arrayOf(SslHelper.certificate))
         }
         val keys = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm()).apply { init(store, charArrayOf()) }
-        val tls = SSLContext.getInstance("TLSv1.2").apply { init(keys.keyManagers, null, null) }
+        val trust = object : X509TrustManager {
+            override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
+            override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {
+                throw CertificateException("This listener does not authenticate servers")
+            }
+            override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) {
+                if (chain.isEmpty() || !isPaired(chain[0])) throw CertificateException("KDE Connect pairing required")
+                chain[0].checkValidity()
+            }
+        }
+        val tls = SSLContext.getInstance("TLSv1.2").apply { init(keys.keyManagers, arrayOf(trust), null) }
         server = tls.serverSocketFactory.createServerSocket(0) as SSLServerSocket
+        server.needClientAuth = true
         worker.execute {
             while (!closed) {
                 try {
@@ -59,9 +75,16 @@ class PanelControlServer(context: Context, private val panel: JSONObject,
         }
     }
 
+    private fun isPaired(certificate: X509Certificate): Boolean =
+        TrustedDevices.getAllTrustedDevices(pairingContext).any { id ->
+            runCatching { TrustedDevices.getDeviceCertificate(pairingContext, id) == certificate }.getOrDefault(false)
+        }
+
     private fun handle(socket: SSLSocket) {
         socket.soTimeout = 15000
         socket.startHandshake()
+        val peer = socket.session.peerCertificates.first() as X509Certificate
+        require(isPaired(peer)) { "KDE Connect pairing was revoked" }
         val output = socket.outputStream.bufferedWriter(Charsets.UTF_8)
         output.write(JSONObject().put("panel", panel).toString() + "\n")
         output.flush()
@@ -77,6 +100,7 @@ class PanelControlServer(context: Context, private val panel: JSONObject,
                 bytes.write(next)
             }
             val message = JSONObject(bytes.toString("UTF-8"))
+            require(isPaired(peer)) { "KDE Connect pairing was revoked" }
             when (message.getString("action")) {
                 "ping" -> { output.write("{\"action\":\"pong\"}\n"); output.flush() }
                 "connect" -> {

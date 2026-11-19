@@ -488,4 +488,5 @@
     <string name="headset_movie_waiting">Wybierz Flat Headset w kontrolerze multimediów. Dźwięk filmu jest odtwarzany na tym telefonie.</string>
     <string name="headset_movie_unsupported">Ten układ filmu wymaga konwersji przez serwer multimediów.</string>
     <string name="headset_movie_failed">Nie można odtworzyć filmu. Wybierz inny plik w kontrolerze.</string>
+    <string name="headset_pair_first">Sparuj ten telefon z komputerem w KDE Connect, zanim udostępnisz jego ekran.</string>
 </resources>

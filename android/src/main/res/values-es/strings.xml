@@ -469,4 +469,5 @@
   <string name="pref_presenter_enable_volume_keys_summary">«En espera» no está implementado en Android entre las versiones 13 y 15</string>
   <string name="presenter_volume_keys_foreground_tip">Puede dejar la pantalla activada y usar las teclas de volumen para ir a la diapositiva previa/siguiente</string>
   <string name="presenter_volume_keys_tip">Puede dejar la pantalla activada o bloquear su dispositivo y usar las teclas de volumen para ir a la diapositiva previa/siguiente</string>
+    <string name="headset_pair_first">Empareja este teléfono con tu ordenador en KDE Connect antes de compartir su pantalla.</string>
 </resources>

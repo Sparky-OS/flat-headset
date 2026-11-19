@@ -465,4 +465,5 @@
     <string name="headset_movie_waiting">请在媒体控制器中选择 Flat Headset。电影声音将在此手机上播放。</string>
     <string name="headset_movie_unsupported">此视频布局需要由媒体服务器转换。</string>
     <string name="headset_movie_failed">无法播放电影。请在控制器中选择其他文件。</string>
+    <string name="headset_pair_first">共享屏幕前，请先在 KDE Connect 中将此手机与电脑配对。</string>
 </resources>

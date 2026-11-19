@@ -241,6 +241,10 @@ class StandaloneHeadsetActivity : AppCompatActivity() {
 
     private fun startSharing() {
         if (active) return
+        if (org.kde.kdeconnect.helpers.TrustedDevices.getAllTrustedDevices(this).isEmpty()) {
+            status.setText(R.string.headset_pair_first)
+            return
+        }
         val direct = transport.selectedItemPosition == 1
         if (direct && ContextCompat.checkSelfPermission(this, HeadsetDirectWifi.permission()) != PackageManager.PERMISSION_GRANTED) {
             directPermission.launch(HeadsetDirectWifi.permission())
