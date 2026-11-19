@@ -82,6 +82,7 @@ class HeadsetActivity : SessionActivity() {
             it.setWaiting(true, intent.getBooleanExtra("headsetReconnecting", false))
         }
         video = HeadsetVideo(panel!!) { getSharedPreferences(HeadsetFitOverlay.PREFERENCES, MODE_PRIVATE).getBoolean("hevc", false) }.also {
+            it.useSurfaceForProof = org.kde.kdeconnect_tp.BuildConfig.DEBUG && intent.getBooleanExtra("headsetProofHevcSurface", false)
             it.onFailure = { reason ->
                 showFailure(Intent().putExtra(SessionActivity.EXTRA_CONNECTION_ERROR,
                     getString(R.string.headset_hevc_failed, reason)).putExtra(HeadsetFailure.CODEC, true))

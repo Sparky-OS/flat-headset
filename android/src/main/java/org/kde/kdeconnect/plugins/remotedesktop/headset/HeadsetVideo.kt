@@ -32,6 +32,8 @@ class HeadsetVideo(private val panel: PanelView, private val enabled: () -> Bool
 
     private var codec: MediaCodec? = null
     private var software = false
+    // Exercise the Surface route with an emulator codec; this does not qualify hardware.
+    internal var useSurfaceForProof = false
     private var planeBuffers = emptyList<ByteBuffer>()
     private var width = 0
     private var height = 0
@@ -68,7 +70,8 @@ class HeadsetVideo(private val panel: PanelView, private val enabled: () -> Bool
                         }
                 } ?: error("No HEVC Main decoder for ${w}x$h at $hz mHz")
                 software = HeadsetCodec.isSoftware(selected.name,
-                    Build.VERSION.SDK_INT >= 29 && selected.isSoftwareOnly)
+                    Build.VERSION.SDK_INT >= 29 && selected.isSoftwareOnly) &&
+                    !(org.kde.kdeconnect_tp.BuildConfig.DEBUG && useSurfaceForProof)
                 val caps = selected.getCapabilitiesForType("video/hevc")
                 val format = MediaFormat.createVideoFormat("video/hevc", w, h).apply {
                     setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 8 * 1024 * 1024)
@@ -92,6 +95,7 @@ class HeadsetVideo(private val panel: PanelView, private val enabled: () -> Bool
             require(kind == 3 && w == width && h == height && hz == rate && seq == sequence + 1) { "HEVC packet geometry, rate or sequence changed" }
             require(sequence > 0 || flags and 1 != 0)
             val decoder = codec ?: error("HEVC not configured")
+            HeadsetTiming.record("hevc_receive", seq.toLong())
             val index = decoder.dequeueInputBuffer(100000)
             require(index >= 0) { "Input buffer timeout" }
             val buffer = decoder.getInputBuffer(index)!!
@@ -115,7 +119,10 @@ class HeadsetVideo(private val panel: PanelView, private val enabled: () -> Bool
                         cropSize("crop-top", "crop-bottom", MediaFormat.KEY_HEIGHT) == height) { "Decoder changed visible geometry" }
                 } else if (output >= 0) {
                     val presented = CountDownLatch(1)
-                    panel.expectDecoderFrame(received) { presented.countDown() }
+                    panel.expectDecoderFrame(received) {
+                        HeadsetTiming.record("hevc_gl_submit", seq.toLong())
+                        presented.countDown()
+                    }
                     if (org.kde.kdeconnect_tp.BuildConfig.DEBUG && seq <= 3)
                         Log.d("HeadsetVideo", "Release decoded frame $seq ${System.nanoTime()}")
                     if (software) {
