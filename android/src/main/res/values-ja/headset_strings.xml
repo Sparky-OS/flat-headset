@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="headset_discovery_description">KDE Connect でこの電話をコンピューターとペアリングしてください。同じ Wi-Fi、コンピューターのホットスポット、または USB テザリングで接続し、ここで受信の準備をします。音声と操作はコンピューター側に残り、電話の音量キーで明るさを調整します。</string>
+</resources>

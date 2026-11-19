@@ -2,7 +2,7 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted-GPL -->
 <resources>
     <string name="headset_title">Flat Headset</string>
-    <string name="headset_discovery_description">Connect this phone and your computer to the same Wi-Fi, the computer’s hotspot, or USB tethering. Get ready here, then approve Throw on the computer. Sound and input stay on the computer; the phone’s volume keys set brightness.</string>
+    <string name="headset_discovery_description">Pair this phone with your computer in KDE Connect. Connect them to the same Wi-Fi, the computer’s hotspot, or USB tethering, then get ready here. Sound and input stay on the computer; the phone’s volume keys set brightness.</string>
     <string name="headset_wait_for_computer">Get ready for Throw</string>
     <string name="headset_waiting">Ready for Throw. Approve this headset on your computer.</string>
     <string name="headset_stop">Stop Throwing</string>

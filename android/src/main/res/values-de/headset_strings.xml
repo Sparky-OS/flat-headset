@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="headset_discovery_description">Kopple dieses Telefon über KDE Connect mit dem Computer. Verbinde beide mit demselben WLAN, dem Hotspot des Computers oder über USB-Tethering und bereite das Telefon hier vor. Ton und Eingabe bleiben am Computer; die Lautstärketasten des Telefons regeln die Helligkeit.</string>
+</resources>

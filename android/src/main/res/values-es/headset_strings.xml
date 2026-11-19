@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="headset_discovery_description">Vincula este teléfono con el ordenador en KDE Connect. Conéctalos a la misma red Wi-Fi, al punto de acceso del ordenador o mediante conexión compartida por USB y prepara el teléfono aquí. El sonido y los controles permanecen en el ordenador; las teclas de volumen del teléfono ajustan el brillo.</string>
+</resources>
