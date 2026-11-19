@@ -12,6 +12,7 @@ import org.kde.kdeconnect.plugins.remotedesktop.headset.PanelView
 /** Analytic fixture for the disposable Android display rig; absent from release builds. */
 class PanelProofActivity : Activity() {
     private lateinit var panel: PanelView
+    val submitted = java.util.concurrent.CountDownLatch(1)
 
     @Suppress("DEPRECATION")
     override fun onCreate(state: Bundle?) {
@@ -50,6 +51,7 @@ class PanelProofActivity : Activity() {
             check(mesh.nVertices == 1600 && mesh.nIndices == 3158) { "Incomplete Cardboard mesh" }
             distortion.close()
         }
+        panel.onFrameSubmitted = { _, _ -> submitted.countDown() }
         setContentView(panel)
         val stereo = intent.getBooleanExtra("stereo", true)
         val marker = intent.getIntExtra("frameMarker", -1)
@@ -60,7 +62,17 @@ class PanelProofActivity : Activity() {
                 if (marker >= 0 && y < 16) 0 else (y % 32) * 8, if (stereo && x >= 1200) 224 else 32)
         }
         val frame = Bitmap.createBitmap(pixels, 2400, 1080, Bitmap.Config.ARGB_8888)
-        panel.submit(frame)
+        if (intent.getBooleanExtra("negotiationProof", false)) {
+            // Call the production Activity callback with the real GL panel. No RDP
+            // server or decoder is faked; this isolates submission before an offer.
+            val receiver = org.kde.kdeconnect.plugins.remotedesktop.headset.HeadsetActivity()
+            android.content.ContextWrapper::class.java.getDeclaredMethod("attachBaseContext", android.content.Context::class.java)
+                .apply { isAccessible = true }.invoke(receiver, this)
+            receiver.intent = intent
+            receiver.javaClass.getDeclaredField("panel").apply { isAccessible = true }.set(receiver, panel)
+            receiver.javaClass.getDeclaredMethod("onDesktopFrame", Bitmap::class.java)
+                .apply { isAccessible = true }.invoke(receiver, frame)
+        } else panel.submit(frame)
         frame.recycle()
     }
     override fun onResume() { super.onResume(); panel.onResume() }
