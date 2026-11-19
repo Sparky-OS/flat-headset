@@ -237,7 +237,7 @@ class StandaloneHeadsetActivity : AppCompatActivity() {
             val server = control ?: return@execute
             announcement?.close()
             announcement = null
-            try { announcement = PanelAnnouncement(this, panel, server.port) }
+            try { announcement = PanelAnnouncement(this, panel, server.port, onFailure = { discoveryFailed(generation) }) }
             catch (_: Exception) { runOnUiThread { if (active) status.setText(R.string.headset_waiting) } }
         }
     }
@@ -306,11 +306,20 @@ class StandaloneHeadsetActivity : AppCompatActivity() {
                     }
                 }, { runOnUiThread { if (active && generation == sharingGeneration) status.setText(
                     if (selectedInterface != null) R.string.headset_direct_connected else R.string.headset_waiting) } })
-                announcement = PanelAnnouncement(this, panel, control!!.port, selectedInterface)
+                announcement = PanelAnnouncement(this, panel, control!!.port, selectedInterface) { discoveryFailed(generation) }
                 runOnUiThread { if (active && generation == sharingGeneration) status.setText(
                     if (selectedInterface != null) R.string.headset_direct_connected else R.string.headset_waiting) }
             } catch (_: Exception) {
                 runOnUiThread { if (generation == sharingGeneration) { stopSharing(); status.setText(R.string.headset_discovery_failed) } }
+            }
+        }
+    }
+
+    private fun discoveryFailed(generation: Int) {
+        runOnUiThread {
+            if (active && generation == sharingGeneration) {
+                stopSharing()
+                status.setText(R.string.headset_discovery_failed)
             }
         }
     }

@@ -12,7 +12,7 @@ import java.net.NetworkInterface
 import java.net.Inet4Address
 import java.util.UUID
 
-class PanelAnnouncement(context: Context, panel: JSONObject, port: Int, directInterface: String? = null) : Closeable {
+internal class NativePanelAnnouncement(context: Context, panel: JSONObject, port: Int, directInterface: String? = null) : Closeable {
     private val multicast = (context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager)
         .createMulticastLock("Flat Headset discovery").apply { setReferenceCounted(false) }
     private val renderer = NativeRenderer(object : NativeRenderer.Listener {
@@ -20,11 +20,11 @@ class PanelAnnouncement(context: Context, panel: JSONObject, port: Int, directIn
         override fun snapshot(serviceId: String) = ""
     })
     val address: String
+    val interfaceName: String
 
     init {
         val identity = panel.getString("identity")
         val uuid = UUID.nameUUIDFromBytes(identity.toByteArray(Charsets.US_ASCII))
-        val web = File(context.cacheDir, "headset-discovery").apply { mkdirs() }
         val description = """<?xml version="1.0"?>
             <root xmlns="urn:schemas-upnp-org:device-1-0" xmlns:stereo="urn:sparky-os:headset:1">
             <specVersion><major>1</major><minor>0</minor></specVersion><device>
@@ -39,9 +39,10 @@ class PanelAnnouncement(context: Context, panel: JSONObject, port: Int, directIn
             val interfaces = NetworkInterface.getNetworkInterfaces().toList().filter {
                 it.isUp && !it.isLoopback && it.inetAddresses.toList().any { address -> address is Inet4Address }
             }.map { it.name }
-            val name = PanelNetworkInterface.select(interfaces, active, directInterface)
+            interfaceName = PanelNetworkInterface.select(interfaces, active, directInterface)
+            val web = File(context.cacheDir, "headset-discovery-$interfaceName").apply { mkdirs() }
             multicast.acquire()
-            address = renderer.start(name, web.absolutePath, description)
+            address = renderer.start(interfaceName, web.absolutePath, description)
         } catch (error: Exception) {
             renderer.close()
             if (multicast.isHeld) multicast.release()
@@ -50,4 +51,12 @@ class PanelAnnouncement(context: Context, panel: JSONObject, port: Int, directIn
     }
 
     override fun close() { renderer.close(); if (multicast.isHeld) multicast.release() }
+}
+
+/** pupnp has one process-global interface; the USB mirror has its own process. */
+class PanelAnnouncement(context: Context, panel: JSONObject, port: Int, directInterface: String? = null,
+                        onFailure: () -> Unit) : Closeable {
+    private val native = NativePanelAnnouncement(context, panel, port, directInterface)
+    private val usb = UsbPanelMirror(context, panel, port, native.interfaceName, onFailure)
+    override fun close() { usb.close(); native.close() }
 }
