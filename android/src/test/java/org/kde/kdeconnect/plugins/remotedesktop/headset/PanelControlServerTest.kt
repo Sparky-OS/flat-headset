@@ -86,6 +86,34 @@ class PanelControlServerTest {
         }
     }
 
+    @Test fun unpairedControlCannotReadPanel() {
+        Robolectric.buildActivity(Activity::class.java).setup().use { controller ->
+            val activity = controller.get()
+            val panel = PanelDescriptor.measure(activity, true)
+            val events = LinkedBlockingQueue<String>()
+            PanelControlServer(activity, panel, { _, _ -> events.offer("connect") }, {}).use { server ->
+                val store = KeyStore.getInstance(KeyStore.getDefaultType()).apply {
+                    load(null, null)
+                    setCertificateEntry("panel", SslHelper.certificate)
+                }
+                val trust = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm()).apply { init(store) }
+                val tls = SSLContext.getInstance("TLSv1.2").apply { init(null, trust.trustManagers, null) }
+                var received = false
+                (tls.socketFactory.createSocket("127.0.0.1", server.port) as SSLSocket).use { socket ->
+                    socket.soTimeout = 5000
+                    try {
+                        socket.startHandshake()
+                        received = socket.inputStream.read() >= 0
+                    } catch (_: javax.net.ssl.SSLException) {
+                        // The peer must be refused before the panel descriptor is disclosed.
+                    }
+                }
+                assertEquals("An unpaired peer received the panel descriptor", false, received)
+                assertEquals(null, events.poll())
+            }
+        }
+    }
+
     @Test fun nativeStillConnectsWithoutDescriptorEcho() = exchange(HeadsetLink.NATIVE)
     @Test fun fullSideBySideConnectsAfterJsonRoundTrip() = exchange(HeadsetLink.SBS_720)
     @Test fun halfTopBottomConnectsAfterJsonRoundTrip() = exchange(HeadsetLink.HALF_TB_720)
