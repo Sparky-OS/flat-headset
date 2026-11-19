@@ -10,10 +10,30 @@ stage=${1:?Usage: build-lean.sh NEW-STAGE CARDBOARD PUPNP MEDIA3}
 cardboard=${2:?Pinned Cardboard checkout with the bundled ZXing patch}
 pupnp=${3:?Pinned pupnp checkout}
 media3=${4:?Pinned edition Media3 checkout}
+phase=${FLAT_HEADSET_LEAN_PHASE:-all}
+[[ "$phase" =~ ^(all|prepare|verify)$ ]] || { echo 'Unknown Lean Code build phase' >&2; exit 2; }
 source_dir=$(cd "$(dirname "$0")/.." && pwd)
 # The vendored engine must be a released Lean Code renderer, or nothing is projected (lean/identities.py)
 identity=$(python3 "$source_dir/tools/project-native.py" --check-identity)
 echo "Lean Code: $identity"
+# Preparation may fetch dependencies, but TLS/discovery tests must run in a
+# separate network-none container. Verification keeps the exact prepared APK.
+if [[ "$phase" = verify ]]; then
+    [[ "$stage" = /* && -f "$stage/prepared-apk.sha256" ]] || { echo 'No prepared APK to verify' >&2; exit 2; }
+    cd "$stage"
+    sha256sum -c prepared-apk.sha256
+    cd android
+    bash gradlew --offline --no-daemon --max-workers=2 --configure-on-demand \
+        -Pandroid.builder.sdkDownload=false -PphoneAbis=arm64-v8a,x86_64 \
+        -PheadsetNativeOptimized=true -PheadsetTiming=true \
+        -x :freerdp-core:prepareFreeRdp :testDebugUnitTest \
+        --tests 'org.kde.kdeconnect.plugins.remotedesktop.headset.*'
+    cd "$stage"
+    sha256sum -c prepared-apk.sha256
+    cp prepared-apk.sha256 verified-apk.sha256
+    printf 'Verified APK: %s\n' "$stage/android/build/outputs/apk/debug/kdeconnect-android-debug.apk"
+    exit 0
+fi
 # C-family files GCC refuses only in conditional groups are read by clang's raw lexer: the NDK's own clang, the
 # consumer of this build's native code, at the version the build pins
 if [[ -z "${LEAN_CLANG:-}" ]]; then
@@ -75,6 +95,13 @@ python3 tools/project-native.py --root "$stage/android/freerdp-core/build/upstre
 # Fetch and compile test inputs during preparation. The test phase never resolves
 # anything from a network, including Robolectric's separate Android SDK resolver.
 "${gradle[@]}" -x :freerdp-core:prepareFreeRdp :compileDebugUnitTestKotlin :prepareHeadsetTestRuntime
+if [[ "$phase" = prepare ]]; then
+    "${gradle[@]}" -x :freerdp-core:prepareFreeRdp :assembleDebug
+    cd "$stage"
+    sha256sum android/build/outputs/apk/debug/kdeconnect-android-debug.apk > prepared-apk.sha256
+    echo 'Prepared only. Run FLAT_HEADSET_LEAN_PHASE=verify in a network-none container before staging.'
+    exit 0
+fi
 "${gradle[@]}" --offline -x :freerdp-core:prepareFreeRdp :testDebugUnitTest \
     --tests 'org.kde.kdeconnect.plugins.remotedesktop.headset.*'
 "${gradle[@]}" -x :freerdp-core:prepareFreeRdp :assembleDebug
