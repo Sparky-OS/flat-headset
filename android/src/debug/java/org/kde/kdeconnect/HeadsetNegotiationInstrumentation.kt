@@ -25,6 +25,15 @@ class HeadsetNegotiationInstrumentation : Instrumentation() {
             check(activity.submitted.await(5, TimeUnit.SECONDS)) { "No GL submission with HEVC selected and no active HEVC session" }
             waitForIdleSync()
             uiAutomation.waitForIdle(500, 5000)
+            val focusDeadline = android.os.SystemClock.elapsedRealtime() + 10000
+            var focused = false
+            while (!focused && android.os.SystemClock.elapsedRealtime() < focusDeadline) {
+                runOnMainSync { focused = activity.hasWindowFocus() }
+                if (!focused) android.os.SystemClock.sleep(50)
+            }
+            check(focused) { "Probe window never gained focus" }
+            // Wait for SurfaceFlinger to replace the cold-start preview window.
+            android.os.SystemClock.sleep(1500)
             val bitmap = checkNotNull(uiAutomation.takeScreenshot())
             File(targetContext.filesDir, "hevc-no-offer-picture.png").outputStream().use {
                 bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)
