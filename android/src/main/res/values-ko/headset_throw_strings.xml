@@ -8,7 +8,7 @@
     <string name="headset_symmetric_notch">카메라 구멍에 맞춰 양쪽 눈의 여백 통일</string>
     <string name="headset_alignment">가운데 정렬선과 아래쪽 화살표 표시</string>
     <string name="headset_title">Flat Headset</string>
-    <string name="headset_discovery_description">휴대전화와 컴퓨터를 같은 Wi-Fi, 컴퓨터 핫스팟 또는 USB 테더링으로 연결하세요. 여기서 수신을 준비한 뒤 컴퓨터에서 던지기를 승인하세요. 소리와 입력은 컴퓨터에 남고 휴대전화 음량 키로 밝기를 조절합니다.</string>
+    <string name="headset_discovery_description">KDE Connect에서 이 휴대전화를 컴퓨터와 페어링하세요. 같은 Wi-Fi, 컴퓨터 핫스팟 또는 USB 테더링으로 연결한 뒤 여기서 수신을 준비하세요. 소리와 입력은 컴퓨터에 남고 휴대전화 음량 키로 밝기를 조절합니다.</string>
     <string name="headset_wait_for_computer">던지기 수신 준비</string>
     <string name="headset_waiting">던지기 준비 완료. 컴퓨터에서 이 헤드셋을 승인하세요.</string>
     <string name="headset_stop">던지기 중지</string>

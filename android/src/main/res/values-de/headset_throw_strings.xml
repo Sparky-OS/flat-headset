@@ -8,7 +8,7 @@
     <string name="headset_symmetric_notch">Gleiche Augenränder bei Kameraaussparungen</string>
     <string name="headset_alignment">Mittlere Ausrichtungslinie und Pfeil nach unten anzeigen</string>
     <string name="headset_title">Flat Headset</string>
-    <string name="headset_discovery_description">Verbinde Telefon und Computer mit demselben WLAN, dem Hotspot des Computers oder über USB-Tethering. Bereite das Telefon hier vor und bestätige den Wurf am Computer. Ton und Eingabe bleiben am Computer; die Lautstärketasten des Telefons regeln die Helligkeit.</string>
+    <string name="headset_discovery_description">Kopple dieses Telefon über KDE Connect mit dem Computer. Verbinde beide mit demselben WLAN, dem Hotspot des Computers oder über USB-Tethering und bereite das Telefon hier vor. Ton und Eingabe bleiben am Computer; die Lautstärketasten des Telefons regeln die Helligkeit.</string>
     <string name="headset_wait_for_computer">Für den Wurf vorbereiten</string>
     <string name="headset_waiting">Bereit für den Wurf. Bestätige dieses Headset am Computer.</string>
     <string name="headset_stop">Werfen beenden</string>

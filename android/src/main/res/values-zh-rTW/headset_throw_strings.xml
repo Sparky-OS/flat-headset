@@ -8,7 +8,7 @@
     <string name="headset_symmetric_notch">為相機開孔設定相等的雙眼邊距</string>
     <string name="headset_alignment">顯示中央對齊線和向下箭頭</string>
     <string name="headset_title">Flat Headset</string>
-    <string name="headset_discovery_description">將手機和電腦連接到同一 Wi-Fi、電腦熱點或 USB 網路共用。在這裡準備接收，然後在電腦上核准投送。聲音和輸入留在電腦上；手機音量鍵用來調整亮度。</string>
+    <string name="headset_discovery_description">請先在 KDE Connect 中將此手機與電腦配對。將它們連接到同一 Wi-Fi、電腦熱點或 USB 網路共用，然後在這裡準備接收。聲音和輸入留在電腦上；手機音量鍵用來調整亮度。</string>
     <string name="headset_wait_for_computer">準備接收投送</string>
     <string name="headset_waiting">已準備好接收投送。請在電腦上核准此頭戴裝置。</string>
     <string name="headset_stop">停止投送</string>

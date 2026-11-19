@@ -8,7 +8,7 @@
     <string name="headset_symmetric_notch">カメラの切り欠きに合わせて左右の余白を揃える</string>
     <string name="headset_alignment">中央の位置合わせ線と下向き矢印を表示</string>
     <string name="headset_title">Flat Headset</string>
-    <string name="headset_discovery_description">電話とコンピューターを同じ Wi-Fi、コンピューターのホットスポット、または USB テザリングで接続してください。ここで受信の準備をして、コンピューターでスローを許可します。音声と操作はコンピューター側に残り、電話の音量キーで明るさを調整します。</string>
+    <string name="headset_discovery_description">KDE Connect でこの電話をコンピューターとペアリングしてください。同じ Wi-Fi、コンピューターのホットスポット、または USB テザリングで接続し、ここで受信の準備をします。音声と操作はコンピューター側に残り、電話の音量キーで明るさを調整します。</string>
     <string name="headset_wait_for_computer">スローの受信を準備</string>
     <string name="headset_waiting">スローを受信できます。コンピューターでこのヘッドセットを許可してください。</string>
     <string name="headset_stop">スローを停止</string>

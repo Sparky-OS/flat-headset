@@ -8,7 +8,7 @@
     <string name="headset_symmetric_notch">Równe marginesy dla otworów aparatu</string>
     <string name="headset_alignment">Pokaż środkową linię wyrównania i strzałkę w dół</string>
     <string name="headset_title">Flat Headset</string>
-    <string name="headset_discovery_description">Połącz telefon i komputer z tą samą siecią Wi-Fi, hotspotem komputera lub przez tethering USB. Przygotuj telefon, a następnie zatwierdź przerzucanie na komputerze. Dźwięk i sterowanie pozostają na komputerze; przyciski głośności telefonu regulują jasność.</string>
+    <string name="headset_discovery_description">Sparuj ten telefon z komputerem w KDE Connect. Połącz je z tą samą siecią Wi-Fi, hotspotem komputera lub przez tethering USB, a następnie przygotuj telefon tutaj. Dźwięk i sterowanie pozostają na komputerze; przyciski głośności telefonu regulują jasność.</string>
     <string name="headset_wait_for_computer">Przygotuj do przerzucenia</string>
     <string name="headset_waiting">Gotowe do przerzucenia. Zatwierdź te gogle na komputerze.</string>
     <string name="headset_stop">Zatrzymaj przerzucanie</string>
