@@ -22,7 +22,8 @@ class HeadsetNegotiationTest {
         val panel = mockk<PanelView>(relaxed = true)
         ReflectionHelpers.setField(activity, "panel", panel)
         val frame = Bitmap.createBitmap(1280, 720, Bitmap.Config.ARGB_8888)
-        activity.onDesktopFrame(frame)
+        ReflectionHelpers.callInstanceMethod<Unit>(activity, "onDesktopFrame",
+            ReflectionHelpers.ClassParameter.from(Bitmap::class.java, frame))
         verify(exactly = 1) { panel.submit(frame) }
         frame.recycle()
     }
