@@ -16,6 +16,7 @@ import java.io.Closeable
 import java.net.Inet4Address
 import java.net.NetworkInterface
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import org.json.JSONObject
 
 /** Bound only by our foreground headset session; no independent pairing or control server. */
@@ -41,9 +42,14 @@ class UsbPanelService : Service() {
     })
     override fun onBind(intent: Intent): IBinder = incoming.binder
     override fun onDestroy() {
-        worker.execute { announcement?.close(); announcement = null }
-        worker.shutdown()
-        super.onDestroy()
+        try {
+            // Finish the process-global native instance before Android can bind a
+            // replacement service after a link disappears and returns.
+            worker.submit { announcement?.close(); announcement = null }.get(10, TimeUnit.SECONDS)
+        } finally {
+            worker.shutdown()
+            super.onDestroy()
+        }
     }
     companion object { const val START = 1; const val READY = 2; const val FAILED = 3 }
 }
