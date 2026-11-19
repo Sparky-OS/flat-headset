@@ -108,16 +108,13 @@ class PairedMovieServer(
             val action = soapAction.removePrefix(service.type + "#")
             if (action !in service.actions) return reply(socket, 400)
             val xml = bytes.toString(Charsets.UTF_8)
-            require(!xml.contains("<!DOCTYPE", true) && !xml.contains("<!ENTITY", true))
-            val factory = DocumentBuilderFactory.newInstance().apply {
-                isNamespaceAware = true
-                setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
-                setFeature("http://xml.org/sax/features/external-general-entities", false)
-                setFeature("http://xml.org/sax/features/external-parameter-entities", false)
-            }
-            val document = factory.newDocumentBuilder().parse(InputSource(StringReader(xml)))
+            require(!xml.contains("<!DOCTYPE", true) && !xml.contains("<!ENTITY", true) && xml.count { it == '<' } <= 128)
+            val builder = DocumentBuilderFactory.newInstance().apply { isNamespaceAware = true }.newDocumentBuilder()
+            builder.setEntityResolver { _, _ -> throw org.xml.sax.SAXException("External entities are forbidden") }
+            val document = builder.parse(InputSource(StringReader(xml)))
+            require(document.documentElement.localName == "Envelope" && document.documentElement.namespaceURI == "http://schemas.xmlsoap.org/soap/envelope/")
             val body = document.getElementsByTagNameNS("http://schemas.xmlsoap.org/soap/envelope/", "Body")
-            require(body.length == 1)
+            require(body.length == 1 && body.item(0).parentNode == document.documentElement)
             val actions = (0 until body.item(0).childNodes.length).map { body.item(0).childNodes.item(it) }.filter { it.nodeType == org.w3c.dom.Node.ELEMENT_NODE }
             require(actions.size == 1 && actions[0].localName == action && actions[0].namespaceURI == service.type)
             val arguments = (0 until actions[0].childNodes.length).map { actions[0].childNodes.item(it) }.filter { it.nodeType == org.w3c.dom.Node.ELEMENT_NODE }
