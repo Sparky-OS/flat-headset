@@ -425,3 +425,17 @@ tasks.register("prepareHeadsetTestRuntime") {
     dependsOn(prepareRobolectricSdks)
     doLast { configurations.getByName("debugUnitTestRuntimeClasspath").resolve() }
 }
+
+val leanKotlinCompiler = configurations.create("leanKotlinCompiler") {
+    isCanBeConsumed = false
+    isTransitive = false
+}
+dependencies {
+    add(leanKotlinCompiler.name, "org.jetbrains.kotlin:kotlin-compiler-embeddable:2.4.0")
+    add(leanKotlinCompiler.name, "org.jetbrains.kotlin:kotlin-stdlib:2.4.0")
+    add(leanKotlinCompiler.name, "org.jetbrains.intellij.deps:trove4j:1.0.20200330")
+    add(leanKotlinCompiler.name, "org.jetbrains:annotations:23.0.0")
+}
+tasks.register("prepareLeanCompiler") {
+    doLast { leanKotlinCompiler.resolve() }
+}

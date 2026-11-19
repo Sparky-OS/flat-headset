@@ -23,6 +23,10 @@ fi
 [[ -x "$LEAN_CLANG" ]] || { echo "No clang at $LEAN_CLANG: set LEAN_CLANG or install the pinned NDK" >&2; exit 1; }
 export LEAN_CLANG
 [[ "$stage" = /* && ! -e "$stage" ]] || { echo 'Use a new absolute staging path' >&2; exit 2; }
+if [[ -z "${LEAN_KOTLIN_CLASSPATH:-}" ]]; then
+    (cd "$source_dir" && bash gradlew --no-daemon --max-workers=2 -Pandroid.builder.sdkDownload=false \
+        "-PcardboardSourceDir=$cardboard" "-PpupnpSourceDir=$pupnp" "-Pmedia3SourceDir=$media3" :prepareLeanCompiler)
+fi
 python3 - "$source_dir" "$stage" "$cardboard" "$pupnp" "$media3" <<'PY'
 from pathlib import Path
 import shutil, sys
