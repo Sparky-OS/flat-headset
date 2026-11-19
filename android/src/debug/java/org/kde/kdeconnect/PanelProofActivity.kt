@@ -42,7 +42,7 @@ class PanelProofActivity : Activity() {
         }
         panel = PanelView(this, intent.getBooleanExtra("noLenses", true))
         // This static optical fixture has no replacement frames or latency claim.
-        if (intent.hasExtra("qrReference")) panel.preferNewestFrames = false
+        if (intent.hasExtra("qrReference") || intent.getBooleanExtra("negotiationProof", false)) panel.preferNewestFrames = false
         if (!intent.getBooleanExtra("noLenses", true)) {
             val distortion = com.google.cardboard.sdk.LensDistortion(
                 com.google.cardboard.sdk.QrCode.getCardboardV1DeviceParams(), 2400, 1080)
