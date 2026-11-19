@@ -3,6 +3,9 @@
 # Copyright 2026 Daniel Campos Ramos
 # Run inside a build environment with the SDK/NDK, JDK and native prerequisites.
 set -euo pipefail
+# This recipe is qualified with JDK 17, including its offline Robolectric worker.
+java_major=$(java -XshowSettings:properties -version 2>&1 | sed -n 's/^ *java.specification.version = //p')
+[[ "$java_major" = 17 ]] || { echo "Use JDK 17 (JAVA_HOME and PATH) for build-lean.sh" >&2; exit 1; }
 stage=${1:?Usage: build-lean.sh NEW-STAGE CARDBOARD PUPNP MEDIA3}
 cardboard=${2:?Pinned Cardboard checkout with the bundled ZXing patch}
 pupnp=${3:?Pinned pupnp checkout}
@@ -65,6 +68,10 @@ python3 tools/project-native.py --root "$stage/media3" --component media3 --evid
 python3 tools/project-native.py --root "$stage/android/freerdp-core/build/upstream/freerdp" --component freerdp --evidence "$FLAT_HEADSET_LEAN_EVIDENCE"
 # Keep the validated projection; preparing the dependency again would restore authored bytes.
 # OpenSSL, OpenH264 and uriparser project after extraction/patching, per ABI.
-"${gradle[@]}" -x :freerdp-core:prepareFreeRdp :testDebugUnitTest \
-    --tests 'org.kde.kdeconnect.plugins.remotedesktop.headset.*' :assembleDebug
+# Fetch and compile test inputs during preparation. The test phase never resolves
+# anything from a network, including Robolectric's separate Android SDK resolver.
+"${gradle[@]}" -x :freerdp-core:prepareFreeRdp :compileDebugUnitTestKotlin :prepareHeadsetTestRuntime
+"${gradle[@]}" --offline -x :freerdp-core:prepareFreeRdp :testDebugUnitTest \
+    --tests 'org.kde.kdeconnect.plugins.remotedesktop.headset.*'
+"${gradle[@]}" -x :freerdp-core:prepareFreeRdp :assembleDebug
 printf 'APK: %s\nEvidence: %s\n' "$stage/android/build/outputs/apk/debug/kdeconnect-android-debug.apk" "$FLAT_HEADSET_LEAN_EVIDENCE"

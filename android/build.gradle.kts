@@ -54,8 +54,8 @@ android {
         }
         minSdk = 24
         targetSdk = 35
-        versionCode = 13510
-        versionName = "1.35.9-flatheadset.20261019.lc"
+        versionCode = 13511
+        versionName = "1.35.10-flatheadset.20261119.lc"
         buildConfigField("String", "RDP_DIAGNOSTIC_BUILD_ID", "\"20260711-rdp-host-input-v11\"")
         buildConfigField("boolean", "HEADSET_TIMING", providers.gradleProperty("headsetTiming").getOrElse("false"))
         proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
@@ -418,4 +418,10 @@ tasks.withType<Test>().configureEach {
     dependsOn(prepareRobolectricSdks)
     systemProperty("robolectric.offline", "true")
     systemProperty("robolectric.dependency.dir", layout.buildDirectory.dir("robolectric-sdks").get().asFile.absolutePath)
+}
+
+// Preparation is separate from the offline test invocation in build-lean.sh.
+tasks.register("prepareHeadsetTestRuntime") {
+    dependsOn(prepareRobolectricSdks)
+    doLast { configurations.getByName("debugUnitTestRuntimeClasspath").resolve() }
 }
