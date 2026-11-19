@@ -99,8 +99,7 @@ class HeadsetActivity : SessionActivity() {
     override fun onHeadsetPacket(packet: ByteArray): Int = video?.receive(packet) ?: 0
 
     override fun onDesktopFrame(frame: Bitmap) {
-        if (failureResult != null || video?.active == true ||
-            getSharedPreferences(HeadsetFitOverlay.PREFERENCES, MODE_PRIVATE).getBoolean("hevc", false)) return
+        if (failureResult != null || video?.active == true) return
         if (org.kde.kdeconnect_tp.BuildConfig.DEBUG && proofSamples < 20 && frame.width == 2400 && frame.height == 1080) {
             val left = frame.getPixel(32, 32)
             val right = frame.getPixel(1232, 32)
