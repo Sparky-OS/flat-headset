@@ -59,6 +59,7 @@ class HeadsetVideo(private val panel: PanelView, private val enabled: () -> Bool
                 offered = true
                 require(enabled() && codec == null && seq == 0 && size == 0)
                 require(w > 0 && h > 0 && hz in 1000..240000)
+                require(panel.linkSizeMatches(w, h)) { "Offer does not match the negotiated link" }
                 val selected = MediaCodecList(MediaCodecList.REGULAR_CODECS).codecInfos.firstOrNull { info ->
                     !info.isEncoder && info.supportedTypes.any { it.equals("video/hevc", true) } &&
                         info.getCapabilitiesForType("video/hevc").let { caps ->
@@ -77,8 +78,7 @@ class HeadsetVideo(private val panel: PanelView, private val enabled: () -> Bool
                         setInteger(MediaFormat.KEY_LOW_LATENCY, 1)
                     }
                 }
-                require(panel.nativeSizeMatches(w, h)) { "Offer does not match the native panel" }
-                val surface = if (software) null else panel.decoderSurface(w, h) ?: error("Native panel surface unavailable")
+                val surface = if (software) null else panel.decoderSurface(w, h) ?: error("Link decoder surface unavailable")
                 planeBuffers = if (software) listOf(ByteBuffer.allocateDirect(w * h),
                     ByteBuffer.allocateDirect((w + 1) / 2 * ((h + 1) / 2)),
                     ByteBuffer.allocateDirect((w + 1) / 2 * ((h + 1) / 2))) else emptyList()

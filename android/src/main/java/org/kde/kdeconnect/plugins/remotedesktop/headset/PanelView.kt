@@ -90,13 +90,14 @@ class PanelView(context: Context, private val noLenses: Boolean, private val pro
     }
 
 
-    fun nativeSizeMatches(width: Int, height: Int) = width == panelWidth && height == panelHeight
+    fun linkSizeMatches(width: Int, height: Int) =
+        HeadsetLink.encodedSize(linkFormat, panelWidth, panelHeight) == PanelFrameFit.Size(width, height)
 
     fun decoderSurface(width: Int, height: Int): android.view.Surface? {
         val ready = java.util.concurrent.CountDownLatch(1)
         var result: android.view.Surface? = null
         queueEvent {
-            if (width == panelWidth && height == panelHeight) {
+            if (linkSizeMatches(width, height)) {
                 decoderWidth = width; decoderHeight = height
                 if (decoderOutput == null) {
                     val ids = IntArray(1)
@@ -126,6 +127,7 @@ class PanelView(context: Context, private val noLenses: Boolean, private val pro
                     }
                     GLES20.glLinkProgram(decoderProgram)
                 }
+                decoderImage?.setDefaultBufferSize(width, height)
                 result = decoderOutput
             }
             ready.countDown()
@@ -156,6 +158,10 @@ class PanelView(context: Context, private val noLenses: Boolean, private val pro
     }
 
     fun submitDecoderPlanes(width: Int, height: Int, planes: List<ByteBuffer>) {
+        require(linkSizeMatches(width, height)) { "Decoded planes do not match the negotiated link" }
+        require(planes.size == 3 && planes[0].remaining() == width * height &&
+            planes[1].remaining() == ((width + 1) / 2) * ((height + 1) / 2) &&
+            planes[2].remaining() == planes[1].remaining()) { "Incomplete decoded planes" }
         decoderWidth = width; decoderHeight = height
         pendingPlanes = planes
         requestRender()

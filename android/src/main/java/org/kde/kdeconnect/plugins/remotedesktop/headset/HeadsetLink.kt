@@ -20,5 +20,14 @@ internal object HeadsetLink {
         AUTOMATIC -> org.kde.kdeconnect_tp.R.string.headset_link_automatic
         else -> org.kde.kdeconnect_tp.R.string.headset_link_native
     }
+    /** Wire raster agreed by the panel descriptor, independent of physical panel fitting. */
+    fun encodedSize(format: String, panelWidth: Int, panelHeight: Int): PanelFrameFit.Size? = when (format) {
+        NATIVE -> if (panelWidth > 0 && panelWidth % 2 == 0 && panelHeight > 0)
+            PanelFrameFit.Size(panelWidth, panelHeight) else null
+        SBS_720 -> PanelFrameFit.Size(2560, 720)
+        TB_720 -> PanelFrameFit.Size(1280, 1440)
+        HALF_TB_720, HALF_SBS_720 -> PanelFrameFit.Size(1280, 720)
+        else -> null
+    }
     val choices = formats + AUTOMATIC
 }
