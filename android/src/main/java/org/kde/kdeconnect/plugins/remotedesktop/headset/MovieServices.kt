@@ -78,8 +78,8 @@ object MovieServices {
                 } +
                 "</serviceStateTable></scpd>"
 
-        fun description() =
-            "<service><serviceType>$type</serviceType><serviceId>$id</serviceId><SCPDURL>/$name.xml</SCPDURL><controlURL>/$name/control</controlURL><eventSubURL>/$name/event</eventSubURL></service>"
+        fun description(endpoint: String = "") =
+            "<service><serviceType>$type</serviceType><serviceId>$id</serviceId><SCPDURL>/$name.xml</SCPDURL><controlURL>$endpoint/$name/control</controlURL><eventSubURL>$endpoint/$name/event</eventSubURL></service>"
     }
 
     val rendering =

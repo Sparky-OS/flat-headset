@@ -22,6 +22,8 @@ class MoviePlayback(
     private val brightness: () -> Int,
     private val setBrightness: (Int) -> Unit,
     private val capabilities: MovieCapabilities,
+    private val validateUri: (String) -> Boolean = { true },
+    private val timeSeek: ((Long) -> Unit)? = null,
 ) : NativeRenderer.Listener {
     private val main = Handler(Looper.getMainLooper())
     @Volatile var closed = false
@@ -31,6 +33,8 @@ class MoviePlayback(
     private var volume = 100
     private var muted = false
     private var stopped = true
+    private var timelineOffset = 0L
+    private var declaredDuration = 0L
 
     private class Fault(val code: Int) : RuntimeException()
 
@@ -150,7 +154,36 @@ class MoviePlayback(
         )
     }
 
-    private fun duration() = player.duration.takeIf { it != C.TIME_UNSET } ?: 0
+    private fun duration() = declaredDuration.takeIf { it > 0 }
+        ?: player.duration.takeIf { it != C.TIME_UNSET }?.let { it + timelineOffset } ?: 0
+
+    private fun restart() {
+        if (timelineOffset != 0L) {
+            timelineOffset = 0
+            timeSeek?.invoke(0)
+            player.setMediaItem(MediaItem.fromUri(uri))
+            player.prepare()
+        } else player.seekTo(0)
+    }
+
+    private fun metadataDuration(xml: String): Long = runCatching {
+        require(xml.length <= 65536 && !xml.contains("<!DOCTYPE", true))
+        val parser = Xml.newPullParser()
+        parser.setInput(StringReader(xml))
+        while (parser.eventType != XmlPullParser.END_DOCUMENT) {
+            if (parser.eventType == XmlPullParser.START_TAG && parser.name == "res") {
+                val duration = parser.getAttributeValue(null, "duration")
+                val resource = parser.nextText()
+                if (resource == uri && duration != null && duration.matches(Regex("[0-9]+:[0-5][0-9]:[0-5][0-9](\\.[0-9]+)?"))) {
+                    val parts = duration.split(':')
+                    val value = (parts[0].toDouble() * 3600 + parts[1].toDouble() * 60 + parts[2].toDouble()) * 1000
+                    return@runCatching value.takeIf { it.isFinite() && it >= 0 && it < Long.MAX_VALUE }?.toLong() ?: 0L
+                }
+            }
+            parser.next()
+        }
+        0L
+    }.getOrDefault(0L)
 
     private fun state() =
         when {
@@ -187,6 +220,7 @@ class MoviePlayback(
             "SetAVTransportURI" -> {
                 val value = args.getValue("CurrentURI")
                 if (value.isNotEmpty()) {
+                    if (!validateUri(value)) throw Fault(714)
                     val parsed =
                         try {
                             URI(value)
@@ -201,10 +235,13 @@ class MoviePlayback(
                         throw Fault(714)
                 }
                 player.stop()
+                timelineOffset = 0
+                timeSeek?.invoke(0)
                 player.clearMediaItems()
                 stopped = true
                 uri = value
                 metadata = args.getValue("CurrentURIMetaData")
+                declaredDuration = metadataDuration(metadata)
                 if (uri.isNotEmpty()) {
                     player.setMediaItem(MediaItem.fromUri(uri))
                     player.prepare()
@@ -227,8 +264,8 @@ class MoviePlayback(
                     "TrackDuration" to time(duration()),
                     "TrackMetaData" to metadata,
                     "TrackURI" to uri,
-                    "RelTime" to time(player.currentPosition),
-                    "AbsTime" to time(player.currentPosition),
+                    "RelTime" to time(player.currentPosition + timelineOffset),
+                    "AbsTime" to time(player.currentPosition + timelineOffset),
                     "RelCount" to "2147483647",
                     "AbsCount" to "2147483647",
                 )
@@ -245,7 +282,7 @@ class MoviePlayback(
                 if (uri.isEmpty()) throw Fault(701)
                 if (args["Speed"] != "1") throw Fault(717)
                 if (player.playbackState == Player.STATE_IDLE) player.prepare()
-                if (player.playbackState == Player.STATE_ENDED) player.seekTo(0)
+                if (player.playbackState == Player.STATE_ENDED) restart()
                 stopped = false
                 player.play()
             }
@@ -256,7 +293,7 @@ class MoviePlayback(
             "Stop" -> {
                 if (uri.isEmpty()) throw Fault(701)
                 player.pause()
-                player.seekTo(0)
+                restart()
                 stopped = true
             }
             "Seek" -> {
@@ -285,8 +322,17 @@ class MoviePlayback(
                         else -> throw Fault(710)
                     }
                 if (duration() > 0 && position > duration()) throw Fault(711)
-                if (!player.isCurrentMediaItemSeekable) throw Fault(710)
-                player.seekTo(position)
+                if (player.isCurrentMediaItemSeekable && timelineOffset == 0L) {
+                    player.seekTo(position)
+                } else {
+                    if (timeSeek == null || !metadata.contains(Regex("DLNA\\.ORG_OP=(10|11)(;|&quot;|\")"))) throw Fault(710)
+                    val playing = player.playWhenReady
+                    timelineOffset = position
+                    timeSeek.invoke(position)
+                    player.setMediaItem(MediaItem.fromUri(uri))
+                    player.prepare()
+                    player.playWhenReady = playing
+                }
             }
             "Next",
             "Previous" -> throw Fault(711)

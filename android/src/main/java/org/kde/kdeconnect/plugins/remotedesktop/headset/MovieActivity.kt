@@ -16,7 +16,6 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
-import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.analytics.AnalyticsListener
@@ -32,7 +31,10 @@ class MovieActivity : AppCompatActivity() {
     private lateinit var playback: MoviePlayback
     private lateinit var view: MovieView
     private var announcement: MovieAnnouncement? = null
-    private var closed = false
+    @Volatile private var closed = false
+    @Volatile private var moviePeer: Pair<java.net.InetAddress, java.security.cert.X509Certificate>? = null
+    @Volatile private var seekOffset = 0L
+    private var pairingListener: android.content.SharedPreferences.OnSharedPreferenceChangeListener? = null
     private var pendingEvent = false
     private val notify = Runnable {
         pendingEvent = false
@@ -50,6 +52,10 @@ class MovieActivity : AppCompatActivity() {
     override fun onCreate(state: Bundle?) {
         super.onCreate(state)
         supportActionBar?.hide()
+        if (org.kde.kdeconnect.helpers.TrustedDevices.getAllTrustedDevices(this).isEmpty()) {
+            setContentView(TextView(this).apply { setText(R.string.headset_pair_first); setPadding(32, 32, 32, 32) })
+            return
+        }
         HeadsetFitOverlay.allowFullPanel(window)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -58,9 +64,13 @@ class MovieActivity : AppCompatActivity() {
                 this,
                 intent.getBooleanExtra(HeadsetActivity.EXTRA_NO_LENSES, true),
             )
+        val trust = PairedTls(this)
         player = ExoPlayer.Builder(this)
             .setMediaSourceFactory(DefaultMediaSourceFactory(this)
-                .setDataSourceFactory(DefaultHttpDataSource.Factory().setUserAgent("FlatHeadset/1.0 Panel/${panel.getInt("width")}x${panel.getInt("height")}")))
+                .setDataSourceFactory {
+                    PairedMovieDataSource(trust, { moviePeer },
+                        "FlatHeadset/1.0 Panel/${panel.getInt("width")}x${panel.getInt("height")}", { seekOffset })
+                })
             .build()
         val capabilities = MovieCapabilities()
         playback =
@@ -74,6 +84,15 @@ class MovieActivity : AppCompatActivity() {
                     window.attributes = window.attributes.apply { screenBrightness = it / 100f }
                 },
                 capabilities,
+                validateUri = { value ->
+                    runCatching {
+                        val url = java.net.URI(value)
+                        val peer = moviePeer
+                        peer != null && trust.isPaired(peer.second) && url.scheme == "https" &&
+                            url.userInfo == null && java.net.InetAddress.getByName(url.host) == peer.first
+                    }.getOrDefault(false)
+                },
+                timeSeek = { seekOffset = it },
             )
         playback.changed = {
             if (!pendingEvent && !closed) {
@@ -86,6 +105,23 @@ class MovieActivity : AppCompatActivity() {
                 setText(R.string.headset_movie_waiting)
                 setTextColor(android.graphics.Color.WHITE)
             }
+        pairingListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
+            val peer = moviePeer
+            if (org.kde.kdeconnect.helpers.TrustedDevices.getAllTrustedDevices(this).isEmpty() ||
+                (peer != null && !trust.isPaired(peer.second))) {
+                runOnUiThread {
+                    if (!closed) {
+                        closed = true
+                        playback.closed = true
+                        player.stop()
+                        status.setText(R.string.headset_pair_first)
+                        status.visibility = android.view.View.VISIBLE
+                        worker.execute { announcement?.close(); announcement = null }
+                    }
+                }
+            }
+        }
+        getSharedPreferences("trusted_devices", MODE_PRIVATE).registerOnSharedPreferenceChangeListener(pairingListener)
         view =
             MovieView(this, intent.getBooleanExtra(HeadsetActivity.EXTRA_NO_LENSES, true)).apply {
                 surfaceReady = { player.setVideoSurface(it) }
@@ -139,7 +175,10 @@ class MovieActivity : AppCompatActivity() {
         )
         worker.execute {
             try {
-                announcement = MovieAnnouncement(this, panel, playback, capabilities)
+                if (closed) return@execute
+                val device = MovieAnnouncement(this, panel, playback, capabilities) { address, certificate -> moviePeer = address to certificate }
+                if (closed) { device.close(); return@execute }
+                announcement = device
                 if (org.kde.kdeconnect_tp.BuildConfig.DEBUG)
                     Log.d(
                         "HeadsetMovie",
@@ -178,7 +217,7 @@ class MovieActivity : AppCompatActivity() {
                                     else -.05f)
                                 .coerceIn(0f, 1f)
                     }
-                playback.changed?.invoke()
+                if (::playback.isInitialized) playback.changed?.invoke()
             }
         } else if (event.keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_UP)
             finish()
@@ -187,21 +226,22 @@ class MovieActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        view.onResume()
+        if (::view.isInitialized) view.onResume()
     }
 
     override fun onPause() {
-        player.pause()
-        view.onPause()
+        if (::player.isInitialized) player.pause()
+        if (::view.isInitialized) view.onPause()
         super.onPause()
     }
 
     override fun onDestroy() {
         closed = true
-        playback.closed = true
+        pairingListener?.let { getSharedPreferences("trusted_devices", MODE_PRIVATE).unregisterOnSharedPreferenceChangeListener(it) }
+        if (::playback.isInitialized) playback.closed = true
         handler.removeCallbacks(notify)
-        player.release()
-        view.release()
+        if (::player.isInitialized) player.release()
+        if (::view.isInitialized) view.release()
         worker.execute {
             announcement?.close()
             announcement = null

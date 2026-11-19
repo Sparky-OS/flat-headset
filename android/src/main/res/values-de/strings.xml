@@ -464,5 +464,5 @@
   <string name="pref_presenter_enable_volume_keys_summary">Unter den Android-Versionen 13–15 im Standby-Modus nicht unterstützt</string>
   <string name="presenter_volume_keys_foreground_tip">Sie können den Bildschirm aktiviert lassen, um mithilfe der Lautstärketasten zur vorherigen/nächsten Folie zu wechseln</string>
   <string name="presenter_volume_keys_tip">Sie können Ihr Gerät sperren oder den Bildschirm aktiviert lassen, während Sie mithilfe der Lautstärketasten zur vorherigen/nächsten Folie wechseln</string>
-    <string name="headset_pair_first">Koppeln Sie dieses Telefon mit Ihrem Computer in KDE Connect, bevor Sie seinen Bildschirm teilen.</string>
+    <string name="headset_pair_first">Koppeln Sie dieses Telefon mit Ihrem Computer in KDE Connect, bevor Sie das Headset verwenden.</string>
 </resources>

@@ -449,5 +449,5 @@
     <string name="headset_movie_waiting">メディアコントローラーで Flat Headset を選択してください。映画の音声はこのスマートフォンで再生されます。</string>
     <string name="headset_movie_unsupported">この映像形式はメディアサーバーでの変換が必要です。</string>
     <string name="headset_movie_failed">映画を再生できませんでした。コントローラーで別のファイルを選択してください。</string>
-    <string name="headset_pair_first">画面を共有する前に、KDE Connect でこのスマートフォンとコンピューターをペアリングしてください。</string>
+    <string name="headset_pair_first">ヘッドセットを使用する前に、KDE Connect でこのスマートフォンとコンピューターをペアリングしてください。</string>
 </resources>

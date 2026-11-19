@@ -76,10 +76,6 @@ int callback(Upnp_EventType type, void *event, void *) {
                 UpnpSubscriptionRequest_get_ServiceId_cstr(request), properties,
                 UpnpSubscriptionRequest_get_SID_cstr(request));
             ixmlDocument_free(properties);
-        } else {
-            UpnpAcceptSubscription(device, UpnpSubscriptionRequest_get_UDN_cstr(request),
-                UpnpSubscriptionRequest_get_ServiceId_cstr(request), nullptr, nullptr, 0,
-                UpnpSubscriptionRequest_get_SID_cstr(request));
         }
     }
     env->PopLocalFrame(nullptr);

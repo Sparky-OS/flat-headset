@@ -54,7 +54,7 @@ android {
         }
         minSdk = 24
         targetSdk = 35
-        versionCode = 13512
+        versionCode = 13513
         versionName = "1.35.11-flatheadset.20261119.lc"
         buildConfigField("String", "RDP_DIAGNOSTIC_BUILD_ID", "\"20260711-rdp-host-input-v11\"")
         buildConfigField("boolean", "HEADSET_TIMING", providers.gradleProperty("headsetTiming").getOrElse("false"))
