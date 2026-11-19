@@ -103,6 +103,21 @@ class PairedMovieServerTest {
         }
     }
 
+    @Test fun declarationsAndForeignSoapNamespacesCannotReachTheListener() {
+        pair()
+        val events = LinkedBlockingQueue<String>()
+        PairedMovieServer(PairedTls(RuntimeEnvironment.getApplication()), "ab".repeat(32), listener(events)) { _, _ -> }.use { server ->
+            val type = MovieServices.rendering.type
+            val envelope = "<s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\"><s:Body><u:GetVolume xmlns:u=\"$type\"><InstanceID>0</InstanceID><Channel>Master</Channel></u:GetVolume></s:Body></s:Envelope>"
+            for (body in listOf("<!DOCTYPE x [<!ENTITY external SYSTEM \"file:///not-a-media-resource\">]>" + envelope,
+                                envelope.replace("http://schemas.xmlsoap.org/soap/envelope/", "urn:wrong-envelope"))) {
+                val response = runCatching { request(client(true), server, "POST", "control", "SOAPACTION: \"$type#GetVolume\"\r\n", body) }.getOrDefault("")
+                assertTrue(response, !response.startsWith("HTTP/1.1 200"))
+                assertEquals(null, events.poll())
+            }
+        }
+    }
+
     @Test fun missingClientIdentityCannotReachSoap() {
         pair()
         val events = LinkedBlockingQueue<String>()
