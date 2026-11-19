@@ -423,7 +423,9 @@ tasks.withType<Test>().configureEach {
 // Preparation is separate from the offline test invocation in build-lean.sh.
 tasks.register("prepareHeadsetTestRuntime") {
     dependsOn(prepareRobolectricSdks)
-    doLast { configurations.getByName("debugUnitTestRuntimeClasspath").resolve() }
+    val runtime = providers.provider { tasks.named<Test>("testDebugUnitTest").get().classpath }
+    inputs.files(runtime)
+    doLast { runtime.get().files }
 }
 
 val leanKotlinCompiler = configurations.create("leanKotlinCompiler") {
