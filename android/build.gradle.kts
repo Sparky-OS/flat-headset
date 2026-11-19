@@ -398,3 +398,24 @@ tasks.named("generateLicenseReport") {
 tasks.named("preBuild") {
     dependsOn("generateLicenseReport")
 }
+
+// Resolve Android test runtimes before launching the offline Robolectric worker.
+// Versions follow Robolectric 4.16.1 DefaultSdkProvider (instrumentation level 7).
+val robolectricSdks = listOf("6.0.1_r3-robolectric-r1-i7", "7.0.0_r1-robolectric-r1-i7",
+    "9-robolectric-4913185-2-i7", "10-robolectric-5803371-i7",
+    "13-robolectric-9030017-i7", "15-robolectric-13954326-i7").mapIndexed { index, version ->
+    configurations.create("robolectricSdk$index") {
+        isCanBeConsumed = false
+        isTransitive = false
+        dependencies.add(project.dependencies.create("org.robolectric:android-all-instrumented:$version"))
+    }
+}
+val prepareRobolectricSdks by tasks.registering(Sync::class) {
+    from(robolectricSdks)
+    into(layout.buildDirectory.dir("robolectric-sdks"))
+}
+tasks.withType<Test>().configureEach {
+    dependsOn(prepareRobolectricSdks)
+    systemProperty("robolectric.offline", "true")
+    systemProperty("robolectric.dependency.dir", layout.buildDirectory.dir("robolectric-sdks").get().asFile.absolutePath)
+}
