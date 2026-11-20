@@ -61,11 +61,16 @@ jobs:
           app="$RUNNER_TEMP/flat-headset-build/Build/Products/Release-iphoneos/FlatHeadset.app"
           test -d "$app"
           file "$app/FlatHeadset"
-          xcrun lipo -verify_arch arm64 "$app/FlatHeadset"
-          if codesign --verify "$app" 2>/dev/null; then
+          xcrun lipo "$app/FlatHeadset" -verify_arch arm64
+          if signature_result="$(LC_ALL=C codesign --verify "$app" 2>&1)"; then
             echo 'The app unexpectedly contains a signature; this workflow must produce an unsigned app.' >&2
             exit 1
           fi
+          if [[ "$signature_result" != "$app: code object is not signed at all" ]]; then
+            printf 'Could not establish that the app is unsigned: %s\n' "$signature_result" >&2
+            exit 1
+          fi
+          printf '%s\n' "$signature_result"
           mkdir -p "$RUNNER_TEMP/flat-headset-package/Payload" "$GITHUB_WORKSPACE/ios-artifact"
           cp -R "$app" "$RUNNER_TEMP/flat-headset-package/Payload/"
           ditto -c -k --keepParent "$RUNNER_TEMP/flat-headset-package/Payload" "$GITHUB_WORKSPACE/ios-artifact/FlatHeadset-unsigned.ipa"
