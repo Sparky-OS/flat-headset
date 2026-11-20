@@ -53,6 +53,8 @@ target_include_directories(core-link-check PRIVATE
   "${CMAKE_CURRENT_BINARY_DIR}/freerdp/include" "${CMAKE_CURRENT_BINARY_DIR}/freerdp/winpr/include"
   "${OPENSSL_INCLUDE_DIR}" "${AVCODEC_INCLUDE_DIRS}")
 target_link_libraries(core-link-check PRIVATE freerdp-client freerdp winpr)
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/core-link-path.txt"
+  CONTENT "$<TARGET_FILE:core-link-check>\n")
 if(APPLE)
   target_link_options(core-link-check PRIVATE -Wl,-no_adhoc_codesign)
   set_target_properties(core-link-check PROPERTIES XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED NO)

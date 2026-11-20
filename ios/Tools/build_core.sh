@@ -79,11 +79,14 @@ if [[ "$mode" == ios ]]; then
 fi
 cmake --build "$build/freerdp" --parallel 4
 cmake --install "$build/freerdp"
+probe=$(cat "$build/freerdp/core-link-path.txt")
+test -f "$probe"
+cp "$probe" "$build/core-link-check"
 if [[ "$mode" == host ]]; then
   ctest --test-dir "$build/freerdp" --output-on-failure
 else
-  xcrun lipo "$build/freerdp/core-link-check" -verify_arch arm64
-  xcrun otool -l "$build/freerdp/core-link-check" > "$build/core-link-load-commands.txt"
+  xcrun lipo "$build/core-link-check" -verify_arch arm64
+  xcrun otool -l "$build/core-link-check" > "$build/core-link-load-commands.txt"
   if grep -q LC_CODE_SIGNATURE "$build/core-link-load-commands.txt"; then
     echo 'The core link probe unexpectedly contains a signature.' >&2
     exit 1

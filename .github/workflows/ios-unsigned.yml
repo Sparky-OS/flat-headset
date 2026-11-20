@@ -126,7 +126,7 @@ jobs:
           package="$RUNNER_TEMP/flat-headset-core-package"
           mkdir -p "$package/licenses" "$GITHUB_WORKSPACE/ios-core-artifact"
           cp -R "$core/install/include" "$core/install/lib" "$package/"
-          cp "$core/freerdp/core-link-check" "$core/core-link-load-commands.txt" "$package/"
+          cp "$core/core-link-check" "$core/core-link-load-commands.txt" "$package/"
           cp ios/Core/sources.json "$package/"
           cp "$sources/freerdp/LICENSE" "$package/licenses/FreeRDP-LICENSE"
           cp "$sources/openssl/LICENSE.txt" "$package/licenses/OpenSSL-LICENSE.txt"
