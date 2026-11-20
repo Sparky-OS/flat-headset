@@ -15,7 +15,7 @@
     id<MTLTexture> _texture;
     UILabel* _status;
     dispatch_semaphore_t _slots;
-    NSUInteger _presentationEpoch=0;
+    NSUInteger _presentationEpoch;
     BOOL _failed, _showedFrame, _oldIdleDisabled, _holdingIdle, _offeringSoftware;
     std::chrono::steady_clock::time_point _started;
 }

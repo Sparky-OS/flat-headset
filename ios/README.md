@@ -133,3 +133,6 @@ The Linux decoder-choice analogue exercises both failure reasons and each action
 It also checks cancellation, repeated surfaces within the same session and a fresh session returning to hardware by default.
 A connection deadline is held while a decoder decision is outstanding, then returns to its normal bound.
 No time spent waiting is treated as consent.
+
+For a Linux syntax check of the desktop and computer controllers without Apple headers, run `bash ios/Tools/check_objc_syntax.sh`.
+See [the authored test doubles](Tests/ObjCStubs/README.md) for its scope and limits; the hosted Xcode build remains required.
