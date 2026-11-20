@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: 2026 Daniel Campos Ramos
+SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted-GPL -->
+<resources>
+    <string name="stereopose_enable">StereoDroid Vorschau der Kopfausrichtung</string>
+    <string name="stereopose_consent">Sendet die fusionierte Kopfausrichtung an den verbundenen PC. Ausgeschaltet bleibt Flat Headset unverändert. Am PC wählen Sie Rotation ohne Kompass (Standard), Kompass, Rate und Montage. Diese Vorschau misst keine Position.</string>
+    <string name="stereopose_pending">Kopfverfolgung wartet</string>
+    <string name="stereopose_active">Kopfverfolgung aktiv</string>
+    <string name="stereopose_paused">Kopfverfolgung pausiert</string>
+    <string name="stereopose_unavailable">Kopfverfolgung nicht verfügbar</string>
+    <string name="stereopose_stopped">Kopfverfolgung beendet</string>
+    <string name="stereopose_no_sensor">Gewählter Sensor nicht verfügbar</string>
+    <string name="stereopose_version">Pose-Version nicht unterstützt</string>
+    <string name="stereopose_denied">Kopfverfolgung nicht erlaubt</string>
+    <string name="stereopose_timing">Zeitsynchronisierung fehlt</string>
+    <string name="stereopose_stale">Kopfausrichtung eingefroren</string>
+    <string name="stereopose_lost">Kopfverfolgung verloren</string>
+    <string name="stereopose_invalid">Ungültige Pose-Nachricht</string>
+    <string name="stereopose_recenter">Geradeaus schauen und zentrieren</string>
+    <string name="stereopose_disconnected">PC getrennt</string>
+    <string name="stereopose_recenter_action">Hier zum Zentrieren tippen</string>
+    <string name="stereopose_pc_missing">Pose-Empfänger am PC fehlt</string>
+    <string name="stereopose_source_game">Rotation ohne Kompass · %1$d Hz</string>
+    <string name="stereopose_source_compass">Kompassrichtung · %1$d Hz</string>
+</resources>

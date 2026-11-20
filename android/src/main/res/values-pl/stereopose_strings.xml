@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: 2026 Daniel Campos Ramos
+SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted-GPL -->
+<resources>
+    <string name="stereopose_enable">Podgląd orientacji głowy StereoDroid</string>
+    <string name="stereopose_consent">Wysyła zintegrowaną orientację głowy do połączonego komputera. Po wyłączeniu Flat Headset działa bez zmian. Na komputerze wybierz wektor obrotu bez kompasu (domyślnie), kompas, częstotliwość i mocowanie. Podgląd nie mierzy pozycji.</string>
+    <string name="stereopose_pending">Oczekiwanie na śledzenie głowy</string>
+    <string name="stereopose_active">Śledzenie głowy aktywne</string>
+    <string name="stereopose_paused">Śledzenie głowy wstrzymane</string>
+    <string name="stereopose_unavailable">Śledzenie głowy niedostępne</string>
+    <string name="stereopose_stopped">Śledzenie głowy zatrzymane</string>
+    <string name="stereopose_no_sensor">Wybrany czujnik niedostępny</string>
+    <string name="stereopose_version">Nieobsługiwana wersja orientacji</string>
+    <string name="stereopose_denied">Brak zgody na śledzenie głowy</string>
+    <string name="stereopose_timing">Czas orientacji niedostępny</string>
+    <string name="stereopose_stale">Orientacja zamrożona</string>
+    <string name="stereopose_lost">Utracono śledzenie głowy</string>
+    <string name="stereopose_invalid">Nieprawidłowy komunikat orientacji</string>
+    <string name="stereopose_recenter">Spójrz przed siebie i wycentruj</string>
+    <string name="stereopose_disconnected">Komputer rozłączony</string>
+    <string name="stereopose_recenter_action">Dotknij, aby wycentrować</string>
+    <string name="stereopose_pc_missing">Odbiornik orientacji PC niedostępny</string>
+    <string name="stereopose_source_game">Wektor obrotu bez kompasu · %1$d Hz</string>
+    <string name="stereopose_source_compass">Kierunek kompasu · %1$d Hz</string>
+</resources>

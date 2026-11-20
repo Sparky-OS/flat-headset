@@ -1,0 +1,36 @@
+From c39d13c473063419de2cb2f360698d04cd85ebc8 Mon Sep 17 00:00:00 2001
+From: Daniel Campos Ramos <Capitain_Jack@yahoo.com>
+Date: Sat, 7 Nov 2026 17:19:42 -0300
+Subject: [PATCH] Enumerate Android cameras when raw NV12 delivery is available
+
+The video conversion API supports same-format passthrough without an encoder. Let GetMediaTypeDescriptions select an available conversion instead of hiding every camera when NV12-to-H.264 is unavailable. An Android API-28 run negotiated RDPECAM version 2 but stopped at this gate before announcing either virtual camera.
+
+Assisted-by: gpt-6.1-sol via Codex
+---
+ channels/rdpecam/client/android/camera_android.c | 10 ++--------
+ 1 file changed, 2 insertions(+), 8 deletions(-)
+
+diff --git a/channels/rdpecam/client/android/camera_android.c b/channels/rdpecam/client/android/camera_android.c
+index 94ee9a6c3..7701b5f0f 100644
+--- a/channels/rdpecam/client/android/camera_android.c
++++ b/channels/rdpecam/client/android/camera_android.c
+@@ -340,14 +340,8 @@ static UINT cam_android_enumerate(ICamHal* ihal, ICamHalEnumCallback callback, C
+ 
+ 	UINT count = 0;
+ 
+-	/* The NV12 frames go to the server as H.264 (the first format of getSupportedFormats with NV12
+-	 * as its input): encoded by MediaCodec, or by FFmpeg with swscale. Without either, offer no
+-	 * cameras. */
+-	if (!freerdp_video_conversion_supported(FREERDP_VIDEO_FORMAT_NV12, FREERDP_VIDEO_FORMAT_H264))
+-	{
+-		WLog_WARN(TAG, "Camera redirection unavailable: no conversion of NV12 frames to H.264");
+-		return 0;
+-	}
++	/* GetMediaTypeDescriptions selects an available conversion, including raw NV12
++	 * passthrough when no H.264 encoder is built. */
+ 
+ 	ACameraIdList* idList = nullptr;
+ 	if (ACameraManager_getCameraIdList(hal->manager, &idList) != ACAMERA_OK || !idList)
+-- 
+2.53.0
+

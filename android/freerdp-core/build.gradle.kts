@@ -11,8 +11,8 @@ plugins {
     id("com.android.library")
 }
 
-val freeRdpCommit = "89d8b7a1ae3b376cf77e5f85895e003e169b4cf5"
-val freeRdpArchiveSha256 = "f9a98fdb759f57ae4eda224aab3e36d0803359cb8719b4f8f3e219e438387a60"
+val freeRdpCommit = "8cbbd9f5275f8f996f2f2f89edad70693d0af8e1"
+val freeRdpArchiveSha256 = "e386410cfc7d9de7e4dcb69d48a06e90f185e6d190620329903eaa7bc2c16939"
 val freeRdpArchive = layout.buildDirectory.file("downloads/freerdp-$freeRdpCommit.tar.gz")
 val freeRdpExtractedSource = layout.buildDirectory.dir("upstream/freerdp-source")
 val freeRdpSource = layout.buildDirectory.dir("upstream/freerdp")
@@ -134,6 +134,7 @@ android {
                     arguments += "-DFREERDP_NATIVE_OPTIMIZED=ON"
                 }
                 arguments += listOf(
+                    "-DFLAT_HEADSET_FREERDP_CORE:PATH=${upstreamCore.absolutePath}",
                     "-DCMAKE_MODULE_PATH=${file("cmake").absolutePath}",
                     // FreeRDP's MediaCodec backend is explicitly experimental.
                     // Use its stable, NEON-optimized OpenH264 backend instead; a
@@ -199,7 +200,7 @@ android {
 
     externalNativeBuild {
         cmake {
-            path = upstreamCore.resolve("src/main/cpp/CMakeLists.txt")
+            path = file("CMakeLists.txt")
             version = "4.1.2"
         }
     }

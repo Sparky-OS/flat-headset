@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: 2026 Daniel Campos Ramos
+SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted-GPL -->
+<resources>
+    <string name="stereopose_enable">StereoDroid 頭部姿勢プレビュー</string>
+    <string name="stereopose_consent">センサー融合による頭の向きを接続先PCに送信します。オフの間はFlat Headsetの動作は変わりません。PCでゲーム回転ベクトル（既定）、コンパス、頻度、取り付け方向を選択します。このプレビューは位置を測定しません。</string>
+    <string name="stereopose_pending">頭部追跡を待機中</string>
+    <string name="stereopose_active">頭部追跡が有効</string>
+    <string name="stereopose_paused">頭部追跡を一時停止</string>
+    <string name="stereopose_unavailable">頭部追跡を利用できません</string>
+    <string name="stereopose_stopped">頭部追跡を停止</string>
+    <string name="stereopose_no_sensor">選択したセンサーは利用不可</string>
+    <string name="stereopose_version">未対応の姿勢バージョン</string>
+    <string name="stereopose_denied">頭部追跡の許可がありません</string>
+    <string name="stereopose_timing">時刻同期を利用できません</string>
+    <string name="stereopose_stale">頭部姿勢を固定中</string>
+    <string name="stereopose_lost">頭部追跡が失われました</string>
+    <string name="stereopose_invalid">無効な姿勢メッセージ</string>
+    <string name="stereopose_recenter">正面を向いて再センタリング</string>
+    <string name="stereopose_disconnected">PCとの接続が切れました</string>
+    <string name="stereopose_recenter_action">タップして再センタリング</string>
+    <string name="stereopose_pc_missing">PCの姿勢受信機能が利用不可</string>
+    <string name="stereopose_source_game">ゲーム回転ベクトル · %1$d Hz</string>
+    <string name="stereopose_source_compass">コンパス方位 · %1$d Hz</string>
+</resources>

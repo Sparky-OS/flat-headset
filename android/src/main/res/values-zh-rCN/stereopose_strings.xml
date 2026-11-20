@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: 2026 Daniel Campos Ramos
+SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted-GPL -->
+<resources>
+    <string name="stereopose_enable">StereoDroid 头部朝向预览</string>
+    <string name="stereopose_consent">将传感器融合得到的头部朝向发送到已连接的电脑。关闭时 Flat Headset 保持原有行为。请在电脑上选择游戏旋转向量（默认）、指南针朝向、频率和安装方向。此预览不测量位置。</string>
+    <string name="stereopose_pending">正在等待头部跟踪</string>
+    <string name="stereopose_active">头部跟踪已启用</string>
+    <string name="stereopose_paused">头部跟踪已暂停</string>
+    <string name="stereopose_unavailable">头部跟踪不可用</string>
+    <string name="stereopose_stopped">头部跟踪已停止</string>
+    <string name="stereopose_no_sensor">所选传感器不可用</string>
+    <string name="stereopose_version">不支持的姿态版本</string>
+    <string name="stereopose_denied">头部跟踪权限被拒绝</string>
+    <string name="stereopose_timing">时间同步不可用</string>
+    <string name="stereopose_stale">头部朝向已冻结</string>
+    <string name="stereopose_lost">头部跟踪已丢失</string>
+    <string name="stereopose_invalid">无效的姿态消息</string>
+    <string name="stereopose_recenter">请面向前方并重新居中</string>
+    <string name="stereopose_disconnected">电脑已断开连接</string>
+    <string name="stereopose_recenter_action">点按此处重新居中</string>
+    <string name="stereopose_pc_missing">电脑的姿态接收功能不可用</string>
+    <string name="stereopose_source_game">游戏旋转向量 · %1$d Hz</string>
+    <string name="stereopose_source_compass">指南针朝向 · %1$d Hz</string>
+</resources>
