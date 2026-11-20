@@ -27,6 +27,14 @@ void save(UIViewController* parent,NSInteger mode,NSString* link,void (^changed)
 }
 }
 @implementation FHViewerSettings
++ (void)importLink:(NSString*)link from:(UIViewController*)parent {
+    try {prepare(2,link,parent.view.window.screen);}
+    catch(...){showFailure(parent);return;}
+    UIAlertController* alert=[UIAlertController alertControllerWithTitle:NSLocalizedString(@"viewer_title",nil) message:NSLocalizedString(@"viewer_scanned_confirm",nil) preferredStyle:UIAlertControllerStyleAlert];
+    [alert addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"viewer_use",nil) style:UIAlertActionStyleDefault handler:^(UIAlertAction* action){save(parent,2,link,nil);}]];
+    [alert addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"decoder_go_back",nil) style:UIAlertActionStyleCancel handler:nil]];
+    [parent presentViewController:alert animated:YES completion:nil];
+}
 + (std::shared_ptr<const Viewer>)viewerForScreen:(UIScreen*)screen {
     NSUserDefaults* prefs=NSUserDefaults.standardUserDefaults;
     return prepare([prefs integerForKey:@"viewer.mode"],[prefs stringForKey:@"viewer.qr"],screen);

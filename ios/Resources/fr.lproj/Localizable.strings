@@ -46,3 +46,4 @@
 "viewer_fit_note" = "Ce réglage a été vérifié avec un autre téléphone et un autre alignement. Vérifiez l’image à travers vos lentilles.";
 "viewer_invalid" = "Impossible de vérifier le profil ou les dimensions physiques de l’écran de ce téléphone. Choisissez un profil valide.";
 "viewer_disconnect" = "Déconnectez-vous avant de changer de visionneuse.";
+"viewer_scanned_confirm" = "Utiliser ce profil de casque scanné pour la prochaine connexion ?";

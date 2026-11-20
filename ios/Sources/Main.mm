@@ -3,6 +3,8 @@
 #import <MetalKit/MetalKit.h>
 #include "Pattern.hpp"
 #include "Launch.hpp"
+#include "../Viewer/ProfileLink.hpp"
+#import "ViewerSettings.h"
 #import "Computers.h"
 #include <vector>
 
@@ -157,7 +159,17 @@
     return YES;
 }
 - (BOOL)application:(UIApplication *)application openURL:(NSURL *)url options:(NSDictionary *)options {
-    if(!flatheadset::isCatchLaunch(url.absoluteString.UTF8String ?: ""))return NO;
+    const std::string input=url.absoluteString.UTF8String ?: "";
+    if(!flatheadset::isCatchLaunch(input)) {
+        try {
+            const auto link=flatheadset::profileFromHandoff(input);
+            UIViewController* parent=self.window.rootViewController;
+            while(parent.presentedViewController)parent=parent.presentedViewController;
+            if([parent isKindOfClass:UIAlertController.class])return NO;
+            [FHViewerSettings importLink:[NSString stringWithUTF8String:link.c_str()] from:parent];
+            return YES;
+        }catch(...){return NO;}
+    }
     [(FHViewController*)self.window.rootViewController showComputers];
     return YES;
 }

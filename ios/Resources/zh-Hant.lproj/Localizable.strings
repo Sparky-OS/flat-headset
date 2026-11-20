@@ -46,3 +46,4 @@
 "viewer_fit_note" = "此校正已在另一支手機和另一種觀看器對準狀態下驗證。請透過您的鏡片檢查畫面。";
 "viewer_invalid" = "無法驗證觀看器設定或此手機螢幕的實際尺寸。請選擇有效的設定。";
 "viewer_disconnect" = "更換觀看器前請中斷連線。";
+"viewer_scanned_confirm" = "下次連線使用此掃描取得的眼鏡設定嗎？";

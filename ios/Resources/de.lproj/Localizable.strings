@@ -46,3 +46,4 @@
 "viewer_fit_note" = "Diese Anpassung wurde mit einem anderen Telefon und einer anderen Ausrichtung geprüft. Prüfen Sie das Bild durch Ihre Linsen.";
 "viewer_invalid" = "Das Profil oder die physischen Bildschirmmaße dieses Telefons konnten nicht geprüft werden. Wählen Sie ein gültiges Profil.";
 "viewer_disconnect" = "Trennen Sie die Verbindung, bevor Sie die Brille wechseln.";
+"viewer_scanned_confirm" = "Dieses gescannte Viewer-Profil für die nächste Verbindung verwenden?";

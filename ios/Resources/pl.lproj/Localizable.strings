@@ -46,3 +46,4 @@
 "viewer_fit_note" = "To dopasowanie sprawdzono z innym telefonem i ustawieniem gogli. Sprawdź obraz przez swoje soczewki.";
 "viewer_invalid" = "Nie można zweryfikować profilu gogli lub fizycznych wymiarów ekranu telefonu. Wybierz prawidłowy profil.";
 "viewer_disconnect" = "Rozłącz się przed zmianą gogli.";
+"viewer_scanned_confirm" = "Użyć tego zeskanowanego profilu gogli przy następnym połączeniu?";

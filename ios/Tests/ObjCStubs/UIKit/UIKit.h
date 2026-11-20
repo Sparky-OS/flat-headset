@@ -278,3 +278,10 @@ BOOL CGSizeEqualToSize(CGSize, CGSize);
 void NSLog(NSString*, ...);
 NSString* NSStringFromClass(Class);
 int UIApplicationMain(int, char**, NSString*, NSString*);
+
+@interface NSObject (FHProfileSyntax)
+- (BOOL)isKindOfClass:(Class)cls;
+@end
+@interface NSString (FHProfileSyntax)
++ (instancetype)stringWithUTF8String:(const char*)string;
+@end

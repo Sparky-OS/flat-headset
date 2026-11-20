@@ -46,3 +46,4 @@
 "viewer_fit_note" = "This existing fit was checked with another phone and viewer alignment. Check the picture through your lenses.";
 "viewer_invalid" = "The viewer profile or this phone’s physical screen dimensions could not be verified. Select a valid profile.";
 "viewer_disconnect" = "Disconnect before changing the viewer.";
+"viewer_scanned_confirm" = "Use this scanned viewer profile for the next connection?";

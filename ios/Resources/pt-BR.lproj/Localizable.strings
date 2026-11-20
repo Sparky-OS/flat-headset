@@ -46,3 +46,4 @@
 "viewer_fit_note" = "Este ajuste foi verificado com outro telefone e alinhamento do visor. Confira a imagem pelas suas lentes.";
 "viewer_invalid" = "Não foi possível verificar o perfil do visor ou as dimensões físicas da tela deste telefone. Selecione um perfil válido.";
 "viewer_disconnect" = "Desconecte antes de mudar o visor.";
+"viewer_scanned_confirm" = "Usar este perfil de visor lido na próxima conexão?";

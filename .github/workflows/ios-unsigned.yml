@@ -203,3 +203,49 @@ jobs:
           path: kdeconnect-artifact/
           if-no-files-found: error
           retention-days: 7
+
+  cardboard-iphone:
+    runs-on: macos-26
+    timeout-minutes: 25
+    env:
+      CARDBOARD_COMMIT: d8ba9bce45c2325ff291dd894aa294eca4beb60a
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Report hosted image and SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'Hosted image: %s %s\n' "${ImageOS:-unknown}" "${ImageVersion:-unknown}"
+          xcodebuild -version
+          xcodebuild -showsdks
+          sdk_version="$(xcrun --sdk iphoneos --show-sdk-version)"
+          python3 - "$sdk_version" <<'PYCODE'
+          import sys
+          if int(sys.argv[1].split('.')[0]) < 16:
+              sys.exit('The hosted iPhoneOS SDK is older than the iOS 16 deployment target.')
+          PYCODE
+      - name: Check out shared receiver profile validation
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          path: flat-headset
+          persist-credentials: false
+      - name: Check out the pinned Cardboard source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: Sparky-OS/cardboard
+          ref: ${{ env.CARDBOARD_COMMIT }}
+          path: cardboard
+          persist-credentials: false
+      - name: Build unsigned Cardboard and check profile handoff
+        shell: bash
+        run: bash cardboard/profile-ios/Tools/build_unsigned.sh "$RUNNER_TEMP/cardboard-iphone"
+      - name: Package Cardboard and its renewal entry
+        shell: bash
+        run: bash cardboard/profile-ios/Tools/package_unsigned.sh "$RUNNER_TEMP/cardboard-iphone" "$GITHUB_WORKSPACE/cardboard-artifact" "$CARDBOARD_COMMIT" "$GITHUB_SHA"
+      - name: Keep unsigned Cardboard IPA and hashes
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: Cardboard-unsigned-${{ github.sha }}
+          path: cardboard-artifact/
+          if-no-files-found: error
+          retention-days: 7
