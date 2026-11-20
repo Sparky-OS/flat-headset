@@ -11,7 +11,7 @@ jobs:
     runs-on: macos-15
     timeout-minutes: 20
     env:
-      IPHONEOS_DEPLOYMENT_TARGET: '16.0'
+      FLAT_HEADSET_IOS_MIN: '16.0'
       PYTHONDONTWRITEBYTECODE: '1'
     steps:
       - name: Report hosted image and verify iPhoneOS SDK
@@ -22,7 +22,7 @@ jobs:
           xcodebuild -version
           xcodebuild -showsdks
           sdk_version="$(xcrun --sdk iphoneos --show-sdk-version)"
-          python3 - "$sdk_version" "$IPHONEOS_DEPLOYMENT_TARGET" <<'PY'
+          python3 - "$sdk_version" "$FLAT_HEADSET_IOS_MIN" <<'PY'
           import sys
           def version(value):
               return tuple(int(part) for part in value.split('.')[:2])
@@ -51,7 +51,7 @@ jobs:
           xcodebuild -project ios/FlatHeadset.xcodeproj -scheme FlatHeadset \
             -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' \
             -derivedDataPath "$RUNNER_TEMP/flat-headset-build" -jobs 4 \
-            IPHONEOS_DEPLOYMENT_TARGET="$IPHONEOS_DEPLOYMENT_TARGET" \
+            IPHONEOS_DEPLOYMENT_TARGET="$FLAT_HEADSET_IOS_MIN" \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' \
             DEVELOPMENT_TEAM='' build
       - name: Package IPA and its receiver manifest entry
