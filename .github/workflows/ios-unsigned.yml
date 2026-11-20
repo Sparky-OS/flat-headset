@@ -1,0 +1,78 @@
+name: Flat Headset iOS unsigned
+on:
+  push:
+    branches: [order737]
+    paths: ['ios/**', '.github/workflows/ios-unsigned.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  iphone:
+    runs-on: macos-15
+    timeout-minutes: 20
+    env:
+      IPHONEOS_DEPLOYMENT_TARGET: '16.0'
+    steps:
+      - name: Report hosted image and verify iPhoneOS SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'Hosted image: %s %s\n' "${ImageOS:-unknown}" "${ImageVersion:-unknown}"
+          xcodebuild -version
+          xcodebuild -showsdks
+          sdk_version="$(xcrun --sdk iphoneos --show-sdk-version)"
+          python3 - "$sdk_version" "$IPHONEOS_DEPLOYMENT_TARGET" <<'PY'
+          import sys
+          def version(value):
+              return tuple(int(part) for part in value.split('.')[:2])
+          if version(sys.argv[1]) < version(sys.argv[2]):
+              sys.exit(f"The hosted iPhoneOS SDK {sys.argv[1]} is older than the required deployment target {sys.argv[2]}.")
+          print(f"iPhoneOS SDK {sys.argv[1]} meets the requested SDK version floor {sys.argv[2]}.")
+          PY
+      - name: Check out this commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Check native catalogs and portable picture generator
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ios/Tools/check_localizations.py
+          python3 ios/Tests/ToolingTest.py
+          plutil -lint ios/Info.plist ios/FlatHeadset.xcodeproj/project.pbxproj
+          cmake -S ios -B "$RUNNER_TEMP/flat-headset-tests" -DCMAKE_BUILD_TYPE=Debug
+          cmake --build "$RUNNER_TEMP/flat-headset-tests" --parallel 4
+          ctest --test-dir "$RUNNER_TEMP/flat-headset-tests" --output-on-failure
+      - name: Build the unsigned iPhone application
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild -project ios/FlatHeadset.xcodeproj -scheme FlatHeadset \
+            -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/flat-headset-build" -jobs 4 \
+            IPHONEOS_DEPLOYMENT_TARGET="$IPHONEOS_DEPLOYMENT_TARGET" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' \
+            DEVELOPMENT_TEAM='' build
+      - name: Package IPA and its receiver manifest entry
+        shell: bash
+        run: |
+          set -euo pipefail
+          app="$RUNNER_TEMP/flat-headset-build/Build/Products/Release-iphoneos/FlatHeadset.app"
+          test -d "$app"
+          file "$app/FlatHeadset"
+          xcrun lipo -verify_arch arm64 "$app/FlatHeadset"
+          if codesign --verify "$app" 2>/dev/null; then
+            echo 'The app unexpectedly contains a signature; this workflow must produce an unsigned app.' >&2
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP/flat-headset-package/Payload" "$GITHUB_WORKSPACE/ios-artifact"
+          cp -R "$app" "$RUNNER_TEMP/flat-headset-package/Payload/"
+          ditto -c -k --keepParent "$RUNNER_TEMP/flat-headset-package/Payload" "$GITHUB_WORKSPACE/ios-artifact/FlatHeadset-unsigned.ipa"
+          python3 ios/Tools/package_manifest.py ios-artifact/FlatHeadset-unsigned.ipa --commit "$GITHUB_SHA"
+      - name: Keep unsigned IPA and hashes
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: FlatHeadset-unsigned-${{ github.sha }}
+          path: ios-artifact/
+          if-no-files-found: error
+          retention-days: 7

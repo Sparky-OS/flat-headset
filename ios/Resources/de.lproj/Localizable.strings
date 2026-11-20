@@ -1,0 +1,3 @@
+"metal_unavailable" = "Metal ist auf diesem Gerät nicht verfügbar.";
+"renderer_failed" = "Flat Headset konnte das Bild nicht erstellen.";
+"render_failed" = "Flat Headset konnte das Bild nicht anzeigen.";
