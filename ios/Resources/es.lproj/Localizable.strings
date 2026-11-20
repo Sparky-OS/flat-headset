@@ -29,3 +29,5 @@
 "session_failed" = "Falló la conexión con el escritorio.";
 "session_timeout" = "La solicitud caducó. Pulsa Recibir de nuevo.";
 "session_stopped" = "Sesión de escritorio detenida.";
+"waiting_picture" = "Esperando la imagen del escritorio…";
+"picture_timeout" = "No llegó ninguna imagen del escritorio. Detén la sesión y pulsa Recibir de nuevo.";

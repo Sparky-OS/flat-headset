@@ -29,3 +29,5 @@
 "session_failed" = "桌面連線失敗。";
 "session_timeout" = "桌面請求逾時。請再次點選「接收」。";
 "session_stopped" = "桌面工作階段已停止。";
+"waiting_picture" = "正在等待桌面畫面…";
+"picture_timeout" = "未收到桌面畫面。請停止後再次點選「接收」。";

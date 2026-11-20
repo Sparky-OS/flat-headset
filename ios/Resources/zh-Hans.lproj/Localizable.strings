@@ -29,3 +29,5 @@
 "session_failed" = "桌面连接失败。";
 "session_timeout" = "桌面请求超时。请再次点击“接收”。";
 "session_stopped" = "桌面会话已停止。";
+"waiting_picture" = "正在等待桌面画面…";
+"picture_timeout" = "未收到桌面画面。请停止后再次点击“接收”。";

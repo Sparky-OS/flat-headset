@@ -29,3 +29,5 @@
 "session_failed" = "데스크톱 연결에 실패했습니다.";
 "session_timeout" = "요청 시간이 초과되었습니다. 받기를 다시 누르세요.";
 "session_stopped" = "데스크톱 세션이 중지되었습니다.";
+"waiting_picture" = "데스크톱 화면을 기다리는 중…";
+"picture_timeout" = "데스크톱 화면이 도착하지 않았습니다. 중지한 후 받기를 다시 누르세요.";

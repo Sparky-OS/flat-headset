@@ -1,0 +1,36 @@
+--- a/libfreerdp/codec/h264_ffmpeg.c
++++ b/libfreerdp/codec/h264_ffmpeg.c
+@@ -360,7 +360,12 @@
+ 		}
+ 		else
+ 		{
++#ifdef WITH_VIDEOTOOLBOX
++			WLog_Print(h264->log, WLOG_ERROR, "Expected a VideoToolbox frame");
++			goto fail;
++#else
+ 			status = av_frame_copy(sys->videoFrame, sys->hwVideoFrame);
++#endif
+ 		}
+ 		gotFrame = (status == 0);
+ 
+@@ -774,10 +779,10 @@
+ 			{
+ 				WLog_Print(
+ 				    h264->log, WLOG_ERROR,
+-				    "Could not initialize VideoToolbox decoder, falling back to software: %s",
++				    "Could not initialize required VideoToolbox decoder: %s",
+ 				    av_err2str(ret));
+ 				sys->hwctx = nullptr;
+-				goto fail_vt_create;
++				goto EXCEPTION;
+ 			}
+ 		}
+ 		WLog_Print(h264->log, WLOG_INFO, "Using VideoToolbox for accelerated H264 decoding");
+@@ -786,7 +791,6 @@
+ 		sys->hw_pix_fmt = AV_PIX_FMT_VIDEOTOOLBOX;
+ 		sys->codecDecoderContext->hw_device_ctx = av_buffer_ref(sys->hwctx);
+ 		sys->codecDecoderContext->opaque = (void*)h264;
+-	fail_vt_create:
+ #endif
+ 
+ 		if (avcodec_open2(sys->codecDecoderContext, sys->codecDecoder, nullptr) < 0)

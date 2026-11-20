@@ -98,6 +98,7 @@ jobs:
           cp -R "$core/install/include" "$core/install/lib" "$package/"
           cp "$core/core-link-check" "$core/core-link-load-commands.txt" "$package/"
           cp ios/Core/sources.json "$package/"
+          cp -R ios/Core/patches "$package/"
           cp "$sources/freerdp/LICENSE" "$package/licenses/FreeRDP-LICENSE"
           cp "$sources/openssl/LICENSE.txt" "$package/licenses/OpenSSL-LICENSE.txt"
           cp "$sources/ffmpeg/COPYING.LGPLv2.1" "$package/licenses/FFmpeg-COPYING.LGPLv2.1"

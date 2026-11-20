@@ -8,6 +8,11 @@ build=$(cd "$3" && pwd)
 prefix="$build/install"
 core_project=$(cd "$(dirname "$0")/../Core" && pwd)
 mkdir -p "$build/openssl" "$build/ffmpeg" "$prefix"
+patch_file="$core_project/patches/0001-require-videotoolbox.patch"
+if ! git -C "$sources/freerdp" apply --reverse --check "$patch_file" 2>/dev/null; then
+  git -C "$sources/freerdp" apply --check "$patch_file"
+  git -C "$sources/freerdp" apply "$patch_file"
+fi
 cmake_args=()
 ffmpeg_args=()
 openssl_args=()

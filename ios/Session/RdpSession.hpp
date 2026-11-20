@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #pragma once
 #include "SessionControl.hpp"
+#include "Frames.hpp"
 #include <atomic>
 #include <mutex>
 #include <thread>
@@ -13,6 +14,7 @@ public:
     RdpSession(const RdpSession&)=delete;
     void start();
     void stop();
+    std::shared_ptr<Frames> frames() const {return frames_;}
     State state() const {return status_.load();}
     // The FreeRDP callback and offline certificate tests use the same entry point.
     bool verifyPeer(const std::string& pem,const std::string& host,unsigned port,unsigned flags);
@@ -20,6 +22,7 @@ private:
     struct Native;
     std::unique_ptr<Native> native_;
     std::unique_ptr<SessionGrant> grant_;
+    std::shared_ptr<Frames> frames_;
     std::mutex mutex_;
     std::thread worker_;
     std::atomic<bool> stopped_{false};

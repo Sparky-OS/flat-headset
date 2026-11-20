@@ -1,7 +1,8 @@
 # Flat Headset on iPhone
 
-This development target displays a generated left/right picture through Metal and provides a foreground Computers screen for KDE Connect pairing and a paired RDP session lifecycle.
-Desktop reception and viewer correction are still being integrated; the generated image is a test picture.
+This development target displays a generated left/right picture through Metal and provides a foreground Computers screen for KDE Connect pairing and a paired RDP session with a decoded-frame Metal view.
+The received-desktop view is under development; viewer correction is still being integrated.
+The generated image is a separate test picture, not evidence of a received desktop.
 The left image has a cool background and an L mark; the right has a warm background and an R mark.
 Both show their complete outer edges, a grid and a circle measured in pixels, with no texture rescaling.
 
@@ -63,8 +64,9 @@ RDP redirection, automatic reconnect, interactive credential prompts and weaker 
 Stop releases the session; forgetting pairing, closing the screen, losing the control connection or backgrounding aborts RDP.
 A new Catch uses a fresh request and fresh credentials.
 Refusals and timeouts are shown in the native language; remote error strings and credentials are not displayed.
-The current GDI surface is not yet presented to Metal.
-A connected-session status proves neither a displayed desktop nor lens correction; the generated picture remains only the earlier test.
+Completed GDI paints publish owned BGRA frames to the desktop Metal view.
+A connected-session status proves neither a displayed desktop nor lens correction.
+The desktop view reports a localized failure if its first picture does not arrive within 45 seconds; the generated picture is never substituted for missing desktop frames.
 
 The workflow now builds the app after its static dependencies in the `iphone-core` job on macos-26.
 The `iphone` job retains the portable picture/catalog checks on macos-15.
@@ -94,5 +96,29 @@ bash ios/Tools/build_core.sh host build/core-sources build/core-host
 ```
 
 Run those commands in the isolated Linux build environment with the prerequisites in the build script and four build jobs.
-The next native compile must establish the app's new static-library/framework closure.
-Decode presentation and viewer optics follow that compile; no device runtime result is claimed here.
+The session adapter and its installed-library/framework closure passed hosted run 44702615908.
+The next native compile checks the decoded-frame view and strict VideoToolbox patch; viewer optics follow that compile.
+No device runtime result is claimed here.
+
+## Decoded frames to Metal
+
+FreeRDP's H.264/AVC444 decoder uses FFmpeg and VideoToolbox on iPhone.
+The local core patch refuses VideoToolbox initialization failure or an unexpected software-decoded frame.
+It applies to the hash-pinned FreeRDP source before compilation and is included in the core artifact beside the source lock.
+The patch does not change the host test decoder, and does not establish hardware operation on any phone.
+The negotiated session currently advertises H.264, not HEVC; the compiled HEVC decoder alone is not an HEVC session claim.
+
+FreeRDP transfers the decoded hardware image to CPU memory and reconstructs the desktop's BGRA GDI surface.
+This integration copies each completed dirty paint into an owned frame, then uploads the latest frame to a shared Metal texture.
+It is not a zero-copy path.
+The producer keeps only one pending frame; replacing it cannot change a frame already being read.
+At most two GPU commands are in flight, and each new texture stays immutable while the GPU uses it.
+The fragment shader reads matching panel texels, with no eye rescaling, new separation or output-format choice.
+A native extent mismatch fails visibly.
+The ten-language status layer covers a missing picture and renderer failures.
+Stop, session failure, control loss and backgrounding close the frame queue and hide the old picture.
+
+The Linux checks exercise padded BGRA rows, both eye positions, invalid dimensions, concurrent ownership and latest-frame replacement.
+A separate test allocates a real FreeRDP GDI surface, invokes the production paint handoff and checks forty complete pairs plus dirty-region reset and revocation.
+These are memory and integration checks, not an encoded stream or a Metal render.
+The native Metal view still requires its hosted compile and a later authorized device check.

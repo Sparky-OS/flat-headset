@@ -29,3 +29,5 @@
 "session_failed" = "La connexion au bureau a échoué.";
 "session_timeout" = "La demande du bureau a expiré. Touchez à nouveau Recevoir.";
 "session_stopped" = "Session de bureau arrêtée.";
+"waiting_picture" = "En attente de l’image du bureau…";
+"picture_timeout" = "Aucune image du bureau n’est arrivée. Arrêtez puis touchez à nouveau Recevoir.";

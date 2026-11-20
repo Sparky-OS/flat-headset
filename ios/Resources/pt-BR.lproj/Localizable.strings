@@ -29,3 +29,5 @@
 "session_failed" = "A conexão com a área de trabalho falhou.";
 "session_timeout" = "A solicitação expirou. Toque em Receber novamente.";
 "session_stopped" = "Sessão da área de trabalho encerrada.";
+"waiting_picture" = "Aguardando a imagem da área de trabalho…";
+"picture_timeout" = "A imagem da área de trabalho não chegou. Pare e toque em Receber novamente.";

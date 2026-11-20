@@ -29,3 +29,5 @@
 "session_failed" = "The desktop connection failed.";
 "session_timeout" = "The desktop request timed out. Try Catch again.";
 "session_stopped" = "Desktop session stopped.";
+"waiting_picture" = "Waiting for the desktop picture…";
+"picture_timeout" = "No desktop picture arrived. Stop and try Catch again.";

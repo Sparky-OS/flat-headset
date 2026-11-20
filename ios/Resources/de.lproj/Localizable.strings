@@ -29,3 +29,5 @@
 "session_failed" = "Die Desktop-Verbindung ist fehlgeschlagen.";
 "session_timeout" = "Die Desktop-Anfrage ist abgelaufen. Tippen Sie erneut auf Empfangen.";
 "session_stopped" = "Desktop-Sitzung gestoppt.";
+"waiting_picture" = "Warten auf das Desktop-Bild…";
+"picture_timeout" = "Kein Desktop-Bild empfangen. Stoppen Sie die Sitzung und tippen Sie erneut auf Empfangen.";

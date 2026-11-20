@@ -16,3 +16,9 @@ fragment float4 patternPixel(PanelVertex input [[stage_in]],
     // Fragment position is in drawable pixels. The texture has the identical extent.
     return image.read(uint2(input.position.xy));
 }
+
+fragment float4 desktopPixel(PanelVertex input [[stage_in]],
+                            texture2d<float, access::read> image [[texture(0)]]) {
+    // GDI BGRA texture; the complete received pair keeps its original pixel positions.
+    return float4(image.read(uint2(input.position.xy)).rgb, 1.0);
+}

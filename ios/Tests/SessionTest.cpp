@@ -54,7 +54,8 @@ int main() {
         assert(!session.verifyPeer(server.certificate,"192.0.2.1",3389,VERIFY_CERT_FLAG_GATEWAY));
         assert(!session.verifyPeer("not a certificate","192.0.2.1",3389,0));
         c->revoke();assert(!session.verifyPeer(server.certificate,"192.0.2.1",3389,0));
-        session.stop();session.start();assert(session.state()==RdpSession::State::Stopped);
+        auto frames=session.frames();assert(frames && frames->active());
+        session.stop();assert(!frames->active() && !frames->take());session.start();assert(session.state()==RdpSession::State::Stopped);
     }
     std::cout<<"PASS: paired grants, bounded panel/session replies, refusal/timeout/replay/revocation, exact RDP pins, twelve native context lifecycles; no network connection attempted\n";
 }

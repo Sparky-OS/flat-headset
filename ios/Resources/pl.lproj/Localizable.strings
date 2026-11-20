@@ -29,3 +29,5 @@
 "session_failed" = "Połączenie z pulpitem nie powiodło się.";
 "session_timeout" = "Upłynął czas żądania pulpitu. Dotknij ponownie Odbierz.";
 "session_stopped" = "Sesja pulpitu zatrzymana.";
+"waiting_picture" = "Oczekiwanie na obraz pulpitu…";
+"picture_timeout" = "Obraz pulpitu nie dotarł. Zatrzymaj sesję i ponownie dotknij Odbierz.";

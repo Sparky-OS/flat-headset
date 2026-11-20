@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #import "Computers.h"
+#import "Desktop.h"
 #import <Security/Security.h>
 #include "../Pairing/Pairing.hpp"
 #include "../Session/RdpSession.hpp"
@@ -78,6 +79,7 @@ int64_t mono(){return std::chrono::duration_cast<std::chrono::seconds>(std::chro
     NSMutableArray<NSNetService*>* _services;
     NSMutableArray<NSDictionary*>* _peers;
     UILabel* _status;
+    __weak FHDesktopController* _desktop;
     Json _store;
     Identity _identity;
     std::shared_ptr<Run> _run;
@@ -117,9 +119,10 @@ int64_t mono(){return std::chrono::duration_cast<std::chrono::seconds>(std::chro
     [_browser searchForServicesOfType:@"_kdeconnect._udp." inDomain:@"local."];
 }
 - (void)viewDidAppear:(BOOL)animated {[super viewDidAppear:animated];if(_ready)[self discover];}
-- (void)viewWillDisappear:(BOOL)animated {[super viewWillDisappear:animated];[self disconnect];}
+- (void)viewWillDisappear:(BOOL)animated {[super viewWillDisappear:animated];if(self.isBeingDismissed || self.isMovingFromParentViewController || self.navigationController.isBeingDismissed)[self disconnect];}
 - (void)dealloc {[[NSNotificationCenter defaultCenter] removeObserver:self];[_browser stop];if(_run)_run->stop();}
 - (void)disconnect {
+    [_desktop showSessionStatus:NSLocalizedString(@"disconnected",nil) terminal:YES];
     ++_generation;if(_run)_run->stop();_run.reset();[_browser stop];
     for(NSNetService* service in _services){service.delegate=nil;[service stop];}
     [_services removeAllObjects];[_peers removeAllObjects];[self.tableView reloadData];
@@ -167,8 +170,9 @@ int64_t mono(){return std::chrono::duration_cast<std::chrono::seconds>(std::chro
     try {if(_store["pins"].contains(peerId))pin=_store["pins"].at(peerId).get<std::string>();}catch(...){[self failure];return;}
     if(_run)_run->stop();auto run=std::make_shared<Run>();_run=run;const NSUInteger generation=++_generation;
     _connectedId=peer[@"id"];
-    const CGRect bounds=UIScreen.mainScreen.nativeBounds;
-    const PanelSize panel{static_cast<int>(std::max(bounds.size.width,bounds.size.height)),static_cast<int>(std::min(bounds.size.width,bounds.size.height)),static_cast<int>(UIScreen.mainScreen.maximumFramesPerSecond*1000)};
+    UIScreen* screen=self.view.window.screen;
+    const CGRect bounds=screen.nativeBounds;
+    const PanelSize panel{static_cast<int>(std::max(bounds.size.width,bounds.size.height)),static_cast<int>(std::min(bounds.size.width,bounds.size.height)),static_cast<int>(screen.maximumFramesPerSecond*1000)};
     const Identity identity=_identity;NSArray<NSData*>* addresses=[service.addresses copy];__weak FHComputersController* weak=self;
     _status.text=NSLocalizedString(@"connecting",nil);
     std::thread([run,identity,peerId,pin,addresses,weak,generation,panel]{@autoreleasepool {
@@ -196,8 +200,20 @@ int64_t mono(){return std::chrono::duration_cast<std::chrono::seconds>(std::chro
             SessionControl control(peerId,verifiedPin,certificatePin(identity.certificate),host,panel);
             PairingState state(!pin.empty());bool authorized=false;SessionStatus shown=SessionStatus::Untrusted;
             auto publish=[&](SessionStatus status){
-                __weak FHComputersController* recipient=weak;const auto epoch=generation;
-                dispatch_async(dispatch_get_main_queue(), ^{FHComputersController* strong=recipient;if(strong && strong->_generation==epoch)strong->_status.text=sessionText(status);});
+                __weak FHComputersController* recipient=weak;const auto epoch=generation;const auto task=run;
+                std::shared_ptr<Frames> frames;
+                {std::lock_guard<std::mutex> lock(run->mutex);if(run->rdp)frames=run->rdp->frames();}
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    FHComputersController* strong=recipient;if(!strong || strong->_generation!=epoch || task->canceled)return;
+                    NSString* message=sessionText(status);strong->_status.text=message;
+                    const BOOL running=status==SessionStatus::Connecting || status==SessionStatus::Connected;
+                    if(running && frames && frames->active() && !strong->_desktop && strong.navigationController.topViewController==strong) {
+                        FHDesktopController* desktop=[[FHDesktopController alloc] initWithFrames:frames];
+                        desktop.onStop=^{task->stopRdp();task->action=5;};strong->_desktop=desktop;
+                        [strong.navigationController pushViewController:desktop animated:NO];
+                    }
+                    [strong->_desktop showSessionStatus:message terminal:!running];
+                });
             };
             auto send=[&](const Json& value){if(!value.is_null())channel.send(value);};
             auto finish=[&](SessionStatus status){
@@ -269,9 +285,9 @@ int64_t mono(){return std::chrono::duration_cast<std::chrono::seconds>(std::chro
             }
             run->approved=false;control.revoke();run->stopRdp();run->closeSocket();
             __weak FHComputersController* recipient=weak;const auto epoch=generation;
-            dispatch_async(dispatch_get_main_queue(), ^{FHComputersController* strong=recipient;if(strong && strong->_generation==epoch){if(strong.presentedViewController)[strong dismissViewControllerAnimated:YES completion:nil];strong->_status.text=NSLocalizedString(@"disconnected",nil);}});
+            dispatch_async(dispatch_get_main_queue(), ^{FHComputersController* strong=recipient;if(strong && strong->_generation==epoch){if(strong.presentedViewController)[strong dismissViewControllerAnimated:YES completion:nil];strong->_status.text=NSLocalizedString(@"disconnected",nil);[strong->_desktop showSessionStatus:strong->_status.text terminal:YES];}});
         }catch(...) {run->approved=false;run->stopRdp();run->closeSocket();__weak FHComputersController* recipient=weak;const auto epoch=generation;const auto task=run;const bool failedSession=sessionPhase;
-            dispatch_async(dispatch_get_main_queue(), ^{FHComputersController* strong=recipient;if(strong && strong->_generation==epoch && !task->canceled){if(strong.presentedViewController)[strong dismissViewControllerAnimated:YES completion:nil];if(failedSession)strong->_status.text=sessionText(SessionStatus::Failed);else [strong failure];}});}
+            dispatch_async(dispatch_get_main_queue(), ^{FHComputersController* strong=recipient;if(strong && strong->_generation==epoch && !task->canceled){if(strong.presentedViewController)[strong dismissViewControllerAnimated:YES completion:nil];if(failedSession){strong->_status.text=sessionText(SessionStatus::Failed);[strong->_desktop showSessionStatus:strong->_status.text terminal:YES];}else [strong failure];}});}
     }}).detach();
 }
 @end

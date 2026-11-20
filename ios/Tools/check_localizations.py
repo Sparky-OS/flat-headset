@@ -8,7 +8,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 LANGUAGES = ('en', 'pl', 'pt-BR', 'fr', 'de', 'es', 'ja', 'ko', 'zh-Hans', 'zh-Hant')
-KEYS = {'Localizable.strings': {'computers', 'compare_code', 'confirm_pairing', 'disconnect', 'disconnected', 'pair_computer', 'catch_desktop','stop_session','session_untrusted','session_unavailable','session_idle','session_waiting','session_permission','session_starting','session_connecting','session_connected','session_refused','session_invalid','session_certificate','session_failed','session_timeout','session_stopped', 'choose_computer', 'connecting', 'renderer_failed', 'forget_pairing', 'render_failed', 'cancel_pairing', 'finding_computers', 'pairing_failed', 'metal_unavailable'},
+KEYS = {'Localizable.strings': {'waiting_picture', 'picture_timeout', 'computers', 'compare_code', 'confirm_pairing', 'disconnect', 'disconnected', 'pair_computer', 'catch_desktop','stop_session','session_untrusted','session_unavailable','session_idle','session_waiting','session_permission','session_starting','session_connecting','session_connected','session_refused','session_invalid','session_certificate','session_failed','session_timeout','session_stopped', 'choose_computer', 'connecting', 'renderer_failed', 'forget_pairing', 'render_failed', 'cancel_pairing', 'finding_computers', 'pairing_failed', 'metal_unavailable'},
         'InfoPlist.strings': {'CFBundleDisplayName', 'CFBundleName', 'NSLocalNetworkUsageDescription'}}
 PAIR = re.compile(r'\s*("(?:[^"\\]|\\.)*")\s*=\s*("(?:[^"\\]|\\.)*")\s*;')
 

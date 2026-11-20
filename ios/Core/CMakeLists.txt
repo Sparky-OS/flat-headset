@@ -82,7 +82,7 @@ if(NOT APPLE)
 endif()
 
 if(NOT APPLE)
-  add_executable(session-test ../Session/SessionControl.cpp ../Session/RdpSession.cpp ../Pairing/Pairing.cpp ../Tests/SessionTest.cpp)
+  add_executable(session-test ../Session/Frames.cpp ../Session/SessionControl.cpp ../Session/RdpSession.cpp ../Pairing/Pairing.cpp ../Tests/SessionTest.cpp)
   target_compile_features(session-test PRIVATE cxx_std_17)
   target_compile_options(session-test PRIVATE -Wall -Wextra -Wpedantic -Werror -UNDEBUG)
   target_include_directories(session-test SYSTEM PRIVATE
@@ -90,4 +90,12 @@ if(NOT APPLE)
     "${CMAKE_CURRENT_BINARY_DIR}/freerdp/include" "${CMAKE_CURRENT_BINARY_DIR}/freerdp/winpr/include" "${OPENSSL_INCLUDE_DIR}")
   target_link_libraries(session-test PRIVATE freerdp-client freerdp winpr OpenSSL::SSL OpenSSL::Crypto Threads::Threads)
   add_test(NAME paired-session COMMAND session-test)
+  add_executable(gdi-frames-test ../Session/Frames.cpp ../Tests/GdiFramesTest.cpp)
+  target_compile_features(gdi-frames-test PRIVATE cxx_std_17)
+  target_compile_options(gdi-frames-test PRIVATE -Wall -Wextra -Wpedantic -Werror -UNDEBUG)
+  target_include_directories(gdi-frames-test SYSTEM PRIVATE
+    "${FREERDP_SOURCE_DIR}/include" "${FREERDP_SOURCE_DIR}/winpr/include"
+    "${CMAKE_CURRENT_BINARY_DIR}/freerdp/include" "${CMAKE_CURRENT_BINARY_DIR}/freerdp/winpr/include")
+  target_link_libraries(gdi-frames-test PRIVATE freerdp-client freerdp winpr Threads::Threads)
+  add_test(NAME gdi-frames COMMAND gdi-frames-test)
 endif()
