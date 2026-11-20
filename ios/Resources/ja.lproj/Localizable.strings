@@ -35,3 +35,14 @@
 "continue_software" = "ソフトウェアデコードで続行";
 "decoder_go_back" = "戻る";
 "software_decoding" = "このセッションではソフトウェアデコードを使用";
+"viewer_title" = "ビューア";
+"viewer_none" = "補正なし";
+"viewer_fitted" = "Shinecon調整済み（D）";
+"viewer_qr" = "Cardboard QRプロファイル";
+"viewer_v_one" = "Cardboard v1";
+"viewer_import" = "ビューアのQRリンクを読み込む";
+"viewer_use" = "このビューアを使用";
+"viewer_qr_hint" = "ビューアのQRコードに含まれる完全な google.com/cardboard/cfg?p= リンクを貼り付けてください。短縮リンクは先に展開してください。";
+"viewer_fit_note" = "この調整は別の電話とビューアの位置で確認されています。ご使用のレンズを通して画像を確認してください。";
+"viewer_invalid" = "ビューアのプロファイルまたはこの電話の画面の実寸を確認できませんでした。有効なプロファイルを選択してください。";
+"viewer_disconnect" = "ビューアを変更する前に切断してください。";

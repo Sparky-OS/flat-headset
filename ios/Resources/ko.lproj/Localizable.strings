@@ -35,3 +35,14 @@
 "continue_software" = "소프트웨어 디코딩으로 계속";
 "decoder_go_back" = "돌아가기";
 "software_decoding" = "이번 세션에서 소프트웨어 디코딩 사용";
+"viewer_title" = "뷰어";
+"viewer_none" = "보정 없음";
+"viewer_fitted" = "Shinecon 맞춤 보정 (D)";
+"viewer_qr" = "Cardboard QR 프로필";
+"viewer_v_one" = "Cardboard v1";
+"viewer_import" = "뷰어 QR 링크 가져오기";
+"viewer_use" = "이 뷰어 사용";
+"viewer_qr_hint" = "뷰어 QR 코드의 전체 google.com/cardboard/cfg?p= 링크를 붙여 넣으세요. 단축 링크는 먼저 원래 주소로 확장해야 합니다.";
+"viewer_fit_note" = "이 보정은 다른 휴대전화와 뷰어 정렬에서 확인되었습니다. 사용 중인 렌즈를 통해 화면을 확인하세요.";
+"viewer_invalid" = "뷰어 프로필 또는 이 휴대전화 화면의 실제 크기를 확인할 수 없습니다. 유효한 프로필을 선택하세요.";
+"viewer_disconnect" = "뷰어를 변경하기 전에 연결을 끊으세요.";

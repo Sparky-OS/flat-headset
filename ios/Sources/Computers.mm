@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #import "Computers.h"
 #import "Desktop.h"
+#import "ViewerSettings.h"
 #import <Security/Security.h>
 #include "../Pairing/Pairing.hpp"
 #include "../Session/RdpSession.hpp"
@@ -86,6 +87,7 @@ int64_t mono(){return std::chrono::duration_cast<std::chrono::seconds>(std::chro
     NSUInteger _generation;
     BOOL _ready;
     NSString* _connectedId;
+    UIBarButtonItem* _viewerButton;
 }
 - (void)viewDidLoad {
     [super viewDidLoad];self.title=NSLocalizedString(@"computers",nil);
@@ -93,7 +95,8 @@ int64_t mono(){return std::chrono::duration_cast<std::chrono::seconds>(std::chro
     _services=[NSMutableArray array];_peers=[NSMutableArray array];
     _status=[[UILabel alloc] initWithFrame:CGRectMake(0,0,500,90)];_status.numberOfLines=0;_status.textAlignment=NSTextAlignmentCenter;
     _status.text=NSLocalizedString(@"finding_computers",nil);self.tableView.tableHeaderView=_status;
-    self.navigationItem.rightBarButtonItems=@[
+    _viewerButton=[[UIBarButtonItem alloc] initWithTitle:[FHViewerSettings name] style:UIBarButtonItemStylePlain target:self action:@selector(chooseViewer)];
+    self.navigationItem.rightBarButtonItems=@[_viewerButton,
       [[UIBarButtonItem alloc] initWithTitle:NSLocalizedString(@"disconnect",nil) style:UIBarButtonItemStylePlain target:self action:@selector(disconnect)],
       [[UIBarButtonItem alloc] initWithTitle:NSLocalizedString(@"catch_desktop",nil) style:UIBarButtonItemStylePlain target:self action:@selector(catchDesktop)],
       [[UIBarButtonItem alloc] initWithTitle:NSLocalizedString(@"stop_session",nil) style:UIBarButtonItemStylePlain target:self action:@selector(stopSession)]];
@@ -110,6 +113,11 @@ int64_t mono(){return std::chrono::duration_cast<std::chrono::seconds>(std::chro
             dispatch_async(dispatch_get_main_queue(), ^{FHComputersController* strong=weak;if(!strong)return;strong->_store=store;strong->_identity=identity;strong->_ready=YES;[strong discover];});
         } catch(...) {dispatch_async(dispatch_get_main_queue(), ^{[weak failure];});}
     });
+}
+- (void)chooseViewer {
+    if(_run && !_run->canceled){_status.text=NSLocalizedString(@"viewer_disconnect",nil);return;}
+    __weak FHComputersController* weak=self;
+    [FHViewerSettings chooseFrom:self changed:^{FHComputersController* strong=weak;if(strong)strong->_viewerButton.title=[FHViewerSettings name];}];
 }
 - (void)closeComputers {[self disconnect];[self dismissViewControllerAnimated:YES completion:nil];}
 - (void)becameActive {if(self.view.window && self.navigationController.topViewController==self)[self discover];}
@@ -168,14 +176,17 @@ int64_t mono(){return std::chrono::duration_cast<std::chrono::seconds>(std::chro
     if(!_ready)return;NSDictionary* peer=_peers[path.row];NSNetService* service=peer[@"service"];
     const std::string peerId=bytes(peer[@"id"]);std::string pin;
     try {if(_store["pins"].contains(peerId))pin=_store["pins"].at(peerId).get<std::string>();}catch(...){[self failure];return;}
+    std::shared_ptr<const Viewer> viewer;
+    try {viewer=[FHViewerSettings viewerForScreen:self.view.window.screen];}
+    catch(...){_status.text=NSLocalizedString(@"viewer_invalid",nil);return;}
     if(_run)_run->stop();auto run=std::make_shared<Run>();_run=run;const NSUInteger generation=++_generation;
     _connectedId=peer[@"id"];
     UIScreen* screen=self.view.window.screen;
     const CGRect bounds=screen.nativeBounds;
-    const PanelSize panel{static_cast<int>(std::max(bounds.size.width,bounds.size.height)),static_cast<int>(std::min(bounds.size.width,bounds.size.height)),static_cast<int>(screen.maximumFramesPerSecond*1000)};
+    const PanelSize panel{static_cast<int>(std::max(bounds.size.width,bounds.size.height)),static_cast<int>(std::min(bounds.size.width,bounds.size.height)),static_cast<int>(screen.maximumFramesPerSecond*1000),viewer->profileId()};
     const Identity identity=_identity;NSArray<NSData*>* addresses=[service.addresses copy];__weak FHComputersController* weak=self;
     _status.text=NSLocalizedString(@"connecting",nil);
-    std::thread([run,identity,peerId,pin,addresses,weak,generation,panel]{@autoreleasepool {
+    std::thread([run,identity,peerId,pin,addresses,weak,generation,panel,viewer]{@autoreleasepool {
         bool sessionPhase=false;
         try {
             for(NSData* address in addresses) {
@@ -208,7 +219,7 @@ int64_t mono(){return std::chrono::duration_cast<std::chrono::seconds>(std::chro
                     NSString* message=sessionText(status);strong->_status.text=message;
                     const BOOL running=status==SessionStatus::Connecting || status==SessionStatus::Connected;
                     if(running && frames && frames->active() && !strong->_desktop && strong.navigationController.topViewController==strong) {
-                        FHDesktopController* desktop=[[FHDesktopController alloc] initWithFrames:frames decoderChoice:choice];
+                        FHDesktopController* desktop=[[FHDesktopController alloc] initWithFrames:frames decoderChoice:choice viewer:viewer];
                         desktop.onStop=^{task->stopRdp();task->action=5;};strong->_desktop=desktop;
                         [strong.navigationController pushViewController:desktop animated:NO];
                     }

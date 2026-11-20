@@ -1,7 +1,7 @@
 # Linux Objective-C++ syntax check
 
 Run `bash ios/Tools/check_objc_syntax.sh` with Clang, the C++ standard library headers and Linux development headers installed.
-It parses the complete `Desktop.mm` and `Computers.mm` translation units, including `Desktop.h`, with C++17, ARC, blocks and warnings as errors.
+It parses the complete `Desktop.mm`, `Computers.mm` and `ViewerSettings.mm` translation units, including `Desktop.h`, with C++17, ARC, blocks and warnings as errors.
 It checks Objective-C instance-variable declarations, C++ members and captures, method bodies, nested blocks and calls against the declarations here.
 It does not link or run anything.
 

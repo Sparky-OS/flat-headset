@@ -37,9 +37,10 @@ SessionControl::SessionControl(std::string id,std::string pin,std::string local,
     :peerId_(std::move(id)),peerPin_(std::move(pin)),localPin_(std::move(local)),address_(std::move(address)) {
     if(peerId_.empty() || !hexPin(peerPin_) || !hexPin(localPin_) || !numericHost(address_) ||
        size.width<320 || size.width>7680 || size.width%2 || size.height<240 || size.height>4320 ||
-       size.refreshMilliHz<=0 || size.refreshMilliHz>1000000)throw std::runtime_error("Invalid paired panel");
+       size.refreshMilliHz<=0 || size.refreshMilliHz>1000000 ||
+       (size.lensProfile!="none" && size.lensProfile!="shinecon-fit-d" && size.lensProfile!="cardboard-default"))throw std::runtime_error("Invalid paired panel");
     panel_={{"version",1},{"identity",localPin_},{"name","Flat Headset"},{"width",size.width},{"height",size.height},
-            {"refreshMilliHz",size.refreshMilliHz},{"scale",1.0},{"widthMm",0},{"heightMm",0},{"splitEye",true},{"lensProfile","none"}};
+            {"refreshMilliHz",size.refreshMilliHz},{"scale",1.0},{"widthMm",0},{"heightMm",0},{"splitEye",true},{"lensProfile",size.lensProfile}};
 }
 SessionControl::~SessionControl(){invalidate();}
 void SessionControl::invalidate(){if(live_)live_->store(false);grant_.reset();live_.reset();deadline_=0;}

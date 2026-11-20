@@ -7,6 +7,9 @@
 @implementation FHDesktopController {
     std::shared_ptr<flatheadset::Frames> _frames;
     std::shared_ptr<flatheadset::DecoderChoice> _choice;
+    std::shared_ptr<const flatheadset::Viewer> _viewer;
+    id<MTLBuffer> _vertices[2];
+    id<MTLBuffer> _indices[2];
     UIButton* _software;
     UIButton* _back;
     MTKView* _metal;
@@ -19,8 +22,8 @@
     BOOL _failed, _showedFrame, _oldIdleDisabled, _holdingIdle, _offeringSoftware;
     std::chrono::steady_clock::time_point _started;
 }
-- (instancetype)initWithFrames:(std::shared_ptr<flatheadset::Frames>)frames decoderChoice:(std::shared_ptr<flatheadset::DecoderChoice>)choice {
-    self=[super initWithNibName:nil bundle:nil];if(self){_frames=std::move(frames);_choice=std::move(choice);}return self;
+- (instancetype)initWithFrames:(std::shared_ptr<flatheadset::Frames>)frames decoderChoice:(std::shared_ptr<flatheadset::DecoderChoice>)choice viewer:(std::shared_ptr<const flatheadset::Viewer>)viewer {
+    self=[super initWithNibName:nil bundle:nil];if(self){_frames=std::move(frames);_choice=std::move(choice);_viewer=std::move(viewer);}return self;
 }
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations {return UIInterfaceOrientationMaskLandscape;}
 - (BOOL)prefersStatusBarHidden {return YES;}
@@ -48,11 +51,18 @@
     [_back addTarget:self action:@selector(stopDesktop) forControlEvents:UIControlEventTouchUpInside];[self.view addSubview:_back];
     if(!device){[self failWithKey:@"metal_unavailable"];return;}
     _queue=[device newCommandQueue];id<MTLLibrary> library=[device newDefaultLibrary];
-    MTLRenderPipelineDescriptor* descriptor=[MTLRenderPipelineDescriptor new];descriptor.vertexFunction=[library newFunctionWithName:@"fullPanel"];
-    descriptor.fragmentFunction=[library newFunctionWithName:@"desktopPixel"];descriptor.colorAttachments[0].pixelFormat=_metal.colorPixelFormat;
+    MTLRenderPipelineDescriptor* descriptor=[MTLRenderPipelineDescriptor new];descriptor.vertexFunction=[library newFunctionWithName:_viewer->mode==flatheadset::LensMode::Cardboard?@"lensVertex":@"fullPanel"];
+    NSString* fragment=_viewer->mode==flatheadset::LensMode::None?@"desktopPixel":_viewer->mode==flatheadset::LensMode::ShineconFitD?@"fittedPixel":@"lensPixel";
+    descriptor.fragmentFunction=[library newFunctionWithName:fragment];descriptor.colorAttachments[0].pixelFormat=_metal.colorPixelFormat;
     if(!_queue || !descriptor.vertexFunction || !descriptor.fragmentFunction){[self failWithKey:@"renderer_failed"];return;}
     NSError* error=nil;_pipeline=[device newRenderPipelineStateWithDescriptor:descriptor error:&error];
-    if(!_pipeline)[self failWithKey:@"renderer_failed"];
+    if(!_pipeline){[self failWithKey:@"renderer_failed"];return;}
+    if(_viewer->mode==flatheadset::LensMode::Cardboard)for(int eye=0;eye<2;++eye){
+        const auto& mesh=_viewer->eyes[eye];
+        _vertices[eye]=[device newBufferWithBytes:mesh.vertices.data() length:mesh.vertices.size()*sizeof(flatheadset::LensVertex) options:MTLResourceStorageModeShared];
+        _indices[eye]=[device newBufferWithBytes:mesh.indices.data() length:mesh.indices.size()*sizeof(uint32_t) options:MTLResourceStorageModeShared];
+        if(!_vertices[eye] || !_indices[eye]){[self failWithKey:@"renderer_failed"];return;}
+    }
 }
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];[self.navigationController setNavigationBarHidden:YES animated:NO];
@@ -110,7 +120,7 @@
     id<CAMetalDrawable> drawable=view.currentDrawable;MTLRenderPassDescriptor* pass=view.currentRenderPassDescriptor;
     if(!drawable || !pass){dispatch_semaphore_signal(_slots);return;}
     if(auto frame=_frames->take()) {
-        if(frame->width!=drawable.texture.width || frame->height!=drawable.texture.height){dispatch_semaphore_signal(_slots);[self failWithKey:@"render_failed"];return;}
+        if(frame->width!=drawable.texture.width || frame->height!=drawable.texture.height || frame->width!=static_cast<unsigned>(_viewer->width) || frame->height!=static_cast<unsigned>(_viewer->height)){dispatch_semaphore_signal(_slots);[self failWithKey:@"render_failed"];return;}
         MTLTextureDescriptor* descriptor=[MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatBGRA8Unorm width:frame->width height:frame->height mipmapped:NO];
         descriptor.usage=MTLTextureUsageShaderRead;descriptor.storageMode=MTLStorageModeShared;
         id<MTLTexture> next=[view.device newTextureWithDescriptor:descriptor];
@@ -123,7 +133,15 @@
     id<MTLCommandBuffer> command=[_queue commandBuffer];id<MTLRenderCommandEncoder> encoder=[command renderCommandEncoderWithDescriptor:pass];
     if(!command || !encoder){dispatch_semaphore_signal(_slots);[self failWithKey:@"render_failed"];return;}
     [encoder setRenderPipelineState:_pipeline];[encoder setFragmentTexture:_texture atIndex:0];
-    [encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];[encoder endEncoding];[command presentDrawable:drawable];
+    if(_viewer->mode==flatheadset::LensMode::Cardboard){
+        for(uint32_t eye=0;eye<2;++eye){
+            [encoder setScissorRect:(MTLScissorRect){eye*_texture.width/2,0,_texture.width/2,_texture.height}];
+            [encoder setVertexBuffer:_vertices[eye] offset:0 atIndex:0];
+            [encoder setFragmentBytes:&eye length:sizeof(eye) atIndex:0];
+            [encoder drawIndexedPrimitives:MTLPrimitiveTypeTriangleStrip indexCount:_viewer->eyes[eye].indices.size() indexType:MTLIndexTypeUInt32 indexBuffer:_indices[eye] indexBufferOffset:0];
+        }
+    }else [encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
+    [encoder endEncoding];[command presentDrawable:drawable];
     __weak FHDesktopController* recipient=self;const auto slots=_slots;const auto epoch=_presentationEpoch;
     [command addCompletedHandler:^(id<MTLCommandBuffer> completed){
         dispatch_semaphore_signal(slots);

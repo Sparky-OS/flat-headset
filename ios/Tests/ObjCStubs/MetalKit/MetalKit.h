@@ -2,12 +2,12 @@
 // Authored syntax-test doubles only; no SDK definitions or implementations.
 #pragma once
 #import <UIKit/UIKit.h>
-@protocol MTLDevice, MTLCommandQueue, MTLRenderPipelineState, MTLFunction, MTLLibrary, MTLTexture, MTLCommandBuffer, MTLRenderCommandEncoder, CAMetalDrawable;
+@protocol MTLBuffer, MTLDevice, MTLCommandQueue, MTLRenderPipelineState, MTLFunction, MTLLibrary, MTLTexture, MTLCommandBuffer, MTLRenderCommandEncoder, CAMetalDrawable;
 @class MTKView, MTLRenderPassDescriptor, MTLTextureDescriptor, MTLRenderPipelineDescriptor;
 struct MTLRegion { NSUInteger x, y, width, height; };
 MTLRegion MTLRegionMake2D(NSUInteger, NSUInteger, NSUInteger, NSUInteger);
 enum { MTLPixelFormatBGRA8Unorm, MTLTextureUsageShaderRead, MTLStorageModeShared,
-       MTLPrimitiveTypeTriangle, MTLCommandBufferStatusCompleted };
+       MTLPrimitiveTypeTriangle, MTLCommandBufferStatusCompleted, MTLResourceStorageModeShared, MTLPrimitiveTypeTriangleStrip, MTLIndexTypeUInt32 };
 @protocol MTKViewDelegate
 - (void)mtkView:(MTKView*)view drawableSizeWillChange:(CGSize)size;
 - (void)drawInMTKView:(MTKView*)view;
@@ -41,7 +41,10 @@ enum { MTLPixelFormatBGRA8Unorm, MTLTextureUsageShaderRead, MTLStorageModeShared
 @interface MTLRenderPassDescriptor : NSObject @end
 @protocol MTLRenderPipelineState <NSObject> @end
 @protocol MTLFunction <NSObject> @end
+@protocol MTLBuffer <NSObject> @end
+struct MTLScissorRect { NSUInteger x,y,width,height; };
 @protocol MTLDevice <NSObject>
+- (id<MTLBuffer>)newBufferWithBytes:(const void*)bytes length:(NSUInteger)length options:(NSUInteger)options;
 - (id<MTLCommandQueue>)newCommandQueue;
 - (id<MTLLibrary>)newDefaultLibrary;
 - (id<MTLRenderPipelineState>)newRenderPipelineStateWithDescriptor:(MTLRenderPipelineDescriptor*)descriptor error:(NSError**)error;
@@ -70,6 +73,10 @@ id<MTLDevice> MTLCreateSystemDefaultDevice();
 - (void)commit;
 @end
 @protocol MTLRenderCommandEncoder <NSObject>
+- (void)setScissorRect:(MTLScissorRect)rect;
+- (void)setVertexBuffer:(id<MTLBuffer>)buffer offset:(NSUInteger)offset atIndex:(NSUInteger)index;
+- (void)setFragmentBytes:(const void*)bytes length:(NSUInteger)length atIndex:(NSUInteger)index;
+- (void)drawIndexedPrimitives:(NSUInteger)type indexCount:(NSUInteger)count indexType:(NSUInteger)indexType indexBuffer:(id<MTLBuffer>)buffer indexBufferOffset:(NSUInteger)offset;
 - (void)setRenderPipelineState:(id<MTLRenderPipelineState>)state;
 - (void)setFragmentTexture:(id<MTLTexture>)texture atIndex:(NSUInteger)index;
 - (void)drawPrimitives:(NSUInteger)type vertexStart:(NSUInteger)start vertexCount:(NSUInteger)count;

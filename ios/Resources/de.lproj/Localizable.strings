@@ -35,3 +35,14 @@
 "continue_software" = "Mit Softwaredekodierung fortfahren";
 "decoder_go_back" = "Zurück";
 "software_decoding" = "Softwaredekodierung für diese Sitzung";
+"viewer_title" = "VR-Brille";
+"viewer_none" = "Ohne Korrektur";
+"viewer_fitted" = "Shinecon-Anpassung (D)";
+"viewer_qr" = "Cardboard-QR-Profil";
+"viewer_v_one" = "Cardboard v1";
+"viewer_import" = "QR-Link der Brille importieren";
+"viewer_use" = "Diese Brille verwenden";
+"viewer_qr_hint" = "Fügen Sie den vollständigen Link google.com/cardboard/cfg?p= aus dem QR-Code der Brille ein. Kurzlinks müssen zuerst aufgelöst werden.";
+"viewer_fit_note" = "Diese Anpassung wurde mit einem anderen Telefon und einer anderen Ausrichtung geprüft. Prüfen Sie das Bild durch Ihre Linsen.";
+"viewer_invalid" = "Das Profil oder die physischen Bildschirmmaße dieses Telefons konnten nicht geprüft werden. Wählen Sie ein gültiges Profil.";
+"viewer_disconnect" = "Trennen Sie die Verbindung, bevor Sie die Brille wechseln.";

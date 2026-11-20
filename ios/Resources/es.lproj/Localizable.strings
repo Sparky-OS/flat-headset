@@ -35,3 +35,14 @@
 "continue_software" = "Continuar con decodificación por software";
 "decoder_go_back" = "Volver";
 "software_decoding" = "Decodificación por software durante esta sesión";
+"viewer_title" = "Visor";
+"viewer_none" = "Sin corrección";
+"viewer_fitted" = "Ajuste Shinecon (D)";
+"viewer_qr" = "Perfil QR de Cardboard";
+"viewer_v_one" = "Cardboard v1";
+"viewer_import" = "Importar enlace QR del visor";
+"viewer_use" = "Usar este visor";
+"viewer_qr_hint" = "Pegue el enlace completo google.com/cardboard/cfg?p= del código QR del visor. Primero debe expandir los enlaces cortos.";
+"viewer_fit_note" = "Este ajuste se comprobó con otro teléfono y otra alineación del visor. Compruebe la imagen a través de sus lentes.";
+"viewer_invalid" = "No se pudo verificar el perfil del visor o las dimensiones físicas de la pantalla de este teléfono. Seleccione un perfil válido.";
+"viewer_disconnect" = "Desconecte antes de cambiar el visor.";

@@ -35,3 +35,14 @@
 "continue_software" = "Continuer avec le décodage logiciel";
 "decoder_go_back" = "Revenir";
 "software_decoding" = "Décodage logiciel pour cette session";
+"viewer_title" = "Visionneuse";
+"viewer_none" = "Sans correction";
+"viewer_fitted" = "Réglage Shinecon (D)";
+"viewer_qr" = "Profil QR Cardboard";
+"viewer_v_one" = "Cardboard v1";
+"viewer_import" = "Importer le lien QR de la visionneuse";
+"viewer_use" = "Utiliser cette visionneuse";
+"viewer_qr_hint" = "Collez le lien complet google.com/cardboard/cfg?p= du code QR de votre visionneuse. Développez d’abord les liens courts.";
+"viewer_fit_note" = "Ce réglage a été vérifié avec un autre téléphone et un autre alignement. Vérifiez l’image à travers vos lentilles.";
+"viewer_invalid" = "Impossible de vérifier le profil ou les dimensions physiques de l’écran de ce téléphone. Choisissez un profil valide.";
+"viewer_disconnect" = "Déconnectez-vous avant de changer de visionneuse.";

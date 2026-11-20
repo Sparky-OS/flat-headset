@@ -35,3 +35,14 @@
 "continue_software" = "Kontynuuj z dekodowaniem programowym";
 "decoder_go_back" = "Wróć";
 "software_decoding" = "Dekodowanie programowe w tej sesji";
+"viewer_title" = "Gogle";
+"viewer_none" = "Bez korekcji";
+"viewer_fitted" = "Dopasowanie Shinecon (D)";
+"viewer_qr" = "Profil QR Cardboard";
+"viewer_v_one" = "Cardboard v1";
+"viewer_import" = "Importuj link QR gogli";
+"viewer_use" = "Użyj tych gogli";
+"viewer_qr_hint" = "Wklej pełny link google.com/cardboard/cfg?p= z kodu QR gogli. Najpierw rozwiń skrócone linki.";
+"viewer_fit_note" = "To dopasowanie sprawdzono z innym telefonem i ustawieniem gogli. Sprawdź obraz przez swoje soczewki.";
+"viewer_invalid" = "Nie można zweryfikować profilu gogli lub fizycznych wymiarów ekranu telefonu. Wybierz prawidłowy profil.";
+"viewer_disconnect" = "Rozłącz się przed zmianą gogli.";

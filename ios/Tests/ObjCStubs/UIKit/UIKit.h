@@ -22,7 +22,7 @@ struct NSRange { NSUInteger location, length; };
 constexpr NSUInteger NSNotFound = ~NSUInteger(0);
 CGRect CGRectMake(CGFloat, CGFloat, CGFloat, CGFloat);
 CGSize CGSizeMake(CGFloat, CGFloat);
-@class NSString, NSData, NSCharacterSet, NSIndexSet, UIWindow, UINavigationController, UINavigationItem;
+@class UITextField, NSString, NSData, NSCharacterSet, NSIndexSet, UIWindow, UINavigationController, UINavigationItem;
 @protocol NSObject
 - (BOOL)isEqual:(id)other;
 @end
@@ -65,6 +65,7 @@ struct NSFastEnumerationState;
 + (instancetype)array;
 + (instancetype)arrayWithObjects:(const id[])objects count:(NSUInteger)count;
 @property(readonly) NSUInteger count;
+@property(readonly) ObjectType firstObject;
 - (ObjectType)objectAtIndexedSubscript:(NSUInteger)index;
 @end
 @interface NSMutableArray<ObjectType> : NSArray<ObjectType>
@@ -171,6 +172,7 @@ constexpr UIInterfaceOrientationMask UIInterfaceOrientationMaskLandscape = 1;
 - (void)pushViewController:(UIViewController*)controller animated:(BOOL)animated;
 @end
 @interface UIBarButtonItem : NSObject
+@property(copy) NSString* title;
 - (instancetype)initWithBarButtonSystemItem:(NSInteger)item target:(id)target action:(SEL)action;
 - (instancetype)initWithTitle:(NSString*)title style:(NSInteger)style target:(id)target action:(SEL)action;
 @end
@@ -210,7 +212,23 @@ extern NSString* UIApplicationDidBecomeActiveNotification;
 @interface UIAlertAction : NSObject
 + (instancetype)actionWithTitle:(NSString*)title style:(NSInteger)style handler:(void (^)(UIAlertAction*))handler;
 @end
+@interface UITextField : UIView
+@property(copy) NSString* text;
+@property NSInteger autocorrectionType;
+@property NSInteger autocapitalizationType;
+@property NSInteger keyboardType;
+@end
+enum { UITextAutocorrectionTypeNo, UITextAutocapitalizationTypeNone, UIKeyboardTypeURL };
+@interface NSUserDefaults : NSObject
+@property(class,readonly) NSUserDefaults* standardUserDefaults;
+- (NSInteger)integerForKey:(NSString*)key;
+- (NSString*)stringForKey:(NSString*)key;
+- (void)setInteger:(NSInteger)value forKey:(NSString*)key;
+- (void)setObject:(id)value forKey:(NSString*)key;
+@end
 @interface UIAlertController : UIViewController
+@property(readonly) NSArray<UITextField*>* textFields;
+- (void)addTextFieldWithConfigurationHandler:(void (^)(UITextField*))handler;
 + (instancetype)alertControllerWithTitle:(NSString*)title message:(NSString*)message preferredStyle:(NSInteger)style;
 - (void)addAction:(UIAlertAction*)action;
 @end

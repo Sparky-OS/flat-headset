@@ -153,6 +153,7 @@ jobs:
           cp "$RUNNER_TEMP/flat-headset-core-sources/ffmpeg/COPYING.LGPLv2.1" "$licenses/FFmpeg-LGPLv2.1.txt"
           cp ios/ThirdParty/nlohmann/LICENSE.MIT "$licenses/nlohmann-json.txt"
           cp ios/COPYING "$licenses/FlatHeadset.txt"
+          cp ios/ThirdParty/Cardboard/LICENSE "$licenses/Cardboard-Apache-2.0.txt"
           ditto -c -k --keepParent "$RUNNER_TEMP/flat-headset-package/Payload" "$GITHUB_WORKSPACE/ios-artifact/FlatHeadset-unsigned.ipa"
           python3 ios/Tools/package_manifest.py ios-artifact/FlatHeadset-unsigned.ipa --commit "$GITHUB_SHA"
       - name: Keep unsigned IPA and hashes

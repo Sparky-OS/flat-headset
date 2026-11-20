@@ -4,7 +4,7 @@
 #include <atomic>
 #include <memory>
 namespace flatheadset {
-struct PanelSize { int width, height, refreshMilliHz; };
+struct PanelSize { int width, height, refreshMilliHz; std::string lensProfile="none"; };
 enum class SessionStatus { Untrusted, Unavailable, Idle, Waiting, Permission, Starting,
     Connecting, Connected, Refused, Invalid, Certificate, Failed, Timeout, Stopped };
 class RdpSession;

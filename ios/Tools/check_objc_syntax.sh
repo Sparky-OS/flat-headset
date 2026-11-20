@@ -6,7 +6,7 @@ if [[ $(uname -s) != Linux ]]; then
     exit 1
 fi
 root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
-for source in Desktop.mm Computers.mm; do
+for source in Desktop.mm Computers.mm ViewerSettings.mm; do
     "${CLANGXX:-clang++}" -x objective-c++ -std=c++17 -fsyntax-only \
         -fobjc-runtime=gnustep-2.0 -fobjc-arc -fblocks -Werror \
         -DFH_OBJC_SYNTAX_ONLY=1 -I "$root/Tests/ObjCStubs" \

@@ -1,0 +1,20 @@
+{
+  "repository": "https://github.com/googlevr/cardboard",
+  "commit": "8bd424da7f1e399255a1b6e7c02be8e281ecc974",
+  "original_sha256": {
+    "sdk/lens_distortion.cc": "5d185c7eaac1744cb09b78355b9ae527068ba53aaba27becc6b78b8a52a504f7",
+    "sdk/lens_distortion.h": "775360621ed729f0dd78ec10b97588e0a4bf8484ba5e10ed49a5b6e808153f10",
+    "sdk/distortion_mesh.cc": "630378edc9ad9bf43f7217770a97a1d67ccf146a02d1111b610ee48d1333a1b1",
+    "sdk/distortion_mesh.h": "9a44104ed315236a359cfdf8f6cb904840b6696031e7430671685c2a0fc3855b",
+    "sdk/polynomial_radial_distortion.cc": "c8c2945337e3f7627720097832cca362e108a0cf90bde4a15e0e9122074ffacd",
+    "sdk/polynomial_radial_distortion.h": "f78f61b41dbe223da344f810977ee854d54e47deb0e7a0e6a2b3dba56abfb19c",
+    "sdk/util/matrix_4x4.cc": "5dc8d34c42aa1ef1aa67b63deb3dc6af085bf4c1d44c5c0724b9c603f19a9423",
+    "sdk/util/matrix_4x4.h": "ac978d82e95ef852635c5b4aa473c97d5940bc36a8ce2114cc408182c07ad3be",
+    "sdk/include/cardboard.h": "0b8cce32859b014062fbf7d975716201ea3eb9652a38e89e2477718d30ca56a3",
+    "sdk/qrcode/cardboard_v1/cardboard_v1.cc": "b5cff8ab600e982ed9a8fb5730fb3f32f0c60b80478f5e458ce0f2e21fdbfc7f",
+    "sdk/qrcode/cardboard_v1/cardboard_v1.h": "ec4cc549fbefb3fce6fde72ec106319913db65f5ef5c7dae5254749e8e438ce4",
+    "proto/cardboard_device.proto": "161bc6259302506c89586029902703ea7da5dcb25e6cf79cd5a9c2170eebdea9",
+    "sdk/qrcode/ios/sdk.bundle/resolutions.csv": "a09742b886cab459af464adaf181731314d393423e01bdcdf6cf75ef83221fa5",
+    "LICENSE": "fd47b8b87f5f105a2602652e946c02205a6bd0d37afbd624e2d539dd86a6c2ab"
+  }
+}

@@ -35,3 +35,14 @@
 "continue_software" = "Continue with software decoding";
 "decoder_go_back" = "Go back";
 "software_decoding" = "Software decoding for this session";
+"viewer_title" = "Viewer";
+"viewer_none" = "Uncorrected";
+"viewer_fitted" = "Shinecon fitted (D)";
+"viewer_qr" = "Cardboard QR profile";
+"viewer_v_one" = "Cardboard v1";
+"viewer_import" = "Import viewer QR link";
+"viewer_use" = "Use this viewer";
+"viewer_qr_hint" = "Paste the full google.com/cardboard/cfg?p= link from your viewer QR code. Short links need to be expanded first.";
+"viewer_fit_note" = "This existing fit was checked with another phone and viewer alignment. Check the picture through your lenses.";
+"viewer_invalid" = "The viewer profile or this phone’s physical screen dimensions could not be verified. Select a valid profile.";
+"viewer_disconnect" = "Disconnect before changing the viewer.";

@@ -35,3 +35,14 @@
 "continue_software" = "继续使用软件解码";
 "decoder_go_back" = "返回";
 "software_decoding" = "本次会话使用软件解码";
+"viewer_title" = "观看器";
+"viewer_none" = "不校正";
+"viewer_fitted" = "Shinecon 拟合校正 (D)";
+"viewer_qr" = "Cardboard QR 配置";
+"viewer_v_one" = "Cardboard v1";
+"viewer_import" = "导入观看器二维码链接";
+"viewer_use" = "使用此观看器";
+"viewer_qr_hint" = "请粘贴观看器二维码中的完整 google.com/cardboard/cfg?p= 链接。短链接需要先展开。";
+"viewer_fit_note" = "此校正已在另一部手机和另一种观看器对准状态下验证。请通过您的镜片检查画面。";
+"viewer_invalid" = "无法验证观看器配置或此手机屏幕的实际尺寸。请选择有效的配置。";
+"viewer_disconnect" = "更换观看器前请断开连接。";
