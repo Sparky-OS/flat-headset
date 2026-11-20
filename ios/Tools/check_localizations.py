@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Check every native catalog key and product name; print the per-key coverage table."""
 import json
 from pathlib import Path

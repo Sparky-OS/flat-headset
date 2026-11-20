@@ -12,6 +12,7 @@ jobs:
     timeout-minutes: 20
     env:
       IPHONEOS_DEPLOYMENT_TARGET: '16.0'
+      PYTHONDONTWRITEBYTECODE: '1'
     steps:
       - name: Report hosted image and verify iPhoneOS SDK
         shell: bash
