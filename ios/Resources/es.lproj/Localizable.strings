@@ -31,3 +31,7 @@
 "session_stopped" = "Sesión de escritorio detenida.";
 "waiting_picture" = "Esperando la imagen del escritorio…";
 "picture_timeout" = "No llegó ninguna imagen del escritorio. Detén la sesión y pulsa Recibir de nuevo.";
+"hardware_decode_failed" = "Falló la decodificación de vídeo por hardware. ¿Continuar con decodificación por software durante esta sesión? Será más lenta y consumirá más batería.";
+"continue_software" = "Continuar con decodificación por software";
+"decoder_go_back" = "Volver";
+"software_decoding" = "Decodificación por software durante esta sesión";

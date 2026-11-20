@@ -31,3 +31,7 @@
 "session_stopped" = "Desktop-Sitzung gestoppt.";
 "waiting_picture" = "Warten auf das Desktop-Bild…";
 "picture_timeout" = "Kein Desktop-Bild empfangen. Stoppen Sie die Sitzung und tippen Sie erneut auf Empfangen.";
+"hardware_decode_failed" = "Die Hardware-Videodekodierung ist fehlgeschlagen. Für diese Sitzung mit Softwaredekodierung fortfahren? Sie ist langsamer und verbraucht mehr Akku.";
+"continue_software" = "Mit Softwaredekodierung fortfahren";
+"decoder_go_back" = "Zurück";
+"software_decoding" = "Softwaredekodierung für diese Sitzung";

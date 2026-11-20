@@ -39,6 +39,7 @@ public:
     Json connected();
     Json stop(SessionStatus reason=SessionStatus::Stopped);
     bool expire(int64_t now);
+    void waitingForDecoderChoice(int64_t now);
     SessionStatus status() const { return status_; }
     const Json& panel() const { return panel_; }
 private:

@@ -1,36 +1,204 @@
+--- a/include/freerdp/codec/h264.h
++++ b/include/freerdp/codec/h264.h
+@@ -34,6 +34,19 @@
+ 	typedef struct S_H264_CONTEXT_SUBSYSTEM H264_CONTEXT_SUBSYSTEM;
+ 	typedef struct S_H264_CONTEXT H264_CONTEXT;
+ 	typedef struct S_YUV_CONTEXT YUV_CONTEXT;
++
++	/* Receiver-local policy. QUERY must not prompt; failures may wait for the user's choice. */
++	typedef enum
++	{
++		H264_SOFTWARE_QUERY = 0,
++		H264_HARDWARE_INIT_FAILED = 1,
++		H264_HARDWARE_FORMAT_FAILED = 2
++	} H264_SOFTWARE_REASON;
++	typedef BOOL (*pH264SoftwarePermission)(void* user, H264_SOFTWARE_REASON reason);
++	FREERDP_API H264_CONTEXT* h264_context_new_with_decoder_policy(
++	    BOOL Compressor, pH264SoftwarePermission permission, void* user);
++	FREERDP_API BOOL h264_context_request_software(H264_CONTEXT* h264,
++	                                              H264_SOFTWARE_REASON reason);
+ 
+ 	typedef enum
+ 	{
+--- a/libfreerdp/codec/h264.h
++++ b/libfreerdp/codec/h264.h
+@@ -53,6 +53,9 @@
+ 	struct S_H264_CONTEXT
+ 	{
+ 		BOOL Compressor;
++		BOOL softwareDecoding;
++		pH264SoftwarePermission softwarePermission;
++		void* softwarePermissionUser;
+ 
+ 		UINT32 width;
+ 		UINT32 height;
+--- a/libfreerdp/codec/h264.c
++++ b/libfreerdp/codec/h264.c
+@@ -761,7 +761,26 @@
+ 	return yuv_context_reset(h264->yuv, width, height);
+ }
+ 
++BOOL h264_context_request_software(H264_CONTEXT* h264, H264_SOFTWARE_REASON reason)
++{
++	if (!h264 || h264->Compressor)
++		return FALSE;
++	if (h264->softwareDecoding)
++		return TRUE;
++	if (!h264->softwarePermission ||
++	    !h264->softwarePermission(h264->softwarePermissionUser, reason))
++		return FALSE;
++	h264->softwareDecoding = TRUE;
++	return TRUE;
++}
++
+ H264_CONTEXT* h264_context_new(BOOL Compressor)
++{
++	return h264_context_new_with_decoder_policy(Compressor, nullptr, nullptr);
++}
++
++H264_CONTEXT* h264_context_new_with_decoder_policy(BOOL Compressor,
++                                                 pH264SoftwarePermission permission, void* user)
+ {
+ 	H264_CONTEXT* h264 = (H264_CONTEXT*)calloc(1, sizeof(H264_CONTEXT));
+ 	if (!h264)
+@@ -773,6 +792,10 @@
+ 		goto fail;
+ 
+ 	h264->Compressor = Compressor;
++	h264->softwarePermission = permission;
++	h264->softwarePermissionUser = user;
++	if (!Compressor && permission && permission(user, H264_SOFTWARE_QUERY))
++		h264->softwareDecoding = TRUE;
+ 	if (Compressor)
+ 	{
+ 		/* Default compressor settings, may be changed by caller */
+--- a/include/freerdp/gdi/gdi.h
++++ b/include/freerdp/gdi/gdi.h
+@@ -25,6 +25,7 @@
+ #include <winpr/wlog.h>
+ 
+ #include <freerdp/api.h>
++#include <freerdp/codec/h264.h>
+ #include <freerdp/types.h>
+ 
+ #include <freerdp/log.h>
+@@ -516,6 +517,8 @@
+ 		UINT16 outputSurfaceId;
+ 		UINT32 frameId;
+ 		RdpgfxClientContext* gfx;
++		pH264SoftwarePermission h264SoftwarePermission;
++		void* h264SoftwarePermissionUser;
+ 		VideoClientContext* video;
+ 		GeometryClientContext* geometry;
+ 
+--- a/libfreerdp/gdi/gfx.c
++++ b/libfreerdp/gdi/gfx.c
+@@ -701,7 +701,8 @@
+ 
+ 	if (!surface->h264)
+ 	{
+-		surface->h264 = h264_context_new(FALSE);
++		surface->h264 = h264_context_new_with_decoder_policy(
++		    FALSE, gdi->h264SoftwarePermission, gdi->h264SoftwarePermissionUser);
+ 
+ 		if (!surface->h264)
+ 		{
+@@ -790,7 +791,8 @@
+ 
+ 	if (!surface->h264)
+ 	{
+-		surface->h264 = h264_context_new(FALSE);
++		surface->h264 = h264_context_new_with_decoder_policy(
++		    FALSE, gdi->h264SoftwarePermission, gdi->h264SoftwarePermissionUser);
+ 
+ 		if (!surface->h264)
+ 		{
 --- a/libfreerdp/codec/h264_ffmpeg.c
 +++ b/libfreerdp/codec/h264_ffmpeg.c
-@@ -360,7 +360,12 @@
+@@ -360,7 +360,17 @@
  		}
  		else
  		{
 +#ifdef WITH_VIDEOTOOLBOX
-+			WLog_Print(h264->log, WLOG_ERROR, "Expected a VideoToolbox frame");
-+			goto fail;
++			if (!h264_context_request_software(h264, H264_HARDWARE_FORMAT_FAILED))
++				goto fail;
++			if ((sys->hwVideoFrame->format != AV_PIX_FMT_YUV420P) &&
++			    (sys->hwVideoFrame->format != AV_PIX_FMT_YUVJ420P))
++				goto fail;
++			av_frame_unref(sys->videoFrame);
++			status = av_frame_ref(sys->videoFrame, sys->hwVideoFrame);
 +#else
  			status = av_frame_copy(sys->videoFrame, sys->hwVideoFrame);
 +#endif
  		}
  		gotFrame = (status == 0);
  
-@@ -774,10 +779,10 @@
+@@ -643,6 +653,10 @@
+ 	H264_CONTEXT_LIBAVCODEC* sys = (H264_CONTEXT_LIBAVCODEC*)h264->pSystemData;
+ 	WINPR_ASSERT(sys);
+ 
++#ifdef WITH_VIDEOTOOLBOX
++	if (h264->softwareDecoding)
++		goto software_choice;
++#endif
+ 	for (const enum AVPixelFormat* p = fmts; *p != AV_PIX_FMT_NONE; p++)
+ 	{
+ 		if (*p == sys->hw_pix_fmt)
+@@ -655,7 +669,7 @@
+ 
+ 			if (!sys->hw_frames_ctx)
+ 			{
+-				return AV_PIX_FMT_NONE;
++				goto software_choice;
+ 			}
+ 
+ 			sys->codecDecoderContext->pix_fmt = *p;
+@@ -681,7 +695,7 @@
+ 			{
+ 				WLog_Print(h264->log, WLOG_ERROR, "Could not init hwframes context: %s",
+ 				           av_err2str(err));
+-				return AV_PIX_FMT_NONE;
++				goto software_choice;
+ 			}
+ 
+ 			sys->codecDecoderContext->hw_frames_ctx = av_buffer_ref(sys->hw_frames_ctx);
+@@ -690,6 +704,17 @@
+ 		}
+ 	}
+ 
++software_choice:
++#ifdef WITH_VIDEOTOOLBOX
++	if (h264_context_request_software(h264, H264_HARDWARE_INIT_FAILED))
++	{
++		for (const enum AVPixelFormat* p = fmts; *p != AV_PIX_FMT_NONE; p++)
++		{
++			if ((*p == AV_PIX_FMT_YUV420P) || (*p == AV_PIX_FMT_YUVJ420P))
++				return *p;
++		}
++	}
++#endif
+ 	return AV_PIX_FMT_NONE;
+ }
+ #endif
+@@ -765,6 +790,8 @@
+ 
+ #ifdef WITH_VIDEOTOOLBOX
+ 
++		if (h264->softwareDecoding)
++			goto fail_vt_create;
+ 		if (!sys->hwctx)
+ 		{
+ 			int ret = av_hwdevice_ctx_create(&sys->hwctx, AV_HWDEVICE_TYPE_VIDEOTOOLBOX, nullptr,
+@@ -774,9 +801,11 @@
  			{
  				WLog_Print(
  				    h264->log, WLOG_ERROR,
 -				    "Could not initialize VideoToolbox decoder, falling back to software: %s",
-+				    "Could not initialize required VideoToolbox decoder: %s",
++				    "Could not initialize VideoToolbox decoder: %s",
  				    av_err2str(ret));
  				sys->hwctx = nullptr;
--				goto fail_vt_create;
-+				goto EXCEPTION;
++				if (!h264_context_request_software(h264, H264_HARDWARE_INIT_FAILED))
++					goto EXCEPTION;
+ 				goto fail_vt_create;
  			}
  		}
- 		WLog_Print(h264->log, WLOG_INFO, "Using VideoToolbox for accelerated H264 decoding");
-@@ -786,7 +791,6 @@
- 		sys->hw_pix_fmt = AV_PIX_FMT_VIDEOTOOLBOX;
- 		sys->codecDecoderContext->hw_device_ctx = av_buffer_ref(sys->hwctx);
- 		sys->codecDecoderContext->opaque = (void*)h264;
--	fail_vt_create:
- #endif
- 
- 		if (avcodec_open2(sys->codecDecoderContext, sys->codecDecoder, nullptr) < 0)

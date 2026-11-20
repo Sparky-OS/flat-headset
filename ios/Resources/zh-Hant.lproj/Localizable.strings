@@ -31,3 +31,7 @@
 "session_stopped" = "桌面工作階段已停止。";
 "waiting_picture" = "正在等待桌面畫面…";
 "picture_timeout" = "未收到桌面畫面。請停止後再次點選「接收」。";
+"hardware_decode_failed" = "硬體影片解碼失敗。是否在本次工作階段繼續使用軟體解碼？速度會較慢，也會消耗更多電量。";
+"continue_software" = "繼續使用軟體解碼";
+"decoder_go_back" = "返回";
+"software_decoding" = "本次工作階段使用軟體解碼";

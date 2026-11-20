@@ -31,3 +31,7 @@
 "session_stopped" = "桌面会话已停止。";
 "waiting_picture" = "正在等待桌面画面…";
 "picture_timeout" = "未收到桌面画面。请停止后再次点击“接收”。";
+"hardware_decode_failed" = "硬件视频解码失败。是否在本次会话中继续使用软件解码？速度会更慢，也会消耗更多电量。";
+"continue_software" = "继续使用软件解码";
+"decoder_go_back" = "返回";
+"software_decoding" = "本次会话使用软件解码";

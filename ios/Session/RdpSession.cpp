@@ -40,9 +40,19 @@ struct RdpSession::Native {
         if(o->stopped_ || !o->grant_->valid())return FALSE;
         return endGdiPaint(c->gdi,*o->frames_);
     }
+    static BOOL softwarePermission(void* user,H264_SOFTWARE_REASON reason) {
+        auto* o=static_cast<RdpSession*>(user);
+        if(o->stopped_ || !o->grant_->valid())return FALSE;
+        if(reason==H264_SOFTWARE_QUERY)return o->decoderChoice_->state()==DecoderChoice::State::Software;
+        if(reason!=H264_HARDWARE_INIT_FAILED && reason!=H264_HARDWARE_FORMAT_FAILED)return FALSE;
+        const bool accepted=o->decoderChoice_->hardwareFailed(reason==H264_HARDWARE_INIT_FAILED?DecoderChoice::Failure::Initialization:DecoderChoice::Failure::Format);
+        return accepted && !o->stopped_ && o->grant_->valid();
+    }
     static BOOL postConnect(freerdp* f) {
         auto* o=owner(f);if(o->stopped_ || !o->grant_->valid() || !resize(f->context))return FALSE;
         if(!gdi_init(f,PIXEL_FORMAT_BGRA32))return FALSE;
+        f->context->gdi->h264SoftwarePermission=softwarePermission;
+        f->context->gdi->h264SoftwarePermissionUser=o;
         f->context->update->DesktopResize=resize;
         f->context->update->BeginPaint=beginPaint;f->context->update->EndPaint=endPaint;
         return TRUE;
@@ -57,6 +67,7 @@ struct RdpSession::Native {
 RdpSession::RdpSession(std::unique_ptr<SessionGrant> grant):native_(new Native),grant_(std::move(grant)) {
     if(!grant_ || !grant_->valid())throw std::runtime_error("No paired session grant");
     frames_=std::make_shared<Frames>(grant_->width_,grant_->height_);
+    decoderChoice_=std::make_shared<DecoderChoice>(frames_);
     RDP_CLIENT_ENTRY_POINTS entry{};entry.Size=sizeof(entry);entry.Version=RDP_CLIENT_INTERFACE_VERSION;
     entry.ContextSize=sizeof(Native::Context);
     native_->context=freerdp_client_context_new(&entry);
@@ -88,7 +99,7 @@ void RdpSession::start() {
     status_=State::Connecting;worker_=std::thread([this]{run();});
 }
 void RdpSession::stop() {
-    stopped_=true;frames_->close();
+    stopped_=true;decoderChoice_->cancel();
     std::lock_guard<std::mutex> lock(mutex_);
     if(native_->context && !freerdp_abort_connect_context(native_->context))status_=State::Failed;
 }
@@ -112,7 +123,7 @@ void RdpSession::run() {
             if(!count || WaitForMultipleObjects(count,handles,FALSE,200)==WAIT_FAILED || !freerdp_check_event_handles(c)){eventFailed=true;break;}
         }
     }
-    frames_->close();
+    decoderChoice_->cancel();
     const auto error=freerdp_get_last_error(c);
     const bool disconnected=freerdp_disconnect(f);
     if(stopped_ || !grant_->valid())status_=State::Stopped;

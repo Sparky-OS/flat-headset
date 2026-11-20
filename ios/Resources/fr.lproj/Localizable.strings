@@ -31,3 +31,7 @@
 "session_stopped" = "Session de bureau arrêtée.";
 "waiting_picture" = "En attente de l’image du bureau…";
 "picture_timeout" = "Aucune image du bureau n’est arrivée. Arrêtez puis touchez à nouveau Recevoir.";
+"hardware_decode_failed" = "Le décodage vidéo matériel a échoué. Continuer avec le décodage logiciel pour cette session ? Il sera plus lent et consommera davantage de batterie.";
+"continue_software" = "Continuer avec le décodage logiciel";
+"decoder_go_back" = "Revenir";
+"software_decoding" = "Décodage logiciel pour cette session";

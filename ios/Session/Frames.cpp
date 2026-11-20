@@ -13,6 +13,7 @@ bool Frames::publish(const uint8_t* p,size_t size,size_t stride,uint32_t w,uint3
         if(!p || w!=width_ || h!=height_ || stride<row || stride>std::numeric_limits<size_t>::max()/height_ || size<stride*height_)return false;
         std::lock_guard<std::mutex> lock(mutex_);
         if(!active_)return false;
+        if(paused_)return true;
         auto frame=std::make_shared<Frame>();frame->width=w;frame->height=h;frame->sequence=++sequence_;
         frame->pixels.resize(row*height_);
         for(size_t y=0;y<height_;++y)std::memcpy(frame->pixels.data()+y*row,p+y*stride,row);
@@ -21,6 +22,8 @@ bool Frames::publish(const uint8_t* p,size_t size,size_t stride,uint32_t w,uint3
     }catch(...){return false;}
 }
 std::shared_ptr<const Frame> Frames::take(){std::lock_guard<std::mutex> lock(mutex_);return std::move(pending_);}
+void Frames::pause(){std::lock_guard<std::mutex> lock(mutex_);paused_=true;pending_.reset();}
+void Frames::resume(){std::lock_guard<std::mutex> lock(mutex_);if(active_)paused_=false;}
 void Frames::close(){std::lock_guard<std::mutex> lock(mutex_);active_=false;pending_.reset();}
 bool Frames::active() const {std::lock_guard<std::mutex> lock(mutex_);return active_;}
 }

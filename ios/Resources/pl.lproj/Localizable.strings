@@ -31,3 +31,7 @@
 "session_stopped" = "Sesja pulpitu zatrzymana.";
 "waiting_picture" = "Oczekiwanie na obraz pulpitu…";
 "picture_timeout" = "Obraz pulpitu nie dotarł. Zatrzymaj sesję i ponownie dotknij Odbierz.";
+"hardware_decode_failed" = "Sprzętowe dekodowanie obrazu nie powiodło się. Kontynuować z dekodowaniem programowym w tej sesji? Będzie wolniejsze i zużyje więcej baterii.";
+"continue_software" = "Kontynuuj z dekodowaniem programowym";
+"decoder_go_back" = "Wróć";
+"software_decoding" = "Dekodowanie programowe w tej sesji";

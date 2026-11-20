@@ -123,6 +123,9 @@ Json SessionControl::connected() {
 Json SessionControl::stop(SessionStatus reason) {
     Json value=sessionId_.empty()?Json():command("stop");invalidate();sessionId_.clear();status_=reason;return value;
 }
+void SessionControl::waitingForDecoderChoice(int64_t now) {
+    if(status_==SessionStatus::Connecting && deadline_)deadline_=now+30;
+}
 bool SessionControl::expire(int64_t now) {
     if(deadline_ && now>=deadline_){fail(SessionStatus::Timeout);return true;}return false;
 }

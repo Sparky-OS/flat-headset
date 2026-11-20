@@ -201,14 +201,14 @@ int64_t mono(){return std::chrono::duration_cast<std::chrono::seconds>(std::chro
             PairingState state(!pin.empty());bool authorized=false;SessionStatus shown=SessionStatus::Untrusted;
             auto publish=[&](SessionStatus status){
                 __weak FHComputersController* recipient=weak;const auto epoch=generation;const auto task=run;
-                std::shared_ptr<Frames> frames;
-                {std::lock_guard<std::mutex> lock(run->mutex);if(run->rdp)frames=run->rdp->frames();}
+                std::shared_ptr<Frames> frames;std::shared_ptr<DecoderChoice> choice;
+                {std::lock_guard<std::mutex> lock(run->mutex);if(run->rdp){frames=run->rdp->frames();choice=run->rdp->decoderChoice();}}
                 dispatch_async(dispatch_get_main_queue(), ^{
                     FHComputersController* strong=recipient;if(!strong || strong->_generation!=epoch || task->canceled)return;
                     NSString* message=sessionText(status);strong->_status.text=message;
                     const BOOL running=status==SessionStatus::Connecting || status==SessionStatus::Connected;
                     if(running && frames && frames->active() && !strong->_desktop && strong.navigationController.topViewController==strong) {
-                        FHDesktopController* desktop=[[FHDesktopController alloc] initWithFrames:frames];
+                        FHDesktopController* desktop=[[FHDesktopController alloc] initWithFrames:frames decoderChoice:choice];
                         desktop.onStop=^{task->stopRdp();task->action=5;};strong->_desktop=desktop;
                         [strong.navigationController pushViewController:desktop animated:NO];
                     }
@@ -249,6 +249,7 @@ int64_t mono(){return std::chrono::duration_cast<std::chrono::seconds>(std::chro
                 }
                 if(action==4 && run->approved)send(control.request(mono()));
                 if(action==5)finish(SessionStatus::Stopped);
+                if(run->rdp && run->rdp->decoderChoice()->state()==DecoderChoice::State::Waiting)control.waitingForDecoderChoice(mono());
                 if(control.expire(mono()))finish(SessionStatus::Timeout);
                 if(run->rdp) {
                     const auto rdpState=run->rdp->state();

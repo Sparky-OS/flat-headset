@@ -97,13 +97,18 @@ bash ios/Tools/build_core.sh host build/core-sources build/core-host
 
 Run those commands in the isolated Linux build environment with the prerequisites in the build script and four build jobs.
 The session adapter and its installed-library/framework closure passed hosted run 44702615908.
-The next native compile checks the decoded-frame view and strict VideoToolbox patch; viewer optics follow that compile.
+The decoded-frame view and first strict VideoToolbox patch passed hosted run 44770385750.
+The next native compile checks the explicit software-choice callback and UI; viewer optics follow that compile.
 No device runtime result is claimed here.
 
 ## Decoded frames to Metal
 
 FreeRDP's H.264/AVC444 decoder uses FFmpeg and VideoToolbox on iPhone.
-The local core patch refuses VideoToolbox initialization failure or an unexpected software-decoded frame.
+When VideoToolbox initialization or its frame format fails, the receiver hides the picture and explains the hardware-decoding failure.
+It offers Continue with software decoding or Go back, explicitly warning that software is slower and uses more battery.
+Only that choice enables software decoding in the existing paired session.
+Stop, backgrounding or loss of pairing cancels a pending choice.
+No design found for remembering the choice across sessions: each new session starts with hardware decoding.
 It applies to the hash-pinned FreeRDP source before compilation and is included in the core artifact beside the source lock.
 The patch does not change the host test decoder, and does not establish hardware operation on any phone.
 The negotiated session currently advertises H.264, not HEVC; the compiled HEVC decoder alone is not an HEVC session claim.
@@ -121,4 +126,10 @@ Stop, session failure, control loss and backgrounding close the frame queue and 
 The Linux checks exercise padded BGRA rows, both eye positions, invalid dimensions, concurrent ownership and latest-frame replacement.
 A separate test allocates a real FreeRDP GDI surface, invokes the production paint handoff and checks forty complete pairs plus dirty-region reset and revocation.
 These are memory and integration checks, not an encoded stream or a Metal render.
-The native Metal view still requires its hosted compile and a later authorized device check.
+The native Metal view passed its hosted compile; its new decoding-choice UI and core callback await the next hosted compile.
+Both still require a later authorized device check.
+
+The Linux decoder-choice analogue exercises both failure reasons and each action, verifies that pending frames disappear while consent is outstanding, and decodes the real H.264 fixture only after approval.
+It also checks cancellation, repeated surfaces within the same session and a fresh session returning to hardware by default.
+A connection deadline is held while a decoder decision is outstanding, then returns to its normal bound.
+No time spent waiting is treated as consent.

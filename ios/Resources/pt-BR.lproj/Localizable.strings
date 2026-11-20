@@ -31,3 +31,7 @@
 "session_stopped" = "Sessão da área de trabalho encerrada.";
 "waiting_picture" = "Aguardando a imagem da área de trabalho…";
 "picture_timeout" = "A imagem da área de trabalho não chegou. Pare e toque em Receber novamente.";
+"hardware_decode_failed" = "A decodificação de vídeo por hardware falhou. Continuar com decodificação por software nesta sessão? Será mais lenta e consumirá mais bateria.";
+"continue_software" = "Continuar com decodificação por software";
+"decoder_go_back" = "Voltar";
+"software_decoding" = "Decodificação por software nesta sessão";

@@ -31,3 +31,7 @@
 "session_stopped" = "Desktop session stopped.";
 "waiting_picture" = "Waiting for the desktop picture…";
 "picture_timeout" = "No desktop picture arrived. Stop and try Catch again.";
+"hardware_decode_failed" = "Hardware video decoding failed. Continue with software decoding for this session? It will be slower and use more battery.";
+"continue_software" = "Continue with software decoding";
+"decoder_go_back" = "Go back";
+"software_decoding" = "Software decoding for this session";

@@ -98,4 +98,12 @@ if(NOT APPLE)
     "${CMAKE_CURRENT_BINARY_DIR}/freerdp/include" "${CMAKE_CURRENT_BINARY_DIR}/freerdp/winpr/include")
   target_link_libraries(gdi-frames-test PRIVATE freerdp-client freerdp winpr Threads::Threads)
   add_test(NAME gdi-frames COMMAND gdi-frames-test)
+  add_executable(decoder-choice-test ../Session/Frames.cpp ../Tests/DecoderChoiceTest.cpp)
+  target_compile_features(decoder-choice-test PRIVATE cxx_std_17)
+  target_compile_options(decoder-choice-test PRIVATE -Wall -Wextra -Wpedantic -Werror -UNDEBUG)
+  target_include_directories(decoder-choice-test SYSTEM PRIVATE
+    "${FREERDP_SOURCE_DIR}/include" "${FREERDP_SOURCE_DIR}/winpr/include"
+    "${CMAKE_CURRENT_BINARY_DIR}/freerdp/include" "${CMAKE_CURRENT_BINARY_DIR}/freerdp/winpr/include")
+  target_link_libraries(decoder-choice-test PRIVATE freerdp-client freerdp winpr Threads::Threads)
+  add_test(NAME decoder-choice COMMAND decoder-choice-test "${CMAKE_CURRENT_SOURCE_DIR}/../Tests/eye-pair.h264")
 endif()

@@ -44,6 +44,11 @@ int main() {
         c->stop();q=c->request(50);c->receive(response(q),51);auto grant=c->takeGrant();assert(grant->valid());assert(c->expire(81));assert(!grant->valid());
         c->stop();q=c->request(90);c->receive(packet("kdeconnect.virtualmonitor",{{"protocolVersion",2},{"action","status"},{"sessionId",q["body"]["sessionId"]},{"status","failed"}}),91);assert(c->status()==SessionStatus::Refused && !c->takeGrant());
     }
+    {
+        auto c=controller();auto q=begin(*c);c->receive(response(q),2);auto grant=c->takeGrant();
+        c->waitingForDecoderChoice(31);assert(!c->expire(40) && grant->valid());
+        c->waitingForDecoderChoice(50);assert(!c->expire(70));assert(c->expire(80) && !grant->valid());
+    }
     for(int i=0;i<12;++i) {
         auto c=controller();auto q=begin(*c);c->receive(response(q),2);RdpSession session(c->takeGrant());
         assert(session.verifyPeer(server.certificate,"192.0.2.1",3389,0));

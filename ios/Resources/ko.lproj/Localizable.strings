@@ -31,3 +31,7 @@
 "session_stopped" = "데스크톱 세션이 중지되었습니다.";
 "waiting_picture" = "데스크톱 화면을 기다리는 중…";
 "picture_timeout" = "데스크톱 화면이 도착하지 않았습니다. 중지한 후 받기를 다시 누르세요.";
+"hardware_decode_failed" = "하드웨어 영상 디코딩에 실패했습니다. 이번 세션에서 소프트웨어 디코딩으로 계속할까요? 속도가 느려지고 배터리를 더 사용합니다.";
+"continue_software" = "소프트웨어 디코딩으로 계속";
+"decoder_go_back" = "돌아가기";
+"software_decoding" = "이번 세션에서 소프트웨어 디코딩 사용";
