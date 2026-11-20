@@ -81,7 +81,7 @@ Json parsePacket(const std::string& line) {
 }
 Json identityPacket(const Identity& identity,const std::string& target) {
     Json body={{"deviceId",identity.id},{"deviceName","Flat Headset"},{"deviceType","phone"},{"protocolVersion",8},
-               {"incomingCapabilities",Json::array()},{"outgoingCapabilities",Json::array()}};
+               {"incomingCapabilities",Json::array({"kdeconnect.virtualmonitor","kdeconnect.virtualmonitor.request"})},{"outgoingCapabilities",Json::array({"kdeconnect.virtualmonitor","kdeconnect.virtualmonitor.request"})}};
     if (!target.empty()) { body["targetDeviceId"]=target; body["targetProtocolVersion"]=8; }
     return packet("kdeconnect.identity",body);
 }

@@ -2,6 +2,9 @@
 #import "Computers.h"
 #import <Security/Security.h>
 #include "../Pairing/Pairing.hpp"
+#include "../Session/RdpSession.hpp"
+#include <netdb.h>
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <cerrno>
@@ -38,11 +41,32 @@ void saveStore(const Json& value) {
     if(status!=errSecSuccess)throw std::runtime_error("Keychain write failed");
 }
 struct Run {
-    std::atomic<bool> canceled{false};std::atomic<int> action{0};std::mutex mutex;int fd=-1;
-    void stop(){canceled=true;std::lock_guard<std::mutex> lock(mutex);if(fd>=0)shutdown(fd,SHUT_RDWR);}
+    std::atomic<bool> canceled{false}, approved{false};std::atomic<int> action{0};std::mutex mutex;int fd=-1;
+    std::shared_ptr<RdpSession> rdp;
+    void stopRdp(){std::shared_ptr<RdpSession> session;{std::lock_guard<std::mutex> lock(mutex);session=rdp;}if(session)session->stop();}
+    void stop(){canceled=true;approved=false;stopRdp();std::lock_guard<std::mutex> lock(mutex);if(fd>=0)shutdown(fd,SHUT_RDWR);}
     void closeSocket(){std::lock_guard<std::mutex> lock(mutex);if(fd>=0){close(fd);fd=-1;}}
     ~Run(){closeSocket();}
 };
+NSString* sessionText(SessionStatus status) {
+    switch(status) {
+        case SessionStatus::Untrusted:return NSLocalizedString(@"session_untrusted",nil);
+        case SessionStatus::Unavailable:return NSLocalizedString(@"session_unavailable",nil);
+        case SessionStatus::Idle:return NSLocalizedString(@"session_idle",nil);
+        case SessionStatus::Waiting:return NSLocalizedString(@"session_waiting",nil);
+        case SessionStatus::Permission:return NSLocalizedString(@"session_permission",nil);
+        case SessionStatus::Starting:return NSLocalizedString(@"session_starting",nil);
+        case SessionStatus::Connecting:return NSLocalizedString(@"session_connecting",nil);
+        case SessionStatus::Connected:return NSLocalizedString(@"session_connected",nil);
+        case SessionStatus::Refused:return NSLocalizedString(@"session_refused",nil);
+        case SessionStatus::Invalid:return NSLocalizedString(@"session_invalid",nil);
+        case SessionStatus::Certificate:return NSLocalizedString(@"session_certificate",nil);
+        case SessionStatus::Failed:return NSLocalizedString(@"session_failed",nil);
+        case SessionStatus::Timeout:return NSLocalizedString(@"session_timeout",nil);
+        case SessionStatus::Stopped:return NSLocalizedString(@"session_stopped",nil);
+    }
+    return NSLocalizedString(@"session_failed",nil);
+}
 int64_t wall(){return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();}
 int64_t mono(){return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now().time_since_epoch()).count();}
 }
@@ -67,7 +91,10 @@ int64_t mono(){return std::chrono::duration_cast<std::chrono::seconds>(std::chro
     _services=[NSMutableArray array];_peers=[NSMutableArray array];
     _status=[[UILabel alloc] initWithFrame:CGRectMake(0,0,500,90)];_status.numberOfLines=0;_status.textAlignment=NSTextAlignmentCenter;
     _status.text=NSLocalizedString(@"finding_computers",nil);self.tableView.tableHeaderView=_status;
-    self.navigationItem.rightBarButtonItem=[[UIBarButtonItem alloc] initWithTitle:NSLocalizedString(@"disconnect",nil) style:UIBarButtonItemStylePlain target:self action:@selector(disconnect)];
+    self.navigationItem.rightBarButtonItems=@[
+      [[UIBarButtonItem alloc] initWithTitle:NSLocalizedString(@"disconnect",nil) style:UIBarButtonItemStylePlain target:self action:@selector(disconnect)],
+      [[UIBarButtonItem alloc] initWithTitle:NSLocalizedString(@"catch_desktop",nil) style:UIBarButtonItemStylePlain target:self action:@selector(catchDesktop)],
+      [[UIBarButtonItem alloc] initWithTitle:NSLocalizedString(@"stop_session",nil) style:UIBarButtonItemStylePlain target:self action:@selector(stopSession)]];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(disconnect) name:UIApplicationDidEnterBackgroundNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(becameActive) name:UIApplicationDidBecomeActiveNotification object:nil];
     // Key generation is bounded but deliberately kept off the UI thread.
@@ -98,6 +125,8 @@ int64_t mono(){return std::chrono::duration_cast<std::chrono::seconds>(std::chro
     [_services removeAllObjects];[_peers removeAllObjects];[self.tableView reloadData];
     if(self.presentedViewController)[self dismissViewControllerAnimated:NO completion:nil];_status.text=NSLocalizedString(@"disconnected",nil);
 }
+- (void)catchDesktop {if(_run && _run->approved && !_run->canceled)_run->action=4;else _status.text=sessionText(SessionStatus::Untrusted);}
+- (void)stopSession {if(_run){_run->stopRdp();_run->action=5;}}
 - (void)failure {_status.text=NSLocalizedString(@"pairing_failed",nil);}
 - (void)netServiceBrowser:(NSNetServiceBrowser*)browser didNotSearch:(NSDictionary<NSString*,NSNumber*>*)error {[self failure];}
 - (void)netServiceBrowser:(NSNetServiceBrowser*)browser didFindService:(NSNetService*)service moreComing:(BOOL)more {
@@ -115,7 +144,7 @@ int64_t mono(){return std::chrono::duration_cast<std::chrono::seconds>(std::chro
     if(!peerName.length || peerName.length>128 || [peerName rangeOfCharacterFromSet:NSCharacterSet.controlCharacterSet].location!=NSNotFound)peerName=peerId;
     for(NSDictionary* old in _peers)if([old[@"id"] isEqual:peerId])return;
     [_peers addObject:@{@"id":peerId,@"name":peerName,@"service":service}];[self.tableView reloadData];
-    _status.text=NSLocalizedString(@"choose_computer",nil);
+    if(!_run || !_run->approved)_status.text=NSLocalizedString(@"choose_computer",nil);
 }
 - (NSArray<UITableViewRowAction*>*)tableView:(UITableView*)view editActionsForRowAtIndexPath:(NSIndexPath*)path {
     NSDictionary* peer=_peers[path.row];const auto peerId=bytes(peer[@"id"]);
@@ -123,7 +152,7 @@ int64_t mono(){return std::chrono::duration_cast<std::chrono::seconds>(std::chro
     __weak FHComputersController* weak=self;
     return @[[UITableViewRowAction rowActionWithStyle:UITableViewRowActionStyleDestructive title:NSLocalizedString(@"forget_pairing",nil) handler:^(UITableViewRowAction* action,NSIndexPath* index){
         FHComputersController* strong=weak;if(!strong)return;
-        try {strong->_store["pins"].erase(peerId);saveStore(strong->_store);if([strong->_connectedId isEqual:peer[@"id"]] && strong->_run)strong->_run->action=3;[strong.tableView reloadData];}
+        try {strong->_store["pins"].erase(peerId);saveStore(strong->_store);if([strong->_connectedId isEqual:peer[@"id"]] && strong->_run){strong->_run->approved=false;strong->_run->stopRdp();strong->_run->action=3;}[strong.tableView reloadData];}
         catch(...){[strong failure];}
     }]];
 }
@@ -138,9 +167,12 @@ int64_t mono(){return std::chrono::duration_cast<std::chrono::seconds>(std::chro
     try {if(_store["pins"].contains(peerId))pin=_store["pins"].at(peerId).get<std::string>();}catch(...){[self failure];return;}
     if(_run)_run->stop();auto run=std::make_shared<Run>();_run=run;const NSUInteger generation=++_generation;
     _connectedId=peer[@"id"];
+    const CGRect bounds=UIScreen.mainScreen.nativeBounds;
+    const PanelSize panel{static_cast<int>(std::max(bounds.size.width,bounds.size.height)),static_cast<int>(std::min(bounds.size.width,bounds.size.height)),static_cast<int>(UIScreen.mainScreen.maximumFramesPerSecond*1000)};
     const Identity identity=_identity;NSArray<NSData*>* addresses=[service.addresses copy];__weak FHComputersController* weak=self;
     _status.text=NSLocalizedString(@"connecting",nil);
-    std::thread([run,identity,peerId,pin,addresses,weak,generation]{@autoreleasepool {
+    std::thread([run,identity,peerId,pin,addresses,weak,generation,panel]{@autoreleasepool {
+        bool sessionPhase=false;
         try {
             for(NSData* address in addresses) {
                 if(run->canceled)break;
@@ -157,12 +189,27 @@ int64_t mono(){return std::chrono::duration_cast<std::chrono::seconds>(std::chro
             }
             if(run->canceled || run->fd<0)throw std::runtime_error("Connection canceled");
             PairingChannel channel(run->fd,identity);channel.handshake(peerId,pin);
-            PairingState state(!pin.empty());
+            sockaddr_storage endpoint{};socklen_t length=sizeof(endpoint);char host[NI_MAXHOST];
+            if(getpeername(run->fd,reinterpret_cast<sockaddr*>(&endpoint),&length)!=0 ||
+               getnameinfo(reinterpret_cast<sockaddr*>(&endpoint),length,host,sizeof(host),nullptr,0,NI_NUMERICHOST)!=0)throw std::runtime_error("Peer address unavailable");
+            const auto verifiedPin=certificatePin(channel.certificate());
+            SessionControl control(peerId,verifiedPin,certificatePin(identity.certificate),host,panel);
+            PairingState state(!pin.empty());bool authorized=false;SessionStatus shown=SessionStatus::Untrusted;
+            auto publish=[&](SessionStatus status){
+                __weak FHComputersController* recipient=weak;const auto epoch=generation;
+                dispatch_async(dispatch_get_main_queue(), ^{FHComputersController* strong=recipient;if(strong && strong->_generation==epoch)strong->_status.text=sessionText(status);});
+            };
+            auto send=[&](const Json& value){if(!value.is_null())channel.send(value);};
+            auto finish=[&](SessionStatus status){
+                std::shared_ptr<RdpSession> session;
+                {std::lock_guard<std::mutex> lock(run->mutex);session=std::move(run->rdp);}
+                if(session)session->stop();send(control.stop(status));
+            };
             auto notify=[&](bool trusted){const std::string verifiedPin=certificatePin(channel.certificate());
                 __weak FHComputersController* recipient=weak;const auto task=run;const auto epoch=generation;const auto idCopy=peerId;
                 dispatch_async(dispatch_get_main_queue(), ^{
                 FHComputersController* strong=recipient;if(!strong || strong->_generation!=epoch || task->canceled)return;
-                try {if(trusted)strong->_store["pins"][idCopy]=verifiedPin;else strong->_store["pins"].erase(idCopy);saveStore(strong->_store);strong->_status.text=trusted?NSLocalizedString(@"paired_pending_receiver",nil):NSLocalizedString(@"disconnected",nil);}
+                try {if(trusted)strong->_store["pins"][idCopy]=verifiedPin;else strong->_store["pins"].erase(idCopy);saveStore(strong->_store);task->approved=trusted;strong->_status.text=trusted?sessionText(SessionStatus::Idle):NSLocalizedString(@"disconnected",nil);}
                 catch(...){task->stop();[strong failure];}
             });};
             auto prompt=[&]{const auto code=verificationKey(identity.certificate,channel.certificate(),state.timestamp);const auto peerName=channel.peerName();
@@ -178,22 +225,53 @@ int64_t mono(){return std::chrono::duration_cast<std::chrono::seconds>(std::chro
             if(state.phase==PairingState::Phase::Paired)notify(true);else {state.offer(wall(),mono());channel.send(packet("kdeconnect.pair",{{"pair",true},{"timestamp",state.timestamp}}));prompt();}
             while(!run->canceled) {
                 const int action=run->action.exchange(0);
-                if(action==2 || action==3){channel.send(packet("kdeconnect.pair",{{"pair",false}}));state.reset();if(action==3)notify(false);break;}
+                if(action==2 || action==3){run->approved=false;finish(SessionStatus::Untrusted);control.revoke();channel.send(packet("kdeconnect.pair",{{"pair",false}}));state.reset();if(action==3)notify(false);break;}
                 if(action==1){const auto confirmation=state.confirm(mono());if(!confirmation.is_null())channel.send(confirmation);if(state.phase==PairingState::Phase::Paired)notify(true);}
                 if(state.expire(mono())){channel.send(packet("kdeconnect.pair",{{"pair",false}}));throw std::runtime_error("Pairing timed out");}
+                if(state.phase==PairingState::Phase::Paired && run->approved && !authorized) {
+                    control.authorize(verifiedPin);authorized=true;sessionPhase=true;send(control.capabilities());send(control.capabilityRequest());
+                }
+                if(action==4 && run->approved)send(control.request(mono()));
+                if(action==5)finish(SessionStatus::Stopped);
+                if(control.expire(mono()))finish(SessionStatus::Timeout);
+                if(run->rdp) {
+                    const auto rdpState=run->rdp->state();
+                    if(rdpState==RdpSession::State::Connected)send(control.connected());
+                    else if(rdpState==RdpSession::State::CertificateRejected)finish(SessionStatus::Certificate);
+                    else if(rdpState==RdpSession::State::Refused)finish(SessionStatus::Refused);
+                    else if(rdpState==RdpSession::State::Failed)finish(SessionStatus::Failed);
+                    else if(rdpState==RdpSession::State::Stopped)finish(SessionStatus::Stopped);
+                }
+                if(authorized && shown!=control.status()){shown=control.status();publish(shown);}
                 Json value;if(!channel.receive(value,200))continue;
-                if(value["type"]!="kdeconnect.pair")continue; // Plugin traffic is not yet implemented.
+                if(value["type"]!="kdeconnect.pair") {
+                    if(value["type"]!="kdeconnect.virtualmonitor" && value["type"]!="kdeconnect.virtualmonitor.request")continue;
+                    if(!authorized || !run->approved){publish(SessionStatus::Untrusted);continue;}
+                    control.receive(value,mono());
+                    if(auto grant=control.takeGrant()) {
+                        auto session=std::make_shared<RdpSession>(std::move(grant));
+                        {std::lock_guard<std::mutex> lock(run->mutex);
+                            // Forget/background may race the reply. Publish and start under
+                            // the same lock that stopRdp uses to obtain the active adapter.
+                            if(!run->approved || run->canceled){control.revoke();authorized=false;session->stop();continue;}
+                            run->rdp=session;session->start();
+                        }
+                    }
+                    const auto status=control.status();
+                    if(status==SessionStatus::Invalid || status==SessionStatus::Refused || status==SessionStatus::Stopped || status==SessionStatus::Unavailable || status==SessionStatus::Timeout)finish(status);
+                    continue;
+                }
                 const auto before=state.phase;state.incoming(value["body"],wall(),mono());
-                if(before==PairingState::Phase::Paired && state.phase!=before)notify(false);
+                if(before==PairingState::Phase::Paired && state.phase!=before){run->approved=false;finish(SessionStatus::Untrusted);control.revoke();authorized=false;notify(false);}
                 if(state.phase==PairingState::Phase::ConfirmIncoming)prompt();
-                else if(state.phase==PairingState::Phase::Paired)notify(true);
+                else if(state.phase==PairingState::Phase::Paired && before!=state.phase)notify(true);
                 else if(state.phase==PairingState::Phase::Unpaired)break;
             }
-            run->closeSocket();
+            run->approved=false;control.revoke();run->stopRdp();run->closeSocket();
             __weak FHComputersController* recipient=weak;const auto epoch=generation;
             dispatch_async(dispatch_get_main_queue(), ^{FHComputersController* strong=recipient;if(strong && strong->_generation==epoch){if(strong.presentedViewController)[strong dismissViewControllerAnimated:YES completion:nil];strong->_status.text=NSLocalizedString(@"disconnected",nil);}});
-        }catch(...) {run->closeSocket();__weak FHComputersController* recipient=weak;const auto epoch=generation;const auto task=run;
-            dispatch_async(dispatch_get_main_queue(), ^{FHComputersController* strong=recipient;if(strong && strong->_generation==epoch && !task->canceled){if(strong.presentedViewController)[strong dismissViewControllerAnimated:YES completion:nil];[strong failure];}});}
+        }catch(...) {run->approved=false;run->stopRdp();run->closeSocket();__weak FHComputersController* recipient=weak;const auto epoch=generation;const auto task=run;const bool failedSession=sessionPhase;
+            dispatch_async(dispatch_get_main_queue(), ^{FHComputersController* strong=recipient;if(strong && strong->_generation==epoch && !task->canceled){if(strong.presentedViewController)[strong dismissViewControllerAnimated:YES completion:nil];if(failedSession)strong->_status.text=sessionText(SessionStatus::Failed);else [strong failure];}});}
     }}).detach();
 }
 @end

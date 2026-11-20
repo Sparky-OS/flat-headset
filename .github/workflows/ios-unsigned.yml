@@ -148,6 +148,8 @@ jobs:
           licenses="$RUNNER_TEMP/flat-headset-package/Payload/FlatHeadset.app/Licenses"
           mkdir -p "$licenses"
           cp "$RUNNER_TEMP/flat-headset-core-sources/openssl/LICENSE.txt" "$licenses/OpenSSL.txt"
+          cp "$RUNNER_TEMP/flat-headset-core-sources/freerdp/LICENSE" "$licenses/FreeRDP.txt"
+          cp "$RUNNER_TEMP/flat-headset-core-sources/ffmpeg/COPYING.LGPLv2.1" "$licenses/FFmpeg-LGPLv2.1.txt"
           cp ios/ThirdParty/nlohmann/LICENSE.MIT "$licenses/nlohmann-json.txt"
           cp ios/COPYING "$licenses/FlatHeadset.txt"
           ditto -c -k --keepParent "$RUNNER_TEMP/flat-headset-package/Payload" "$GITHUB_WORKSPACE/ios-artifact/FlatHeadset-unsigned.ipa"
