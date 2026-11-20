@@ -66,7 +66,7 @@ jobs:
             echo 'The app unexpectedly contains a signature; this workflow must produce an unsigned app.' >&2
             exit 1
           fi
-          if [[ "$signature_result" != "$app: code object is not signed at all" ]]; then
+          if [[ "$signature_result" != "$app: code object is not signed at all"$'\nIn architecture: arm64' ]]; then
             printf 'Could not establish that the app is unsigned: %s\n' "$signature_result" >&2
             exit 1
           fi
