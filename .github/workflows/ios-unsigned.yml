@@ -82,3 +82,66 @@ jobs:
           path: ios-artifact/
           if-no-files-found: error
           retention-days: 7
+  iphone-core:
+    runs-on: macos-26
+    timeout-minutes: 40
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Report hosted tools and verify core SDK requirements
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'Hosted image: %s %s\n' "${ImageOS:-unknown}" "${ImageVersion:-unknown}"
+          xcodebuild -version
+          xcodebuild -showsdks
+          python3 --version
+          cmake --version
+          ninja --version
+          pkg-config --version
+          xcode_version="$(xcodebuild -version | awk '/^Xcode / {print $2}')"
+          sdk_version="$(xcrun --sdk iphoneos --show-sdk-version)"
+          python3 - "$xcode_version" "$sdk_version" <<'PY'
+          import sys
+          if int(sys.argv[1].split('.')[0]) < 26 or int(sys.argv[2].split('.')[0]) < 16:
+              sys.exit('The FreeRDP iPhone build requires Xcode 26 or newer and an iPhoneOS SDK supporting iOS 16.')
+          if sys.version_info < (3, 12):
+              sys.exit('Source extraction requires Python 3.12 or newer for its tar data filter.')
+          PY
+      - name: Check out this commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Fetch verified FreeRDP and codec sources
+        run: python3 ios/Tools/fetch_core_sources.py "$RUNNER_TEMP/flat-headset-core-sources"
+      - name: Build static iPhone core and link probe
+        shell: bash
+        run: bash ios/Tools/build_core.sh ios "$RUNNER_TEMP/flat-headset-core-sources" "$RUNNER_TEMP/flat-headset-core"
+      - name: Package core libraries and provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          core="$RUNNER_TEMP/flat-headset-core"
+          sources="$RUNNER_TEMP/flat-headset-core-sources"
+          package="$RUNNER_TEMP/flat-headset-core-package"
+          mkdir -p "$package/licenses" "$GITHUB_WORKSPACE/ios-core-artifact"
+          cp -R "$core/install/include" "$core/install/lib" "$package/"
+          cp "$core/freerdp/core-link-check" "$core/core-link-load-commands.txt" "$package/"
+          cp ios/Core/sources.json "$package/"
+          cp "$sources/freerdp/LICENSE" "$package/licenses/FreeRDP-LICENSE"
+          cp "$sources/openssl/LICENSE.txt" "$package/licenses/OpenSSL-LICENSE.txt"
+          cp "$sources/ffmpeg/COPYING.LGPLv2.1" "$package/licenses/FFmpeg-COPYING.LGPLv2.1"
+          printf '%s\n' "$GITHUB_SHA" > "$package/BUILD-COMMIT"
+          cp "$core/freerdp/freerdp/include/freerdp/config.h" "$package/freerdp-build-config.h"
+          cp "$core/ffmpeg/config.h" "$package/ffmpeg-build-config.h"
+          cp "$core/ffmpeg/config_components.h" "$package/ffmpeg-components.h"
+          tar -czf "$GITHUB_WORKSPACE/ios-core-artifact/FlatHeadset-core-arm64.tar.gz" -C "$package" .
+          cd "$GITHUB_WORKSPACE/ios-core-artifact"
+          shasum -a 256 FlatHeadset-core-arm64.tar.gz > SHA256SUMS
+      - name: Keep unsigned iPhone core
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: FlatHeadset-core-arm64-${{ github.sha }}
+          path: ios-core-artifact/
+          if-no-files-found: error
+          retention-days: 7
