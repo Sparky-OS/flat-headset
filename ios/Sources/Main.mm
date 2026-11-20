@@ -2,6 +2,7 @@
 #import <UIKit/UIKit.h>
 #import <MetalKit/MetalKit.h>
 #include "Pattern.hpp"
+#include "Launch.hpp"
 #import "Computers.h"
 #include <vector>
 
@@ -36,6 +37,7 @@
 }
 
 - (void)showComputers {
+    if(self.presentedViewController)return;
     UINavigationController* navigation=[[UINavigationController alloc] initWithRootViewController:[FHComputersController new]];
     navigation.modalPresentationStyle=UIModalPresentationFullScreen;
     [self presentViewController:navigation animated:YES completion:nil];
@@ -152,6 +154,11 @@
     self.window = [[UIWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
     self.window.rootViewController = [[FHViewController alloc] init];
     [self.window makeKeyAndVisible];
+    return YES;
+}
+- (BOOL)application:(UIApplication *)application openURL:(NSURL *)url options:(NSDictionary *)options {
+    if(!flatheadset::isCatchLaunch(url.absoluteString.UTF8String ?: ""))return NO;
+    [(FHViewController*)self.window.rootViewController showComputers];
     return YES;
 }
 - (void)applicationDidBecomeActive:(UIApplication *)application {

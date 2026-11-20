@@ -163,3 +163,43 @@ jobs:
           path: ios-artifact/
           if-no-files-found: error
           retention-days: 7
+
+  kdeconnect-iphone:
+    runs-on: macos-26
+    timeout-minutes: 40
+    env:
+      KDECONNECT_COMMIT: 0e2b712987e3a347af3f8a8f5103b981935ed30c
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Report hosted image and SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'Hosted image: %s %s\n' "${ImageOS:-unknown}" "${ImageVersion:-unknown}"
+          xcodebuild -version
+          xcodebuild -showsdks
+          sdk_version="$(xcrun --sdk iphoneos --show-sdk-version)"
+          python3 - "$sdk_version" <<'PYCODE'
+          import sys
+          if int(sys.argv[1].split('.')[0]) < 16:
+              sys.exit('The hosted iPhoneOS SDK is older than the iOS 16 deployment target.')
+          PYCODE
+      - name: Check out the pinned KDE Connect source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: Sparky-OS/kdeconnect-ios
+          ref: ${{ env.KDECONNECT_COMMIT }}
+          persist-credentials: false
+      - name: Build unsigned KDE Connect and check its protocol
+        shell: bash
+        run: bash Sparky/build_unsigned.sh "$RUNNER_TEMP/kdeconnect-iphone"
+      - name: Package KDE Connect and its renewal entry
+        shell: bash
+        run: bash Sparky/package_unsigned.sh "$RUNNER_TEMP/kdeconnect-iphone" "$GITHUB_WORKSPACE/kdeconnect-artifact" "$KDECONNECT_COMMIT" "$GITHUB_SHA"
+      - name: Keep unsigned KDE Connect IPA and hashes
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: KDEConnect-unsigned-${{ github.sha }}
+          path: kdeconnect-artifact/
+          if-no-files-found: error
+          retention-days: 7

@@ -6,7 +6,7 @@
 @class MTKView, MTLRenderPassDescriptor, MTLTextureDescriptor, MTLRenderPipelineDescriptor;
 struct MTLRegion { NSUInteger x, y, width, height; };
 MTLRegion MTLRegionMake2D(NSUInteger, NSUInteger, NSUInteger, NSUInteger);
-enum { MTLPixelFormatBGRA8Unorm, MTLTextureUsageShaderRead, MTLStorageModeShared,
+enum { MTLPixelFormatRGBA8Unorm, MTLCommandBufferStatusError, MTLPixelFormatBGRA8Unorm, MTLTextureUsageShaderRead, MTLStorageModeShared,
        MTLPrimitiveTypeTriangle, MTLCommandBufferStatusCompleted, MTLResourceStorageModeShared, MTLPrimitiveTypeTriangleStrip, MTLIndexTypeUInt32 };
 @protocol MTKViewDelegate
 - (void)mtkView:(MTKView*)view drawableSizeWillChange:(CGSize)size;
@@ -66,6 +66,7 @@ id<MTLDevice> MTLCreateSystemDefaultDevice();
 - (id<MTLCommandBuffer>)commandBuffer;
 @end
 @protocol MTLCommandBuffer <NSObject>
+@property(readonly) NSError* error;
 @property(readonly) NSUInteger status;
 - (id<MTLRenderCommandEncoder>)renderCommandEncoderWithDescriptor:(MTLRenderPassDescriptor*)descriptor;
 - (void)presentDrawable:(id<CAMetalDrawable>)drawable;

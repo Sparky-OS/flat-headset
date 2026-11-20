@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "Pattern.hpp"
+#include "Launch.hpp"
 #include <cassert>
 #include <cstdint>
 #include <iostream>
@@ -8,6 +9,8 @@
 #include <utility>
 
 int main() {
+    assert(flatheadset::isCatchLaunch("flatheadset://catch"));
+    for(const auto* bad:{"flatheadset://catch?password=secret","flatheadset://catch?host=192.0.2.1","flatheadset://catch#pin","flatheadset://other","https://catch","flatheadset://catch/"})assert(!flatheadset::isCatchLaunch(bad));
     // Native panel plus unrelated aspect ratios; row guards expose overruns.
     for (const auto& dimensions : {std::pair{1920u, 1080u}, {2208u, 1242u}, {100u, 70u}, {2u, 1u}}) {
         const auto [width, height] = dimensions;

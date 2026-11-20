@@ -244,3 +244,37 @@ long dispatch_semaphore_signal(dispatch_semaphore_t);
 dispatch_queue_t dispatch_get_main_queue();
 dispatch_queue_t dispatch_get_global_queue(long, unsigned long);
 void dispatch_async(dispatch_queue_t, void (^)(void));
+
+// Main application/launch entry points, authored from this target's call sites.
+@class NSURL;
+@protocol UIApplicationDelegate @end
+@interface UIResponder : NSObject @end
+@interface NSURL : NSObject
+@property(readonly) NSString* absoluteString;
+@end
+@interface UIView (FHMainSyntax)
+- (void)removeFromSuperview;
+- (void)setNeedsDisplay;
+@end
+@interface UIViewController (FHMainSyntax)
+@property NSInteger modalPresentationStyle;
+@end
+@interface UINavigationController (FHMainSyntax)
+- (instancetype)initWithRootViewController:(UIViewController*)root;
+@end
+@interface UIScreen (FHMainSyntax)
+@property(class,readonly) UIScreen* mainScreen;
+@property(readonly) CGRect bounds;
+@end
+@interface UIWindow (FHMainSyntax)
+@property(strong) UIViewController* rootViewController;
+- (void)makeKeyAndVisible;
+@end
+@interface NSObject (FHClassSyntax)
++ (Class)class;
+@end
+enum { UIModalPresentationFullScreen };
+BOOL CGSizeEqualToSize(CGSize, CGSize);
+void NSLog(NSString*, ...);
+NSString* NSStringFromClass(Class);
+int UIApplicationMain(int, char**, NSString*, NSString*);
