@@ -6,12 +6,7 @@
 "disconnected" = "Disconnected";
 "pairing_failed" = "Pairing failed. Check local network access, the computer and its saved pairing.";
 "choose_computer" = "Choose a computer to pair with.";
-"pair_computer" = "Pair computer";
 "connecting" = "Connecting…";
-"compare_code" = "Compare this code with %@: %@. Confirm only if both codes match.";
-"cancel_pairing" = "Cancel";
-"confirm_pairing" = "Codes match";
-"forget_pairing" = "Forget pairing";
 "disconnect" = "Disconnect";
 "catch_desktop" = "Catch";
 "stop_session" = "Stop";
@@ -47,3 +42,4 @@
 "viewer_invalid" = "The viewer profile or this phone’s physical screen dimensions could not be verified. Select a valid profile.";
 "viewer_disconnect" = "Disconnect before changing the viewer.";
 "viewer_scanned_confirm" = "Use this scanned viewer profile for the next connection?";
+"pair_in_kdeconnect" = "Open KDE Connect and pair this computer there first. Flat Headset needs access to that same pairing; it cannot pair separately.";

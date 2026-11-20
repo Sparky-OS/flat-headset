@@ -6,12 +6,7 @@
 "disconnected" = "Déconnecté";
 "pairing_failed" = "Échec de l’association. Vérifiez le réseau local, l’ordinateur et l’association enregistrée.";
 "choose_computer" = "Choisissez un ordinateur à associer.";
-"pair_computer" = "Associer l’ordinateur";
 "connecting" = "Connexion…";
-"compare_code" = "Comparez ce code avec celui de %@ : %@. Confirmez uniquement si les deux codes correspondent.";
-"cancel_pairing" = "Annuler";
-"confirm_pairing" = "Les codes correspondent";
-"forget_pairing" = "Oublier l’association";
 "disconnect" = "Déconnecter";
 "catch_desktop" = "Recevoir";
 "stop_session" = "Arrêter";
@@ -47,3 +42,4 @@
 "viewer_invalid" = "Impossible de vérifier le profil ou les dimensions physiques de l’écran de ce téléphone. Choisissez un profil valide.";
 "viewer_disconnect" = "Déconnectez-vous avant de changer de visionneuse.";
 "viewer_scanned_confirm" = "Utiliser ce profil de casque scanné pour la prochaine connexion ?";
+"pair_in_kdeconnect" = "Ouvrez KDE Connect et associez-y d’abord cet ordinateur. Flat Headset doit accéder à cette même association ; il ne peut pas en créer une autre.";

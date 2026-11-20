@@ -6,12 +6,7 @@
 "disconnected" = "已断开连接";
 "pairing_failed" = "配对失败。请检查本地网络权限、计算机和已保存的配对。";
 "choose_computer" = "请选择要配对的计算机。";
-"pair_computer" = "配对计算机";
 "connecting" = "正在连接…";
-"compare_code" = "请与 %@ 上的代码比较：%@。仅当两个代码一致时才确认。";
-"cancel_pairing" = "取消";
-"confirm_pairing" = "代码一致";
-"forget_pairing" = "忘记配对";
 "disconnect" = "断开连接";
 "catch_desktop" = "接收";
 "stop_session" = "停止";
@@ -47,3 +42,4 @@
 "viewer_invalid" = "无法验证观看器配置或此手机屏幕的实际尺寸。请选择有效的配置。";
 "viewer_disconnect" = "更换观看器前请断开连接。";
 "viewer_scanned_confirm" = "下次连接使用此扫描得到的眼镜配置吗？";
+"pair_in_kdeconnect" = "请先打开 KDE Connect 并在其中与此计算机配对。Flat Headset 需要访问同一配对，不能单独配对。";

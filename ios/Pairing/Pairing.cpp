@@ -6,6 +6,8 @@
 #include <openssl/rand.h>
 #include <openssl/x509.h>
 #include <openssl/sha.h>
+#include <openssl/core_names.h>
+#include <openssl/param_build.h>
 #include <sys/socket.h>
 #include <poll.h>
 #include <unistd.h>
@@ -52,6 +54,55 @@ std::string name(const Json& body) {
     require(!value.empty() && value.size()<=128 && std::none_of(value.begin(),value.end(),[](unsigned char c){return c<32 || c==127;}), "Invalid device name");
     return value;
 }
+}
+std::string certificateFromDer(const std::string& der) {
+    require(!der.empty() && der.size()<=16384,"Invalid certificate size");
+    const auto* begin=reinterpret_cast<const unsigned char*>(der.data());const auto* cursor=begin;
+    Certificate cert(d2i_X509(nullptr,&cursor,static_cast<long>(der.size())),X509_free);
+    require(cert && cursor==begin+der.size(),"Invalid certificate DER");
+    Bio pem(BIO_new(BIO_s_mem()),BIO_free);
+    require(pem && PEM_write_bio_X509(pem.get(),cert.get())==1,"Certificate encoding failed");return bioString(pem.get());
+}
+Identity importKdeIdentity(const std::string& der,const std::string& raw) {
+    Identity result;result.certificate=certificateFromDer(der);auto cert=readCertificate(result.certificate);
+    require(raw.size()==97 && raw[0]==4,"KDE Connect requires an exportable P-256 identity");
+    std::unique_ptr<BIGNUM,decltype(&BN_clear_free)> scalar(BN_bin2bn(reinterpret_cast<const unsigned char*>(raw.data()+65),32,nullptr),BN_clear_free);
+    std::unique_ptr<OSSL_PARAM_BLD,decltype(&OSSL_PARAM_BLD_free)> builder(OSSL_PARAM_BLD_new(),OSSL_PARAM_BLD_free);
+    require(scalar && builder && OSSL_PARAM_BLD_push_utf8_string(builder.get(),OSSL_PKEY_PARAM_GROUP_NAME,"prime256v1",0)==1 &&
+      OSSL_PARAM_BLD_push_BN(builder.get(),OSSL_PKEY_PARAM_PRIV_KEY,scalar.get())==1 &&
+      OSSL_PARAM_BLD_push_octet_string(builder.get(),OSSL_PKEY_PARAM_PUB_KEY,raw.data(),65)==1,"Identity parameter allocation failed");
+    std::unique_ptr<OSSL_PARAM,decltype(&OSSL_PARAM_free)> params(OSSL_PARAM_BLD_to_param(builder.get()),OSSL_PARAM_free);
+    std::unique_ptr<EVP_PKEY_CTX,decltype(&EVP_PKEY_CTX_free)> ctx(EVP_PKEY_CTX_new_from_name(nullptr,"EC",nullptr),EVP_PKEY_CTX_free);
+    EVP_PKEY* imported=nullptr;
+    require(params && ctx && EVP_PKEY_fromdata_init(ctx.get())==1,"Identity import setup failed");
+    const int ok=EVP_PKEY_fromdata(ctx.get(),&imported,EVP_PKEY_KEYPAIR,params.get());Key key(imported,EVP_PKEY_free);
+    require(ok==1 && key && X509_check_private_key(cert.get(),key.get())==1,"Identity key mismatch");
+    std::unique_ptr<EVP_PKEY_CTX,decltype(&EVP_PKEY_CTX_free)> check(EVP_PKEY_CTX_new(key.get(),nullptr),EVP_PKEY_CTX_free);
+    require(check && EVP_PKEY_pairwise_check(check.get())==1 && X509_verify(cert.get(),key.get())==1,"Invalid identity signature or key");
+    const auto now=std::time(nullptr);
+    const int before=ASN1_TIME_cmp_time_t(X509_get0_notBefore(cert.get()),now),after=ASN1_TIME_cmp_time_t(X509_get0_notAfter(cert.get()),now);
+    require((before==-1 || before==0) && (after==0 || after==1),"Expired or future identity");
+    auto* subject=X509_get_subject_name(cert.get());const int index=X509_NAME_get_index_by_NID(subject,NID_commonName,-1);
+    require(index>=0 && X509_NAME_get_index_by_NID(subject,NID_commonName,index)<0,"Invalid identity name");
+    auto* cn=X509_NAME_ENTRY_get_data(X509_NAME_get_entry(subject,index));
+    result.id.assign(reinterpret_cast<const char*>(ASN1_STRING_get0_data(cn)),ASN1_STRING_length(cn));
+    require(validId(result.id),"Invalid KDE Connect identity");
+    Bio pem(BIO_new(BIO_s_mem()),BIO_free);
+    require(pem && PEM_write_bio_PrivateKey(pem.get(),key.get(),nullptr,nullptr,0,nullptr,nullptr)==1,"Identity key encoding failed");
+    result.key=bioString(pem.get());return result;
+}
+std::string kdeAccessGroup(const std::string& own) {
+    const std::string suffix=".org.sparkyos.flatheadset";
+    require(own.size()>suffix.size() && own.compare(own.size()-suffix.size(),suffix.size(),suffix)==0,"Unexpected signing identity");
+    return own.substr(0,own.size()-suffix.size())+".org.sparkyos.kdeconnect";
+}
+SharedTrust::SharedTrust(std::string host,std::string peer):identityPin_(std::move(host)),peerPin_(std::move(peer)) {
+    auto valid=[](const std::string& pin){return pin.size()==64 && std::all_of(pin.begin(),pin.end(),[](char c){return (c>='0'&&c<='9') || (c>='a'&&c<='f');});};
+    require(valid(identityPin_) && valid(peerPin_),"Pair this computer in KDE Connect first");
+}
+bool SharedTrust::matches(const std::string& host,const std::string& peer) const {
+    return host.size()==identityPin_.size() && peer.size()==peerPin_.size() &&
+      CRYPTO_memcmp(host.data(),identityPin_.data(),host.size())==0 && CRYPTO_memcmp(peer.data(),peerPin_.data(),peer.size())==0;
 }
 Identity makeIdentity() {
     unsigned char random[16]; require(RAND_bytes(random,sizeof(random))==1,"Random source failed");

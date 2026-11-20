@@ -6,12 +6,7 @@
 "disconnected" = "연결 끊김";
 "pairing_failed" = "페어링에 실패했습니다. 로컬 네트워크 접근, 컴퓨터 및 저장된 페어링을 확인하세요.";
 "choose_computer" = "페어링할 컴퓨터를 선택하세요.";
-"pair_computer" = "컴퓨터 페어링";
 "connecting" = "연결 중…";
-"compare_code" = "%@의 코드와 비교하세요: %@. 두 코드가 일치할 때만 확인하세요.";
-"cancel_pairing" = "취소";
-"confirm_pairing" = "코드 일치";
-"forget_pairing" = "페어링 삭제";
 "disconnect" = "연결 끊기";
 "catch_desktop" = "받기";
 "stop_session" = "중지";
@@ -47,3 +42,4 @@
 "viewer_invalid" = "뷰어 프로필 또는 이 휴대전화 화면의 실제 크기를 확인할 수 없습니다. 유효한 프로필을 선택하세요.";
 "viewer_disconnect" = "뷰어를 변경하기 전에 연결을 끊으세요.";
 "viewer_scanned_confirm" = "스캔한 뷰어 프로필을 다음 연결에 사용할까요?";
+"pair_in_kdeconnect" = "먼저 KDE Connect를 열고 이 컴퓨터와 페어링하세요. Flat Headset은 같은 페어링에 접근해야 하며 별도로 페어링할 수 없습니다.";

@@ -8,7 +8,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 LANGUAGES = ('en', 'pl', 'pt-BR', 'fr', 'de', 'es', 'ja', 'ko', 'zh-Hans', 'zh-Hant')
-KEYS = {'Localizable.strings': {'viewer_scanned_confirm','viewer_title','viewer_none','viewer_fitted','viewer_qr','viewer_v_one','viewer_import','viewer_use','viewer_qr_hint','viewer_fit_note','viewer_invalid','viewer_disconnect','hardware_decode_failed','continue_software','decoder_go_back','software_decoding','waiting_picture', 'picture_timeout', 'computers', 'compare_code', 'confirm_pairing', 'disconnect', 'disconnected', 'pair_computer', 'catch_desktop','stop_session','session_untrusted','session_unavailable','session_idle','session_waiting','session_permission','session_starting','session_connecting','session_connected','session_refused','session_invalid','session_certificate','session_failed','session_timeout','session_stopped', 'choose_computer', 'connecting', 'renderer_failed', 'forget_pairing', 'render_failed', 'cancel_pairing', 'finding_computers', 'pairing_failed', 'metal_unavailable'},
+KEYS = {'Localizable.strings': {'pair_in_kdeconnect','viewer_scanned_confirm','viewer_title','viewer_none','viewer_fitted','viewer_qr','viewer_v_one','viewer_import','viewer_use','viewer_qr_hint','viewer_fit_note','viewer_invalid','viewer_disconnect','hardware_decode_failed','continue_software','decoder_go_back','software_decoding','waiting_picture', 'picture_timeout', 'computers', 'disconnect', 'disconnected', 'catch_desktop','stop_session','session_untrusted','session_unavailable','session_idle','session_waiting','session_permission','session_starting','session_connecting','session_connected','session_refused','session_invalid','session_certificate','session_failed','session_timeout','session_stopped', 'choose_computer', 'connecting', 'renderer_failed', 'render_failed', 'finding_computers', 'pairing_failed', 'metal_unavailable'},
         'InfoPlist.strings': {'CFBundleDisplayName', 'CFBundleName', 'NSLocalNetworkUsageDescription'}}
 PAIR = re.compile(r'\s*("(?:[^"\\]|\\.)*")\s*=\s*("(?:[^"\\]|\\.)*")\s*;')
 
@@ -36,8 +36,6 @@ def check(root=ROOT):
             values = read_catalog(path)
             if values.keys() != required:
                 raise ValueError(f'{language}/{filename}: missing {required - values.keys()}, extra {values.keys() - required}')
-            if filename == 'Localizable.strings' and values['compare_code'].count('%@') != 2:
-                raise ValueError(f'{language}: compare_code needs the computer name and verification code')
             if filename == 'InfoPlist.strings' and {values[k] for k in ('CFBundleDisplayName', 'CFBundleName')} != {'Flat Headset'}:
                 raise ValueError(f'{language}: product name must remain Flat Headset')
     source = '\n'.join(p.read_text() for p in (root / 'Sources').glob('*.mm'))

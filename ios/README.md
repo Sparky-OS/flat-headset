@@ -50,18 +50,21 @@ Only protocol 8 is accepted in this target.
 Discovery names and addresses are candidates, never evidence of trust.
 The TCP initiator acts as the TLS server, as KDE Connect's LAN protocol requires.
 The certificate's device ID, signature, validity, key strength and saved SHA-256 pin are checked before accepting the encrypted identity.
-The verification code follows the Android backend's sorted public-key hash with the pairing timestamp.
-Confirm that both screens show the same code; remote acceptance alone does not save trust on this phone.
-The identity and approved certificate pins live in the app's Keychain with `WhenUnlockedThisDeviceOnly` accessibility.
-A changed certificate fails; forgetting a pairing is an explicit swipe action on the computer row.
+Pair once in our KDE Connect app; it owns the P-256 identity and the paired computers' certificates.
+Flat Headset reads those same canonical Keychain records through a provisioned keychain-access group and does not create an identity, pair, forget or save trust itself.
+Signing must use the reviewed shared-pairing xtool change: it keeps the receiver's own group first, adds KDE Connect's default group, and refuses if Apple's returned profile does not permit it.
+An unsigned build alone cannot prove that entitlement on a phone.
+The receiver checks shared trust before opening a socket, after TLS, on every control-loop iteration (normally 200 ms), and before starting a granted RDP session.
+A missing, replaced or revoked identity/certificate stops reception with a localized instruction to pair in KDE Connect; no second pairing is offered.
+The receiver uses the canonical key only in memory for its foreground TLS endpoint; no secret goes through a launch URL or a second persistent store.
 Connections stop when the app leaves the foreground or the Computers screen closes.
-After the verified pairing pin is saved, Catch requests a native-panel virtual monitor over that authenticated connection.
+Catch requests a native-panel virtual monitor over that authenticated connection.
 The peer must advertise protocol 2 virtual-monitor support and native-panel version 1.
 Only the matching session ID, exact panel, NLA credentials and SHA-256 RDP certificate fingerprint authorize a connection.
 The RDP address is the authenticated socket peer, never an address supplied in a reply.
 External certificate management enforces that fingerprint even for a certificate trusted by a system CA.
 RDP redirection, automatic reconnect, interactive credential prompts and weaker security negotiation are disabled.
-Stop releases the session; forgetting pairing, closing the screen, losing the control connection or backgrounding aborts RDP.
+Stop releases the session; revoking pairing in KDE Connect, closing the screen, losing the control connection or backgrounding aborts RDP.
 A new Catch uses a fresh request and fresh credentials.
 Refusals and timeouts are shown in the native language; remote error strings and credentials are not displayed.
 Completed GDI paints publish owned BGRA frames to the desktop Metal view.

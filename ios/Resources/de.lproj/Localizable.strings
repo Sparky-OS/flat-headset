@@ -6,12 +6,7 @@
 "disconnected" = "Getrennt";
 "pairing_failed" = "Kopplung fehlgeschlagen. Prüfen Sie den lokalen Netzwerkzugriff, den Computer und die gespeicherte Kopplung.";
 "choose_computer" = "Wählen Sie einen Computer zum Koppeln.";
-"pair_computer" = "Computer koppeln";
 "connecting" = "Verbindung wird hergestellt…";
-"compare_code" = "Vergleichen Sie diesen Code mit dem auf %@: %@. Bestätigen Sie nur, wenn beide Codes übereinstimmen.";
-"cancel_pairing" = "Abbrechen";
-"confirm_pairing" = "Codes stimmen überein";
-"forget_pairing" = "Kopplung vergessen";
 "disconnect" = "Trennen";
 "catch_desktop" = "Empfangen";
 "stop_session" = "Stoppen";
@@ -47,3 +42,4 @@
 "viewer_invalid" = "Das Profil oder die physischen Bildschirmmaße dieses Telefons konnten nicht geprüft werden. Wählen Sie ein gültiges Profil.";
 "viewer_disconnect" = "Trennen Sie die Verbindung, bevor Sie die Brille wechseln.";
 "viewer_scanned_confirm" = "Dieses gescannte Viewer-Profil für die nächste Verbindung verwenden?";
+"pair_in_kdeconnect" = "Öffnen Sie KDE Connect und koppeln Sie dort zuerst diesen Computer. Flat Headset benötigt Zugriff auf dieselbe Kopplung und kann keine eigene erstellen.";

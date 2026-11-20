@@ -6,12 +6,7 @@
 "disconnected" = "Rozłączono";
 "pairing_failed" = "Parowanie nie powiodło się. Sprawdź dostęp do sieci lokalnej, komputer i zapisane parowanie.";
 "choose_computer" = "Wybierz komputer do sparowania.";
-"pair_computer" = "Sparuj komputer";
 "connecting" = "Łączenie…";
-"compare_code" = "Porównaj ten kod z kodem na %@: %@. Potwierdź tylko wtedy, gdy oba kody są zgodne.";
-"cancel_pairing" = "Anuluj";
-"confirm_pairing" = "Kody są zgodne";
-"forget_pairing" = "Usuń parowanie";
 "disconnect" = "Rozłącz";
 "catch_desktop" = "Odbierz";
 "stop_session" = "Zatrzymaj";
@@ -47,3 +42,4 @@
 "viewer_invalid" = "Nie można zweryfikować profilu gogli lub fizycznych wymiarów ekranu telefonu. Wybierz prawidłowy profil.";
 "viewer_disconnect" = "Rozłącz się przed zmianą gogli.";
 "viewer_scanned_confirm" = "Użyć tego zeskanowanego profilu gogli przy następnym połączeniu?";
+"pair_in_kdeconnect" = "Najpierw otwórz KDE Connect i sparuj tam ten komputer. Flat Headset wymaga dostępu do tego samego parowania; nie może parować osobno.";

@@ -23,24 +23,60 @@ namespace {
 std::mutex identityMutex;
 NSString* text(const std::string& s) { return [[NSString alloc] initWithBytes:s.data() length:s.size() encoding:NSUTF8StringEncoding] ?: @""; }
 std::string bytes(NSString* s) { const char* p=s.UTF8String;return p?std::string(p):std::string(); }
-Json loadStore() {
-    NSDictionary* query=@{(__bridge id)kSecClass:(__bridge id)kSecClassGenericPassword,
-      (__bridge id)kSecAttrService:@"org.sparkyos.flatheadset.pairing",(__bridge id)kSecAttrAccount:@"identity-and-pins",
-      (__bridge id)kSecReturnData:@YES,(__bridge id)kSecMatchLimit:(__bridge id)kSecMatchLimitOne};
-    CFTypeRef raw=nullptr;OSStatus status=SecItemCopyMatching((__bridge CFDictionaryRef)query,&raw);
-    if(status==errSecItemNotFound)return Json();
-    if(status!=errSecSuccess)throw std::runtime_error("Keychain read failed");
-    NSData* data=CFBridgingRelease(raw);if(data.length>1024*1024)throw std::runtime_error("Keychain size limit");
-    return Json::parse(std::string(static_cast<const char*>(data.bytes),data.length));
+std::string dataBytes(NSData* data) {
+    if(!data || !data.length)throw std::runtime_error("Shared keychain item is missing");
+    return {static_cast<const char*>(data.bytes),data.length};
 }
-void saveStore(const Json& value) {
-    const auto json=value.dump();NSData* data=[NSData dataWithBytes:json.data() length:json.size()];
+NSString* sharedGroup() {
+    // Only this harmless marker is written, in the receiver's OWN default group.
+    // The signer keeps that group first and adds KDE Connect's group second.
     NSDictionary* query=@{(__bridge id)kSecClass:(__bridge id)kSecClassGenericPassword,
-      (__bridge id)kSecAttrService:@"org.sparkyos.flatheadset.pairing",(__bridge id)kSecAttrAccount:@"identity-and-pins"};
-    NSDictionary* update=@{(__bridge id)kSecValueData:data,(__bridge id)kSecAttrAccessible:(__bridge id)kSecAttrAccessibleWhenUnlockedThisDeviceOnly};
-    OSStatus status=SecItemUpdate((__bridge CFDictionaryRef)query,(__bridge CFDictionaryRef)update);
-    if(status==errSecItemNotFound) {NSMutableDictionary* insert=[query mutableCopy];[insert addEntriesFromDictionary:update];status=SecItemAdd((__bridge CFDictionaryRef)insert,nullptr);}
-    if(status!=errSecSuccess)throw std::runtime_error("Keychain write failed");
+      (__bridge id)kSecAttrService:@"org.sparkyos.flatheadset.group-marker",
+      (__bridge id)kSecAttrAccount:@"group-marker"};
+    NSMutableDictionary* insert=[query mutableCopy];
+    [insert addEntriesFromDictionary:@{(__bridge id)kSecValueData:[NSData data]}];
+    OSStatus status=SecItemAdd((__bridge CFDictionaryRef)insert,nullptr);
+    if(status!=errSecSuccess && status!=errSecDuplicateItem)throw std::runtime_error("Keychain marker unavailable");
+    NSMutableDictionary* lookup=[query mutableCopy];
+    [lookup addEntriesFromDictionary:@{(__bridge id)kSecReturnAttributes:@YES,(__bridge id)kSecMatchLimit:(__bridge id)kSecMatchLimitOne}];
+    CFTypeRef raw=nullptr;
+    if(SecItemCopyMatching((__bridge CFDictionaryRef)lookup,&raw)!=errSecSuccess)throw std::runtime_error("Signing group unavailable");
+    NSDictionary* attributes=CFBridgingRelease(raw);
+    return text(kdeAccessGroup(bytes(attributes[(__bridge id)kSecAttrAccessGroup])));
+}
+id sharedIdentity(NSString* group) {
+    NSDictionary* query=@{(__bridge id)kSecClass:(__bridge id)kSecClassIdentity,
+      (__bridge id)kSecAttrAccessGroup:group,(__bridge id)kSecReturnRef:@YES,
+      (__bridge id)kSecMatchLimit:(__bridge id)kSecMatchLimitAll};
+    CFTypeRef raw=nullptr;
+    if(SecItemCopyMatching((__bridge CFDictionaryRef)query,&raw)!=errSecSuccess)throw std::runtime_error("Open KDE Connect first");
+    NSArray* items=CFBridgingRelease(raw);
+    if(items.count!=1)throw std::runtime_error("Ambiguous KDE Connect identity");
+    return items.firstObject;
+}
+std::string sharedCertificate(id item) {
+    SecCertificateRef cert=nullptr;
+    if(SecIdentityCopyCertificate((__bridge SecIdentityRef)item,&cert)!=errSecSuccess)throw std::runtime_error("KDE Connect certificate unavailable");
+    NSData* der=CFBridgingRelease(SecCertificateCopyData(cert));CFRelease(cert);
+    return dataBytes(der);
+}
+Identity loadSharedIdentity(NSString* group) {
+    id item=sharedIdentity(group);const auto der=sharedCertificate(item);SecKeyRef key=nullptr;
+    if(SecIdentityCopyPrivateKey((__bridge SecIdentityRef)item,&key)!=errSecSuccess)throw std::runtime_error("KDE Connect key unavailable");
+    NSData* raw=CFBridgingRelease(SecKeyCopyExternalRepresentation(key,nullptr));CFRelease(key);
+    return importKdeIdentity(der,dataBytes(raw));
+}
+std::string sharedPeerPin(NSString* group,const std::string& peer) {
+    NSDictionary* query=@{(__bridge id)kSecClass:(__bridge id)kSecClassCertificate,
+      (__bridge id)kSecAttrAccessGroup:group,(__bridge id)kSecAttrLabel:text(peer),
+      (__bridge id)kSecReturnData:@YES,(__bridge id)kSecMatchLimit:(__bridge id)kSecMatchLimitOne};
+    CFTypeRef raw=nullptr;
+    if(SecItemCopyMatching((__bridge CFDictionaryRef)query,&raw)!=errSecSuccess)return {};
+    NSData* der=CFBridgingRelease(raw);return certificatePin(certificateFromDer(dataBytes(der)));
+}
+void requireSharedTrust(NSString* group,const std::string& peer,const SharedTrust& trust) {
+    if(!trust.matches(certificatePin(certificateFromDer(sharedCertificate(sharedIdentity(group)))),sharedPeerPin(group,peer)))
+        throw std::runtime_error("KDE Connect pairing was removed or changed");
 }
 struct Run {
     std::atomic<bool> canceled{false}, approved{false};std::atomic<int> action{0};std::mutex mutex;int fd=-1;
@@ -69,7 +105,6 @@ NSString* sessionText(SessionStatus status) {
     }
     return NSLocalizedString(@"session_failed",nil);
 }
-int64_t wall(){return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();}
 int64_t mono(){return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now().time_since_epoch()).count();}
 }
 
@@ -81,12 +116,10 @@ int64_t mono(){return std::chrono::duration_cast<std::chrono::seconds>(std::chro
     NSMutableArray<NSDictionary*>* _peers;
     UILabel* _status;
     __weak FHDesktopController* _desktop;
-    Json _store;
-    Identity _identity;
+    std::string _identityId;
     std::shared_ptr<Run> _run;
     NSUInteger _generation;
     BOOL _ready;
-    NSString* _connectedId;
     UIBarButtonItem* _viewerButton;
 }
 - (void)viewDidLoad {
@@ -102,16 +135,14 @@ int64_t mono(){return std::chrono::duration_cast<std::chrono::seconds>(std::chro
       [[UIBarButtonItem alloc] initWithTitle:NSLocalizedString(@"stop_session",nil) style:UIBarButtonItemStylePlain target:self action:@selector(stopSession)]];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(disconnect) name:UIApplicationDidEnterBackgroundNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(becameActive) name:UIApplicationDidBecomeActiveNotification object:nil];
-    // Key generation is bounded but deliberately kept off the UI thread.
+    // KDE Connect owns the identity and trust; the receiver only reads them.
     __weak FHComputersController* weak=self;
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED,0), ^{
         try {
             std::lock_guard<std::mutex> lock(identityMutex);
-            Json store=loadStore();Identity identity;
-            if(store.is_null()) {identity=makeIdentity();store={{"id",identity.id},{"certificate",identity.certificate},{"key",identity.key},{"pins",Json::object()}};saveStore(store);}
-            else {identity={store.at("id").get<std::string>(),store.at("certificate").get<std::string>(),store.at("key").get<std::string>()};if(!store.at("pins").is_object())throw std::runtime_error("Invalid trust store");}
-            dispatch_async(dispatch_get_main_queue(), ^{FHComputersController* strong=weak;if(!strong)return;strong->_store=store;strong->_identity=identity;strong->_ready=YES;[strong discover];});
-        } catch(...) {dispatch_async(dispatch_get_main_queue(), ^{[weak failure];});}
+            Identity identity=loadSharedIdentity(sharedGroup());
+            dispatch_async(dispatch_get_main_queue(), ^{FHComputersController* strong=weak;if(!strong)return;strong->_identityId=identity.id;strong->_ready=YES;[strong discover];});
+        } catch(...) {dispatch_async(dispatch_get_main_queue(), ^{[weak pairingRequired];});}
     });
 }
 - (void)chooseViewer {
@@ -138,6 +169,7 @@ int64_t mono(){return std::chrono::duration_cast<std::chrono::seconds>(std::chro
 }
 - (void)catchDesktop {if(_run && _run->approved && !_run->canceled)_run->action=4;else _status.text=sessionText(SessionStatus::Untrusted);}
 - (void)stopSession {if(_run){_run->stopRdp();_run->action=5;}}
+- (void)pairingRequired {_status.text=NSLocalizedString(@"pair_in_kdeconnect",nil);}
 - (void)failure {_status.text=NSLocalizedString(@"pairing_failed",nil);}
 - (void)netServiceBrowser:(NSNetServiceBrowser*)browser didNotSearch:(NSDictionary<NSString*,NSNumber*>*)error {[self failure];}
 - (void)netServiceBrowser:(NSNetServiceBrowser*)browser didFindService:(NSNetService*)service moreComing:(BOOL)more {
@@ -151,44 +183,37 @@ int64_t mono(){return std::chrono::duration_cast<std::chrono::seconds>(std::chro
     NSString* peerId=[[NSString alloc] initWithData:txt[@"id"] ?: [NSData data] encoding:NSUTF8StringEncoding];
     NSString* version=[[NSString alloc] initWithData:txt[@"protocol"] ?: [NSData data] encoding:NSUTF8StringEncoding];
     NSString* peerName=[[NSString alloc] initWithData:txt[@"name"] ?: [NSData data] encoding:NSUTF8StringEncoding];
-    if(!peerId.length || [peerId isEqualToString:text(_identity.id)] || ![version isEqualToString:@"8"] || !service.addresses.count || service.port<1716 || service.port>1764)return;
+    if(!peerId.length || [peerId isEqualToString:text(_identityId)] || ![version isEqualToString:@"8"] || !service.addresses.count || service.port<1716 || service.port>1764)return;
     if(!peerName.length || peerName.length>128 || [peerName rangeOfCharacterFromSet:NSCharacterSet.controlCharacterSet].location!=NSNotFound)peerName=peerId;
     for(NSDictionary* old in _peers)if([old[@"id"] isEqual:peerId])return;
     [_peers addObject:@{@"id":peerId,@"name":peerName,@"service":service}];[self.tableView reloadData];
     if(!_run || !_run->approved)_status.text=NSLocalizedString(@"choose_computer",nil);
 }
-- (NSArray<UITableViewRowAction*>*)tableView:(UITableView*)view editActionsForRowAtIndexPath:(NSIndexPath*)path {
-    NSDictionary* peer=_peers[path.row];const auto peerId=bytes(peer[@"id"]);
-    if(!_store["pins"].contains(peerId))return @[];
-    __weak FHComputersController* weak=self;
-    return @[[UITableViewRowAction rowActionWithStyle:UITableViewRowActionStyleDestructive title:NSLocalizedString(@"forget_pairing",nil) handler:^(UITableViewRowAction* action,NSIndexPath* index){
-        FHComputersController* strong=weak;if(!strong)return;
-        try {strong->_store["pins"].erase(peerId);saveStore(strong->_store);if([strong->_connectedId isEqual:peer[@"id"]] && strong->_run){strong->_run->approved=false;strong->_run->stopRdp();strong->_run->action=3;}[strong.tableView reloadData];}
-        catch(...){[strong failure];}
-    }]];
-}
 - (NSInteger)tableView:(UITableView*)view numberOfRowsInSection:(NSInteger)section {return _peers.count;}
 - (UITableViewCell*)tableView:(UITableView*)view cellForRowAtIndexPath:(NSIndexPath*)path {
     UITableViewCell* cell=[[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];NSDictionary* peer=_peers[path.row];cell.textLabel.text=peer[@"name"];
-    cell.detailTextLabel.text=NSLocalizedString(@"pair_computer",nil);return cell;
+    cell.detailTextLabel.text=NSLocalizedString(@"pair_in_kdeconnect",nil);return cell;
 }
 - (void)tableView:(UITableView*)view didSelectRowAtIndexPath:(NSIndexPath*)path {
     if(!_ready)return;NSDictionary* peer=_peers[path.row];NSNetService* service=peer[@"service"];
-    const std::string peerId=bytes(peer[@"id"]);std::string pin;
-    try {if(_store["pins"].contains(peerId))pin=_store["pins"].at(peerId).get<std::string>();}catch(...){[self failure];return;}
+    const std::string peerId=bytes(peer[@"id"]);std::string pin;Identity identity;NSString* group;
+    try {group=sharedGroup();identity=loadSharedIdentity(group);pin=sharedPeerPin(group,peerId);SharedTrust trust(certificatePin(identity.certificate),pin);}
+    catch(...){[self pairingRequired];return;}
     std::shared_ptr<const Viewer> viewer;
     try {viewer=[FHViewerSettings viewerForScreen:self.view.window.screen];}
     catch(...){_status.text=NSLocalizedString(@"viewer_invalid",nil);return;}
     if(_run)_run->stop();auto run=std::make_shared<Run>();_run=run;const NSUInteger generation=++_generation;
-    _connectedId=peer[@"id"];
     UIScreen* screen=self.view.window.screen;
     const CGRect bounds=screen.nativeBounds;
     const PanelSize panel{static_cast<int>(std::max(bounds.size.width,bounds.size.height)),static_cast<int>(std::min(bounds.size.width,bounds.size.height)),static_cast<int>(screen.maximumFramesPerSecond*1000),viewer->profileId()};
-    const Identity identity=_identity;NSArray<NSData*>* addresses=[service.addresses copy];__weak FHComputersController* weak=self;
+    NSArray<NSData*>* addresses=[service.addresses copy];__weak FHComputersController* weak=self;
     _status.text=NSLocalizedString(@"connecting",nil);
-    std::thread([run,identity,peerId,pin,addresses,weak,generation,panel,viewer]{@autoreleasepool {
-        bool sessionPhase=false;
+    std::thread([run,identity,peerId,pin,addresses,weak,generation,panel,viewer,group]{@autoreleasepool {
+        bool sessionPhase=false;bool trustFailure=false;
         try {
+            const SharedTrust trust(certificatePin(identity.certificate),pin);
+            auto checkTrust=[&]{try{requireSharedTrust(group,peerId,trust);}catch(...){trustFailure=true;throw;}};
+            checkTrust();
             for(NSData* address in addresses) {
                 if(run->canceled)break;
                 if(address.length<sizeof(sockaddr) || address.length>sizeof(sockaddr_storage))continue;
@@ -209,7 +234,7 @@ int64_t mono(){return std::chrono::duration_cast<std::chrono::seconds>(std::chro
                getnameinfo(reinterpret_cast<sockaddr*>(&endpoint),length,host,sizeof(host),nullptr,0,NI_NUMERICHOST)!=0)throw std::runtime_error("Peer address unavailable");
             const auto verifiedPin=certificatePin(channel.certificate());
             SessionControl control(peerId,verifiedPin,certificatePin(identity.certificate),host,panel);
-            PairingState state(!pin.empty());bool authorized=false;SessionStatus shown=SessionStatus::Untrusted;
+            bool authorized=false;SessionStatus shown=SessionStatus::Untrusted;
             auto publish=[&](SessionStatus status){
                 __weak FHComputersController* recipient=weak;const auto epoch=generation;const auto task=run;
                 std::shared_ptr<Frames> frames;std::shared_ptr<DecoderChoice> choice;
@@ -232,30 +257,11 @@ int64_t mono(){return std::chrono::duration_cast<std::chrono::seconds>(std::chro
                 {std::lock_guard<std::mutex> lock(run->mutex);session=std::move(run->rdp);}
                 if(session)session->stop();send(control.stop(status));
             };
-            auto notify=[&](bool trusted){const std::string verifiedPin=certificatePin(channel.certificate());
-                __weak FHComputersController* recipient=weak;const auto task=run;const auto epoch=generation;const auto idCopy=peerId;
-                dispatch_async(dispatch_get_main_queue(), ^{
-                FHComputersController* strong=recipient;if(!strong || strong->_generation!=epoch || task->canceled)return;
-                try {if(trusted)strong->_store["pins"][idCopy]=verifiedPin;else strong->_store["pins"].erase(idCopy);saveStore(strong->_store);task->approved=trusted;strong->_status.text=trusted?sessionText(SessionStatus::Idle):NSLocalizedString(@"disconnected",nil);}
-                catch(...){task->stop();[strong failure];}
-            });};
-            auto prompt=[&]{const auto code=verificationKey(identity.certificate,channel.certificate(),state.timestamp);const auto peerName=channel.peerName();
-                __weak FHComputersController* recipient=weak;const auto task=run;const auto epoch=generation;
-                dispatch_async(dispatch_get_main_queue(), ^{
-                FHComputersController* strong=recipient;if(!strong || strong->_generation!=epoch || task->canceled)return;
-                NSString* message=[NSString stringWithFormat:NSLocalizedString(@"compare_code",nil),text(peerName),text(code)];
-                UIAlertController* alert=[UIAlertController alertControllerWithTitle:NSLocalizedString(@"pair_computer",nil) message:message preferredStyle:UIAlertControllerStyleAlert];
-                [alert addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"cancel_pairing",nil) style:UIAlertActionStyleCancel handler:^(UIAlertAction* a){task->action=2;}]];
-                [alert addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"confirm_pairing",nil) style:UIAlertActionStyleDefault handler:^(UIAlertAction* a){task->action=1;}]];
-                [strong presentViewController:alert animated:YES completion:nil];
-            });};
-            if(state.phase==PairingState::Phase::Paired)notify(true);else {state.offer(wall(),mono());channel.send(packet("kdeconnect.pair",{{"pair",true},{"timestamp",state.timestamp}}));prompt();}
+            checkTrust();run->approved=true;
             while(!run->canceled) {
+                checkTrust();
                 const int action=run->action.exchange(0);
-                if(action==2 || action==3){run->approved=false;finish(SessionStatus::Untrusted);control.revoke();channel.send(packet("kdeconnect.pair",{{"pair",false}}));state.reset();if(action==3)notify(false);break;}
-                if(action==1){const auto confirmation=state.confirm(mono());if(!confirmation.is_null())channel.send(confirmation);if(state.phase==PairingState::Phase::Paired)notify(true);}
-                if(state.expire(mono())){channel.send(packet("kdeconnect.pair",{{"pair",false}}));throw std::runtime_error("Pairing timed out");}
-                if(state.phase==PairingState::Phase::Paired && run->approved && !authorized) {
+                if(!authorized) {
                     control.authorize(verifiedPin);authorized=true;sessionPhase=true;send(control.capabilities());send(control.capabilityRequest());
                 }
                 if(action==4 && run->approved)send(control.request(mono()));
@@ -277,6 +283,7 @@ int64_t mono(){return std::chrono::duration_cast<std::chrono::seconds>(std::chro
                     if(!authorized || !run->approved){publish(SessionStatus::Untrusted);continue;}
                     control.receive(value,mono());
                     if(auto grant=control.takeGrant()) {
+                        checkTrust();
                         auto session=std::make_shared<RdpSession>(std::move(grant));
                         {std::lock_guard<std::mutex> lock(run->mutex);
                             // Forget/background may race the reply. Publish and start under
@@ -289,17 +296,16 @@ int64_t mono(){return std::chrono::duration_cast<std::chrono::seconds>(std::chro
                     if(status==SessionStatus::Invalid || status==SessionStatus::Refused || status==SessionStatus::Stopped || status==SessionStatus::Unavailable || status==SessionStatus::Timeout)finish(status);
                     continue;
                 }
-                const auto before=state.phase;state.incoming(value["body"],wall(),mono());
-                if(before==PairingState::Phase::Paired && state.phase!=before){run->approved=false;finish(SessionStatus::Untrusted);control.revoke();authorized=false;notify(false);}
-                if(state.phase==PairingState::Phase::ConfirmIncoming)prompt();
-                else if(state.phase==PairingState::Phase::Paired && before!=state.phase)notify(true);
-                else if(state.phase==PairingState::Phase::Unpaired)break;
+                // KDE Connect is the sole pairing UI and trust writer. A peer asking
+                // to pair again cannot grant a session through this receiver.
+                run->approved=false;finish(SessionStatus::Untrusted);control.revoke();
+                trustFailure=true;throw std::runtime_error("Pair in KDE Connect");
             }
             run->approved=false;control.revoke();run->stopRdp();run->closeSocket();
             __weak FHComputersController* recipient=weak;const auto epoch=generation;
             dispatch_async(dispatch_get_main_queue(), ^{FHComputersController* strong=recipient;if(strong && strong->_generation==epoch){if(strong.presentedViewController)[strong dismissViewControllerAnimated:YES completion:nil];strong->_status.text=NSLocalizedString(@"disconnected",nil);[strong->_desktop showSessionStatus:strong->_status.text terminal:YES];}});
-        }catch(...) {run->approved=false;run->stopRdp();run->closeSocket();__weak FHComputersController* recipient=weak;const auto epoch=generation;const auto task=run;const bool failedSession=sessionPhase;
-            dispatch_async(dispatch_get_main_queue(), ^{FHComputersController* strong=recipient;if(strong && strong->_generation==epoch && !task->canceled){if(strong.presentedViewController)[strong dismissViewControllerAnimated:YES completion:nil];if(failedSession){strong->_status.text=sessionText(SessionStatus::Failed);[strong->_desktop showSessionStatus:strong->_status.text terminal:YES];}else [strong failure];}});}
+        }catch(...) {run->approved=false;run->stopRdp();run->closeSocket();__weak FHComputersController* recipient=weak;const auto epoch=generation;const auto task=run;const bool failedSession=sessionPhase;const bool missingTrust=trustFailure;
+            dispatch_async(dispatch_get_main_queue(), ^{FHComputersController* strong=recipient;if(strong && strong->_generation==epoch && !task->canceled){if(strong.presentedViewController)[strong dismissViewControllerAnimated:YES completion:nil];if(missingTrust){[strong pairingRequired];[strong->_desktop showSessionStatus:strong->_status.text terminal:YES];}else if(failedSession){strong->_status.text=sessionText(SessionStatus::Failed);[strong->_desktop showSessionStatus:strong->_status.text terminal:YES];}else [strong failure];}});}
     }}).detach();
 }
 @end

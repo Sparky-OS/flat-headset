@@ -9,6 +9,18 @@ namespace flatheadset {
 using Json = nlohmann::json;
 struct Identity { std::string id, certificate, key; };
 Identity makeIdentity();
+// Read KDE Connect's canonical Security keychain identity, never mint a second one.
+// certificateDER is X.509; privateX963 is P-256's 04 || X || Y || d export.
+Identity importKdeIdentity(const std::string& certificateDER, const std::string& privateX963);
+std::string certificateFromDer(const std::string& der);
+std::string kdeAccessGroup(const std::string& receiverDefaultGroup);
+class SharedTrust {
+public:
+    SharedTrust(std::string identityPin, std::string peerPin);
+    bool matches(const std::string& identityPin, const std::string& peerPin) const;
+private:
+    std::string identityPin_, peerPin_;
+};
 Json packet(const std::string& type, Json body);
 Json parsePacket(const std::string& line);
 Json identityPacket(const Identity& identity, const std::string& target = {});

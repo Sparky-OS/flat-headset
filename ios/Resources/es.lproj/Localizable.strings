@@ -6,12 +6,7 @@
 "disconnected" = "Desconectado";
 "pairing_failed" = "Error de vinculación. Compruebe el acceso a la red local, el ordenador y la vinculación guardada.";
 "choose_computer" = "Elija un ordenador para vincular.";
-"pair_computer" = "Vincular ordenador";
 "connecting" = "Conectando…";
-"compare_code" = "Compare este código con el de %@: %@. Confirme solo si ambos códigos coinciden.";
-"cancel_pairing" = "Cancelar";
-"confirm_pairing" = "Los códigos coinciden";
-"forget_pairing" = "Olvidar vinculación";
 "disconnect" = "Desconectar";
 "catch_desktop" = "Recibir";
 "stop_session" = "Detener";
@@ -47,3 +42,4 @@
 "viewer_invalid" = "No se pudo verificar el perfil del visor o las dimensiones físicas de la pantalla de este teléfono. Seleccione un perfil válido.";
 "viewer_disconnect" = "Desconecte antes de cambiar el visor.";
 "viewer_scanned_confirm" = "¿Usar este perfil de visor escaneado en la próxima conexión?";
+"pair_in_kdeconnect" = "Abra KDE Connect y empareje allí este ordenador primero. Flat Headset necesita acceder a ese mismo emparejamiento; no puede emparejarse por separado.";

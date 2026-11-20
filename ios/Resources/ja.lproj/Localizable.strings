@@ -6,12 +6,7 @@
 "disconnected" = "切断済み";
 "pairing_failed" = "ペアリングに失敗しました。ローカルネットワークへのアクセス、コンピューター、保存されたペアリングを確認してください。";
 "choose_computer" = "ペアリングするコンピューターを選択してください。";
-"pair_computer" = "コンピューターとペアリング";
 "connecting" = "接続中…";
-"compare_code" = "%@ のコードと比較してください: %@。両方のコードが一致する場合のみ確認してください。";
-"cancel_pairing" = "キャンセル";
-"confirm_pairing" = "コードが一致";
-"forget_pairing" = "ペアリングを削除";
 "disconnect" = "切断";
 "catch_desktop" = "受け取る";
 "stop_session" = "停止";
@@ -47,3 +42,4 @@
 "viewer_invalid" = "ビューアのプロファイルまたはこの電話の画面の実寸を確認できませんでした。有効なプロファイルを選択してください。";
 "viewer_disconnect" = "ビューアを変更する前に切断してください。";
 "viewer_scanned_confirm" = "読み取ったビューアーのプロファイルを次の接続で使いますか？";
+"pair_in_kdeconnect" = "まず KDE Connect を開き、このコンピューターとペアリングしてください。Flat Headset は同じペアリングへのアクセスが必要です。個別にはペアリングできません。";

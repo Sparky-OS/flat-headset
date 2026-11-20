@@ -60,6 +60,7 @@ void exchange(const Identity& local,const Identity& remote,const std::string& ex
     if(peerError)std::rethrow_exception(peerError);
     assert(passed==success);
 }
+#ifndef FH_PAIRING_TEST_NO_MAIN
 int main() {
     std::signal(SIGPIPE,SIG_IGN);
     using Phase=PairingState::Phase;
@@ -98,3 +99,5 @@ int main() {
     assert(!OSSL_PROVIDER_available(nullptr,"legacy"));
     std::cout<<"PASS: mutual TLS, reconnect pin, changed pin/identity/downgrade refusal, local confirmation, deadlines, packet bounds; no legacy provider\n";
 }
+
+#endif
