@@ -168,7 +168,7 @@ jobs:
     runs-on: macos-26
     timeout-minutes: 40
     env:
-      KDECONNECT_COMMIT: 20d6aaa074ccff8c804b9825ad0e2d2284e0cf3c
+      KDECONNECT_COMMIT: cb745d0cce8316d59a4ae50ebb6254c1ddb3fdc7
       PYTHONDONTWRITEBYTECODE: '1'
     steps:
       - name: Report hosted image and SDK

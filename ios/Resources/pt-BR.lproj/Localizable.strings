@@ -8,11 +8,11 @@
 "choose_computer" = "Escolha um computador para parear.";
 "connecting" = "Conectando…";
 "disconnect" = "Desconectar";
-"catch_desktop" = "Receber";
+"catch_desktop" = "Catch (receber)";
 "stop_session" = "Parar";
-"session_untrusted" = "Pareie com este computador antes de receber sua área de trabalho.";
+"session_untrusted" = "Pareie com este computador antes de usar Catch (receber) para exibir sua área de trabalho.";
 "session_unavailable" = "Este computador não pode fornecer uma área de trabalho ao visor.";
-"session_idle" = "Pareado. Toque em Receber para solicitar a área de trabalho.";
+"session_idle" = "Pareado. Toque em Catch (receber) para solicitar a área de trabalho.";
 "session_waiting" = "Solicitando a área de trabalho…";
 "session_permission" = "Autorize a solicitação do visor no computador.";
 "session_starting" = "Iniciando a área de trabalho…";
@@ -22,10 +22,10 @@
 "session_invalid" = "O computador enviou uma sessão de área de trabalho inválida.";
 "session_certificate" = "O certificado da área de trabalho não corresponde à sessão pareada.";
 "session_failed" = "A conexão com a área de trabalho falhou.";
-"session_timeout" = "A solicitação expirou. Toque em Receber novamente.";
+"session_timeout" = "A solicitação expirou. Toque em Catch (receber) novamente.";
 "session_stopped" = "Sessão da área de trabalho encerrada.";
 "waiting_picture" = "Aguardando a imagem da área de trabalho…";
-"picture_timeout" = "A imagem da área de trabalho não chegou. Pare e toque em Receber novamente.";
+"picture_timeout" = "A imagem da área de trabalho não chegou. Pare e toque em Catch (receber) novamente.";
 "hardware_decode_failed" = "A decodificação de vídeo por hardware falhou. Continuar com decodificação por software nesta sessão? Será mais lenta e consumirá mais bateria.";
 "continue_software" = "Continuar com decodificação por software";
 "decoder_go_back" = "Voltar";
