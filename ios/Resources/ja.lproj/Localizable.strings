@@ -1,3 +1,16 @@
 "metal_unavailable" = "このデバイスではMetalを利用できません。";
 "renderer_failed" = "Flat Headsetで画像を作成できませんでした。";
 "render_failed" = "Flat Headsetで画像を表示できませんでした。";
+"computers" = "コンピューター";
+"finding_computers" = "KDE Connect のコンピューターを検索中…";
+"disconnected" = "切断済み";
+"pairing_failed" = "ペアリングに失敗しました。ローカルネットワークへのアクセス、コンピューター、保存されたペアリングを確認してください。";
+"choose_computer" = "ペアリングするコンピューターを選択してください。";
+"pair_computer" = "コンピューターとペアリング";
+"connecting" = "接続中…";
+"compare_code" = "%@ のコードと比較してください: %@。両方のコードが一致する場合のみ確認してください。";
+"cancel_pairing" = "キャンセル";
+"confirm_pairing" = "コードが一致";
+"paired_pending_receiver" = "ペアリング済み。このビルドではデスクトップの受信はまだ利用できません。";
+"forget_pairing" = "ペアリングを削除";
+"disconnect" = "切断";

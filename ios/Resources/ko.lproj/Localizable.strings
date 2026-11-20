@@ -1,3 +1,16 @@
 "metal_unavailable" = "이 기기에서는 Metal을 사용할 수 없습니다.";
 "renderer_failed" = "Flat Headset에서 이미지를 만들지 못했습니다.";
 "render_failed" = "Flat Headset에서 이미지를 표시하지 못했습니다.";
+"computers" = "컴퓨터";
+"finding_computers" = "KDE Connect 컴퓨터를 찾는 중…";
+"disconnected" = "연결 끊김";
+"pairing_failed" = "페어링에 실패했습니다. 로컬 네트워크 접근, 컴퓨터 및 저장된 페어링을 확인하세요.";
+"choose_computer" = "페어링할 컴퓨터를 선택하세요.";
+"pair_computer" = "컴퓨터 페어링";
+"connecting" = "연결 중…";
+"compare_code" = "%@의 코드와 비교하세요: %@. 두 코드가 일치할 때만 확인하세요.";
+"cancel_pairing" = "취소";
+"confirm_pairing" = "코드 일치";
+"paired_pending_receiver" = "페어링됨. 이 빌드에서는 데스크톱 수신을 아직 사용할 수 없습니다.";
+"forget_pairing" = "페어링 삭제";
+"disconnect" = "연결 끊기";

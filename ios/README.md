@@ -1,14 +1,14 @@
 # Flat Headset on iPhone
 
-This native build proof displays a generated left/right picture through Metal, across the physical panel in landscape.
-It establishes a build target for Flat Headset; it does not yet receive a desktop, pair through KDE Connect or apply a viewer profile.
+This development target displays a generated left/right picture through Metal and provides a foreground Computers screen for KDE Connect pairing.
+Desktop reception and viewer correction are still being integrated; the generated image is a test picture.
 The left image has a cool background and an L mark; the right has a warm background and an R mark.
 Both show their complete outer edges, a grid and a circle measured in pixels, with no texture rescaling.
 
 The unsigned workflow uses the standard hosted macOS image's installed Xcode and prints its image/compiler/SDK versions before checking out the source.
 It builds for arm64 iPhone with deployment target iOS 16.0, no signing team and `CODE_SIGNING_ALLOWED=NO`.
 No Apple account, certificate, secret or separately downloaded SDK is used by the workflow.
-UIKit, Foundation, MetalKit and Metal are the only framework dependencies of this proof.
+The native shell uses UIKit, Foundation, Security, MetalKit and Metal; the pairing transport links the pinned static OpenSSL build.
 The app target is `ios/FlatHeadset.xcodeproj`, shared scheme `FlatHeadset`.
 Its display name remains **Flat Headset** in every language; its bundle ID is `org.sparkyos.flatheadset`.
 
@@ -35,8 +35,36 @@ Signing and installation occur separately on Linux with the person's free accoun
 
 Native catalogs use `en`, `pl`, `pt-BR`, `fr`, `de`, `es`, `ja`, `ko`, `zh-Hans` and `zh-Hant`.
 The checker fails on missing/extra/duplicate/empty keys, a missing language, or any changed product name.
-All normal operation is the generated picture; failure text is localized and visible if Metal initialization or submission fails.
+The Computers screen, local-network permission explanation and Metal failure text are localized.
 The generated L/R marks identify the test eyes; they are not localized menu words.
 
 The forthcoming receiver retains the Android design: KDE Connect pairing controls a KRdp virtual monitor, FreeRDP receives its desktop, and the actual Cardboard viewer parameters supply lens correction.
 The build proof is a step toward that receiver, not a substitute for it.
+
+## Foreground pairing
+
+The Computers screen discovers the desktop's `_kdeconnect._udp` Bonjour service and initiates its TCP connection.
+The service's SRV port is the desktop's TCP port despite the service type's UDP suffix.
+Only protocol 8 is accepted in this target.
+Discovery names and addresses are candidates, never evidence of trust.
+The TCP initiator acts as the TLS server, as KDE Connect's LAN protocol requires.
+The certificate's device ID, signature, validity, key strength and saved SHA-256 pin are checked before accepting the encrypted identity.
+The verification code follows the Android backend's sorted public-key hash with the pairing timestamp.
+Confirm that both screens show the same code; remote acceptance alone does not save trust on this phone.
+The identity and approved certificate pins live in the app's Keychain with `WhenUnlockedThisDeviceOnly` accessibility.
+A changed certificate fails; forgetting a pairing is an explicit swipe action on the computer row.
+Connections stop when the app leaves the foreground or the Computers screen closes.
+No plugin traffic or RDP credentials are accepted by this intermediate target.
+A paired computer is shown with an explicit message that desktop reception is not available in this build.
+
+The workflow now builds the app after its static dependencies in the `iphone-core` job on macos-26.
+The `iphone` job retains the portable picture/catalog checks on macos-15.
+For a manual native build, pass `FH_CORE_PREFIX` pointing at `build_core.sh`'s `install` directory.
+The core is configured with OpenSSL `no-shared no-module no-legacy`; FreeRDP keeps its internal MD4, MD5 and RC4 implementations.
+The Linux core build runs known-answer crypto checks, upstream's in-memory NTLM exchange test and mutual-TLS/pinning tests over AF_UNIX socketpairs.
+These checks do not establish Bonjour discovery, Keychain behavior or interoperability with a live desktop on an iPhone.
+Those require the native build and a later authorized device session.
+
+Pairing behavior follows the KDE Connect Android `PairingHandler.kt`, `SslHelper.kt` and `LanLinkProvider.java` in this repository, and the desktop's `core/backends/pairinghandler.cpp` and `core/backends/lan/avahidiscovery.cpp`.
+Credits: Albert Vaca Cintora, Vineet Garg, the KDE Connect contributors, The OpenSSL Project Authors, and Niels Lohmann.
+The vendored JSON parser's version, source and hashes are recorded in `ThirdParty/nlohmann/PROVENANCE.json`; its MIT license is retained.

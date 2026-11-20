@@ -1,3 +1,16 @@
 "metal_unavailable" = "Metal no está disponible en este dispositivo.";
 "renderer_failed" = "Flat Headset no pudo crear la imagen.";
 "render_failed" = "Flat Headset no pudo mostrar la imagen.";
+"computers" = "Ordenadores";
+"finding_computers" = "Buscando ordenadores con KDE Connect…";
+"disconnected" = "Desconectado";
+"pairing_failed" = "Error de vinculación. Compruebe el acceso a la red local, el ordenador y la vinculación guardada.";
+"choose_computer" = "Elija un ordenador para vincular.";
+"pair_computer" = "Vincular ordenador";
+"connecting" = "Conectando…";
+"compare_code" = "Compare este código con el de %@: %@. Confirme solo si ambos códigos coinciden.";
+"cancel_pairing" = "Cancelar";
+"confirm_pairing" = "Los códigos coinciden";
+"paired_pending_receiver" = "Vinculado. La recepción del escritorio no está disponible en esta versión.";
+"forget_pairing" = "Olvidar vinculación";
+"disconnect" = "Desconectar";

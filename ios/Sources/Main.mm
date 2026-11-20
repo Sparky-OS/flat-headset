@@ -2,6 +2,7 @@
 #import <UIKit/UIKit.h>
 #import <MetalKit/MetalKit.h>
 #include "Pattern.hpp"
+#import "Computers.h"
 #include <vector>
 
 @interface FHViewController : UIViewController <MTKViewDelegate>
@@ -34,6 +35,12 @@
     _failure.text = NSLocalizedString(key, nil);
 }
 
+- (void)showComputers {
+    UINavigationController* navigation=[[UINavigationController alloc] initWithRootViewController:[FHComputersController new]];
+    navigation.modalPresentationStyle=UIModalPresentationFullScreen;
+    [self presentViewController:navigation animated:YES completion:nil];
+}
+
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.view.backgroundColor = UIColor.blackColor;
@@ -47,6 +54,11 @@
     _metalView.enableSetNeedsDisplay = YES;
     _metalView.delegate = self;
     [self.view addSubview:_metalView];
+    UIButton* computers=[UIButton buttonWithType:UIButtonTypeSystem];
+    [computers setTitle:NSLocalizedString(@"computers",nil) forState:UIControlStateNormal];
+    computers.frame=CGRectMake(20,20,220,48);computers.backgroundColor=[UIColor colorWithWhite:0 alpha:0.8];
+    [computers addTarget:self action:@selector(showComputers) forControlEvents:UIControlEventTouchUpInside];
+    [self.view addSubview:computers];
     _queue = [device newCommandQueue];
     // Fullscreen triangle. Exact texel read: no resampling, lens correction or eye stretch.
     NSError *error = nil;

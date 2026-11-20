@@ -1,3 +1,16 @@
 "metal_unavailable" = "Metal is unavailable on this device.";
 "renderer_failed" = "Flat Headset could not create the picture.";
 "render_failed" = "Flat Headset could not display the picture.";
+"computers" = "Computers";
+"finding_computers" = "Finding computers with KDE Connect…";
+"disconnected" = "Disconnected";
+"pairing_failed" = "Pairing failed. Check local network access, the computer and its saved pairing.";
+"choose_computer" = "Choose a computer to pair with.";
+"pair_computer" = "Pair computer";
+"connecting" = "Connecting…";
+"compare_code" = "Compare this code with %@: %@. Confirm only if both codes match.";
+"cancel_pairing" = "Cancel";
+"confirm_pairing" = "Codes match";
+"paired_pending_receiver" = "Paired. Desktop reception is not available in this build.";
+"forget_pairing" = "Forget pairing";
+"disconnect" = "Disconnect";

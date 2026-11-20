@@ -62,3 +62,21 @@ else()
   enable_testing()
   add_test(NAME core-lifecycle COMMAND core-link-check)
 endif()
+
+if(NOT APPLE)
+  find_package(Threads REQUIRED)
+  find_package(OpenSSL REQUIRED COMPONENTS SSL Crypto)
+  add_executable(pairing-test ../Pairing/Pairing.cpp ../Tests/PairingTest.cpp)
+  target_compile_features(pairing-test PRIVATE cxx_std_17)
+  target_compile_options(pairing-test PRIVATE -Wall -Wextra -Wpedantic -Werror -UNDEBUG)
+  target_include_directories(pairing-test PRIVATE "${OPENSSL_INCLUDE_DIR}")
+  target_link_libraries(pairing-test PRIVATE OpenSSL::SSL OpenSSL::Crypto Threads::Threads)
+  add_test(NAME pairing COMMAND pairing-test)
+  add_executable(core-ntlm-test ../Tests/NTLMTest.c
+    "${FREERDP_SOURCE_DIR}/winpr/libwinpr/sspi/test/TestSspiNTLM.c")
+  target_include_directories(core-ntlm-test PRIVATE
+    "${FREERDP_SOURCE_DIR}/winpr/include" "${CMAKE_CURRENT_BINARY_DIR}/freerdp/winpr/include"
+    "${OPENSSL_INCLUDE_DIR}")
+  target_link_libraries(core-ntlm-test PRIVATE winpr OpenSSL::Crypto)
+  add_test(NAME core-ntlm COMMAND core-ntlm-test)
+endif()

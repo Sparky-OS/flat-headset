@@ -44,48 +44,12 @@ jobs:
           cmake -S ios -B "$RUNNER_TEMP/flat-headset-tests" -DCMAKE_BUILD_TYPE=Debug
           cmake --build "$RUNNER_TEMP/flat-headset-tests" --parallel 4
           ctest --test-dir "$RUNNER_TEMP/flat-headset-tests" --output-on-failure
-      - name: Build the unsigned iPhone application
-        shell: bash
-        run: |
-          set -euo pipefail
-          xcodebuild -project ios/FlatHeadset.xcodeproj -scheme FlatHeadset \
-            -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' \
-            -derivedDataPath "$RUNNER_TEMP/flat-headset-build" -jobs 4 \
-            IPHONEOS_DEPLOYMENT_TARGET="$FLAT_HEADSET_IOS_MIN" \
-            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' \
-            DEVELOPMENT_TEAM='' build
-      - name: Package IPA and its receiver manifest entry
-        shell: bash
-        run: |
-          set -euo pipefail
-          app="$RUNNER_TEMP/flat-headset-build/Build/Products/Release-iphoneos/FlatHeadset.app"
-          test -d "$app"
-          file "$app/FlatHeadset"
-          xcrun lipo "$app/FlatHeadset" -verify_arch arm64
-          if signature_result="$(LC_ALL=C codesign --verify "$app" 2>&1)"; then
-            echo 'The app unexpectedly contains a signature; this workflow must produce an unsigned app.' >&2
-            exit 1
-          fi
-          if [[ "$signature_result" != "$app: code object is not signed at all"$'\nIn architecture: arm64' ]]; then
-            printf 'Could not establish that the app is unsigned: %s\n' "$signature_result" >&2
-            exit 1
-          fi
-          printf '%s\n' "$signature_result"
-          mkdir -p "$RUNNER_TEMP/flat-headset-package/Payload" "$GITHUB_WORKSPACE/ios-artifact"
-          cp -R "$app" "$RUNNER_TEMP/flat-headset-package/Payload/"
-          ditto -c -k --keepParent "$RUNNER_TEMP/flat-headset-package/Payload" "$GITHUB_WORKSPACE/ios-artifact/FlatHeadset-unsigned.ipa"
-          python3 ios/Tools/package_manifest.py ios-artifact/FlatHeadset-unsigned.ipa --commit "$GITHUB_SHA"
-      - name: Keep unsigned IPA and hashes
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: FlatHeadset-unsigned-${{ github.sha }}
-          path: ios-artifact/
-          if-no-files-found: error
-          retention-days: 7
   iphone-core:
+    needs: iphone
     runs-on: macos-26
     timeout-minutes: 40
     env:
+      FLAT_HEADSET_IOS_MIN: '16.0'
       PYTHONDONTWRITEBYTECODE: '1'
     steps:
       - name: Report hosted tools and verify core SDK requirements
@@ -125,6 +89,12 @@ jobs:
           sources="$RUNNER_TEMP/flat-headset-core-sources"
           package="$RUNNER_TEMP/flat-headset-core-package"
           mkdir -p "$package/licenses" "$GITHUB_WORKSPACE/ios-core-artifact"
+          python3 - "$core/install/lib" <<'PYCODE'
+          import pathlib, sys
+          modules = [p for p in pathlib.Path(sys.argv[1]).rglob('*') if p.suffix in ('.dylib', '.so')]
+          if modules:
+              sys.exit('The static iPhone core must not contain loadable modules: ' + ', '.join(map(str, modules)))
+          PYCODE
           cp -R "$core/install/include" "$core/install/lib" "$package/"
           cp "$core/core-link-check" "$core/core-link-load-commands.txt" "$package/"
           cp ios/Core/sources.json "$package/"
@@ -143,5 +113,49 @@ jobs:
         with:
           name: FlatHeadset-core-arm64-${{ github.sha }}
           path: ios-core-artifact/
+          if-no-files-found: error
+          retention-days: 7
+      - name: Build the unsigned iPhone application
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild -project ios/FlatHeadset.xcodeproj -scheme FlatHeadset \
+            -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/flat-headset-build" -jobs 4 \
+            IPHONEOS_DEPLOYMENT_TARGET="$FLAT_HEADSET_IOS_MIN" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' \
+            FH_CORE_PREFIX="$RUNNER_TEMP/flat-headset-core/install" \
+            DEVELOPMENT_TEAM='' build
+      - name: Package IPA and its receiver manifest entry
+        shell: bash
+        run: |
+          set -euo pipefail
+          app="$RUNNER_TEMP/flat-headset-build/Build/Products/Release-iphoneos/FlatHeadset.app"
+          test -d "$app"
+          file "$app/FlatHeadset"
+          xcrun lipo "$app/FlatHeadset" -verify_arch arm64
+          if signature_result="$(LC_ALL=C codesign --verify "$app" 2>&1)"; then
+            echo 'The app unexpectedly contains a signature; this workflow must produce an unsigned app.' >&2
+            exit 1
+          fi
+          if [[ "$signature_result" != "$app: code object is not signed at all"$'\nIn architecture: arm64' ]]; then
+            printf 'Could not establish that the app is unsigned: %s\n' "$signature_result" >&2
+            exit 1
+          fi
+          printf '%s\n' "$signature_result"
+          mkdir -p "$RUNNER_TEMP/flat-headset-package/Payload" "$GITHUB_WORKSPACE/ios-artifact"
+          cp -R "$app" "$RUNNER_TEMP/flat-headset-package/Payload/"
+          licenses="$RUNNER_TEMP/flat-headset-package/Payload/FlatHeadset.app/Licenses"
+          mkdir -p "$licenses"
+          cp "$RUNNER_TEMP/flat-headset-core-sources/openssl/LICENSE.txt" "$licenses/OpenSSL.txt"
+          cp ios/ThirdParty/nlohmann/LICENSE.MIT "$licenses/nlohmann-json.txt"
+          cp ios/COPYING "$licenses/FlatHeadset.txt"
+          ditto -c -k --keepParent "$RUNNER_TEMP/flat-headset-package/Payload" "$GITHUB_WORKSPACE/ios-artifact/FlatHeadset-unsigned.ipa"
+          python3 ios/Tools/package_manifest.py ios-artifact/FlatHeadset-unsigned.ipa --commit "$GITHUB_SHA"
+      - name: Keep unsigned IPA and hashes
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: FlatHeadset-unsigned-${{ github.sha }}
+          path: ios-artifact/
           if-no-files-found: error
           retention-days: 7

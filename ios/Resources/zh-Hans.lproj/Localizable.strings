@@ -1,3 +1,16 @@
 "metal_unavailable" = "此设备不支持 Metal。";
 "renderer_failed" = "Flat Headset 无法创建图像。";
 "render_failed" = "Flat Headset 无法显示图像。";
+"computers" = "计算机";
+"finding_computers" = "正在查找 KDE Connect 计算机…";
+"disconnected" = "已断开连接";
+"pairing_failed" = "配对失败。请检查本地网络权限、计算机和已保存的配对。";
+"choose_computer" = "请选择要配对的计算机。";
+"pair_computer" = "配对计算机";
+"connecting" = "正在连接…";
+"compare_code" = "请与 %@ 上的代码比较：%@。仅当两个代码一致时才确认。";
+"cancel_pairing" = "取消";
+"confirm_pairing" = "代码一致";
+"paired_pending_receiver" = "已配对。此版本尚不支持接收桌面。";
+"forget_pairing" = "忘记配对";
+"disconnect" = "断开连接";

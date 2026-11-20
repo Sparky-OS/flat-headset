@@ -1,2 +1,3 @@
 "CFBundleDisplayName" = "Flat Headset";
 "CFBundleName" = "Flat Headset";
+"NSLocalNetworkUsageDescription" = "Encontrar y vincular su ordenador mediante KDE Connect.";

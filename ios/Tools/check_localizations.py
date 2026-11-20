@@ -8,8 +8,8 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 LANGUAGES = ('en', 'pl', 'pt-BR', 'fr', 'de', 'es', 'ja', 'ko', 'zh-Hans', 'zh-Hant')
-KEYS = {'Localizable.strings': {'metal_unavailable', 'renderer_failed', 'render_failed'},
-        'InfoPlist.strings': {'CFBundleDisplayName', 'CFBundleName'}}
+KEYS = {'Localizable.strings': {'computers', 'compare_code', 'confirm_pairing', 'disconnect', 'disconnected', 'pair_computer', 'paired_pending_receiver', 'choose_computer', 'connecting', 'renderer_failed', 'forget_pairing', 'render_failed', 'cancel_pairing', 'finding_computers', 'pairing_failed', 'metal_unavailable'},
+        'InfoPlist.strings': {'CFBundleDisplayName', 'CFBundleName', 'NSLocalNetworkUsageDescription'}}
 PAIR = re.compile(r'\s*("(?:[^"\\]|\\.)*")\s*=\s*("(?:[^"\\]|\\.)*")\s*;')
 
 
@@ -36,9 +36,11 @@ def check(root=ROOT):
             values = read_catalog(path)
             if values.keys() != required:
                 raise ValueError(f'{language}/{filename}: missing {required - values.keys()}, extra {values.keys() - required}')
-            if filename == 'InfoPlist.strings' and set(values.values()) != {'Flat Headset'}:
+            if filename == 'Localizable.strings' and values['compare_code'].count('%@') != 2:
+                raise ValueError(f'{language}: compare_code needs the computer name and verification code')
+            if filename == 'InfoPlist.strings' and {values[k] for k in ('CFBundleDisplayName', 'CFBundleName')} != {'Flat Headset'}:
                 raise ValueError(f'{language}: product name must remain Flat Headset')
-    source = (root / 'Sources/Main.mm').read_text()
+    source = '\n'.join(p.read_text() for p in (root / 'Sources').glob('*.mm'))
     used = set(re.findall(r'(?:failWithKey:|NSLocalizedString\()@"([a-z_]+)"', source))
     if used != KEYS['Localizable.strings']:
         raise ValueError(f'Native source/catalog key mismatch: {used}')
@@ -47,7 +49,7 @@ def check(root=ROOT):
     for filename, keys in KEYS.items():
         for key in sorted(keys):
             print('| ' + filename + ': ' + key + ' | ' + ' | '.join('yes' for _ in LANGUAGES) + ' |')
-    print('PASS: all 5 keys in all 10 native catalogs')
+    print(f'PASS: all {sum(map(len, KEYS.values()))} keys in all 10 native catalogs')
 
 
 if __name__ == '__main__':

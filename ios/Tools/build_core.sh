@@ -41,10 +41,14 @@ case "$mode" in
 esac
 (
   cd "$build/openssl"
-  perl "$sources/openssl/Configure" "$openssl_target" no-shared no-tests no-apps no-docs \
+  perl "$sources/openssl/Configure" "$openssl_target" no-shared no-module no-legacy no-tests no-apps no-docs \
     --prefix="$prefix" --libdir=lib "${openssl_args[@]}"
   make -j4 build_sw
   make install_sw
+  if [[ -d "$prefix/lib/ossl-modules" ]] && [[ -n $(ls -A "$prefix/lib/ossl-modules") ]]; then
+    echo 'Unexpected OpenSSL provider module in the static build.' >&2
+    exit 1
+  fi
 )
 (
   cd "$build/ffmpeg"
