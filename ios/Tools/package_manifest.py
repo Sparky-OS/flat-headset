@@ -12,14 +12,19 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('ipa', type=Path)
 parser.add_argument('--commit', required=True)
 args = parser.parse_args()
+def require(condition, message):
+    if not condition:
+        raise ValueError(message)
+
+
 with zipfile.ZipFile(args.ipa) as archive:
     info = plistlib.loads(archive.read('Payload/FlatHeadset.app/Info.plist'))
-    assert info['CFBundleDisplayName'] == 'Flat Headset', 'Unexpected product name'
-    assert info['CFBundleIdentifier'] == 'org.sparkyos.flatheadset', 'Unexpected bundle identifier'
-    assert info['MinimumOSVersion'] == '16.0', 'Unexpected deployment target'
-    assert info['CFBundleExecutable'] == 'FlatHeadset', 'Unexpected executable'
-    assert archive.read('Payload/FlatHeadset.app/FlatHeadset'), 'Missing executable'
-    assert not any('/_CodeSignature/' in n or n.endswith('embedded.mobileprovision') for n in archive.namelist()), 'IPA must be unsigned'
+    require(info['CFBundleDisplayName'] == 'Flat Headset', 'Unexpected product name')
+    require(info['CFBundleIdentifier'] == 'org.sparkyos.flatheadset', 'Unexpected bundle identifier')
+    require(info['MinimumOSVersion'] == '16.0', 'Unexpected deployment target')
+    require(info['CFBundleExecutable'] == 'FlatHeadset', 'Unexpected executable')
+    require(archive.read('Payload/FlatHeadset.app/FlatHeadset'), 'Missing executable')
+    require(not any('/_CodeSignature/' in n or n.endswith('embedded.mobileprovision') for n in archive.namelist()), 'IPA must be unsigned')
 with args.ipa.open('rb') as stream:
     digest = hashlib.file_digest(stream, 'sha256').hexdigest()
 entry = {'role': 'flat-headset', 'path': args.ipa.name, 'sha256': digest, 'bundle_id': info['CFBundleIdentifier']}
