@@ -229,6 +229,7 @@ SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted
         <activity android:name="org.kde.kdeconnect.plugins.remotedesktop.headset.StandaloneHeadsetActivity"
             android:icon="@mipmap/flat_headset" android:roundIcon="@mipmap/flat_headset_round"
             android:label="@string/headset_title" android:exported="true" android:screenOrientation="landscape"
+            android:launchMode="singleTask" android:taskAffinity="${applicationId}.flat"
             android:configChanges="orientation|keyboard|keyboardHidden|screenSize|smallestScreenSize|density|screenLayout|navigation"
             android:theme="@style/Theme.Main">
             <intent-filter>
