@@ -8,11 +8,11 @@
 "choose_computer" = "페어링할 컴퓨터를 선택하세요.";
 "connecting" = "연결 중…";
 "disconnect" = "연결 끊기";
-"catch_desktop" = "받기";
+"catch_desktop" = "Catch (받다)";
 "stop_session" = "중지";
-"session_untrusted" = "데스크톱을 받기 전에 이 컴퓨터와 페어링하세요.";
+"session_untrusted" = "Catch로 데스크톱을 표시하기 전에 이 컴퓨터와 페어링하세요.";
 "session_unavailable" = "이 컴퓨터는 헤드셋용 데스크톱을 제공할 수 없습니다.";
-"session_idle" = "페어링되었습니다. 받기를 눌러 데스크톱을 요청하세요.";
+"session_idle" = "페어링되었습니다. Catch (받다)를 눌러 데스크톱을 요청하세요.";
 "session_waiting" = "데스크톱 요청 중…";
 "session_permission" = "컴퓨터에서 헤드셋 요청을 허용하세요.";
 "session_starting" = "데스크톱 시작 중…";
@@ -22,10 +22,10 @@
 "session_invalid" = "컴퓨터가 유효하지 않은 데스크톱 세션을 보냈습니다.";
 "session_certificate" = "데스크톱 인증서가 페어링된 세션과 일치하지 않습니다.";
 "session_failed" = "데스크톱 연결에 실패했습니다.";
-"session_timeout" = "요청 시간이 초과되었습니다. 받기를 다시 누르세요.";
+"session_timeout" = "요청 시간이 초과되었습니다. Catch를 다시 누르세요.";
 "session_stopped" = "데스크톱 세션이 중지되었습니다.";
 "waiting_picture" = "데스크톱 화면을 기다리는 중…";
-"picture_timeout" = "데스크톱 화면이 도착하지 않았습니다. 중지한 후 받기를 다시 누르세요.";
+"picture_timeout" = "데스크톱 화면이 도착하지 않았습니다. 중지한 후 Catch를 다시 누르세요.";
 "hardware_decode_failed" = "하드웨어 영상 디코딩에 실패했습니다. 이번 세션에서 소프트웨어 디코딩으로 계속할까요? 속도가 느려지고 배터리를 더 사용합니다.";
 "continue_software" = "소프트웨어 디코딩으로 계속";
 "decoder_go_back" = "돌아가기";

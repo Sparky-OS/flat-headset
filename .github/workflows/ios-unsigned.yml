@@ -19,6 +19,7 @@ jobs:
         run: |
           set -euo pipefail
           printf 'Hosted image: %s %s\n' "${ImageOS:-unknown}" "${ImageVersion:-unknown}"
+          uname -m
           xcodebuild -version
           xcodebuild -showsdks
           sdk_version="$(xcrun --sdk iphoneos --show-sdk-version)"
@@ -46,9 +47,23 @@ jobs:
           ctest --test-dir "$RUNNER_TEMP/flat-headset-tests" --output-on-failure
   iphone-core:
     needs: iphone
-    runs-on: macos-26
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-26
+            host_arch: arm64
+            developer_dir: /Applications/Xcode_26.6.app/Contents/Developer
+            artifact_suffix: ''
+          - runner: macos-15-intel
+            host_arch: x86_64
+            developer_dir: /Applications/Xcode_26.3.app/Contents/Developer
+            artifact_suffix: '-intel'
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 40
     env:
+      DEVELOPER_DIR: ${{ matrix.developer_dir }}
+      EXPECTED_HOST_ARCH: ${{ matrix.host_arch }}
       FLAT_HEADSET_IOS_MIN: '16.0'
       PYTHONDONTWRITEBYTECODE: '1'
     steps:
@@ -57,8 +72,19 @@ jobs:
         run: |
           set -euo pipefail
           printf 'Hosted image: %s %s\n' "${ImageOS:-unknown}" "${ImageVersion:-unknown}"
+          uname -m
+          if [[ "$(uname -m)" != "$EXPECTED_HOST_ARCH" ]]; then
+            echo 'The runner processor does not match this build. Check the runner label before retrying.' >&2
+            exit 1
+          fi
+          if [[ ! -d "$DEVELOPER_DIR" ]]; then
+            echo 'The selected Xcode 26 is missing. Check the runner inventory and update the explicit Xcode path.' >&2
+            exit 1
+          fi
           xcodebuild -version
           xcodebuild -showsdks
+          printf 'Installed Xcode size (KiB; selected hosted installation, not download size):\n'
+          du -sk "$DEVELOPER_DIR/.."
           python3 --version
           cmake --version
           ninja --version
@@ -112,7 +138,7 @@ jobs:
       - name: Keep unsigned iPhone core
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: FlatHeadset-core-arm64-${{ github.sha }}
+          name: FlatHeadset-core-arm64-${{ github.sha }}${{ matrix.artifact_suffix }}
           path: ios-core-artifact/
           if-no-files-found: error
           retention-days: 7
@@ -159,16 +185,30 @@ jobs:
       - name: Keep unsigned IPA and hashes
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: FlatHeadset-unsigned-${{ github.sha }}
+          name: FlatHeadset-unsigned-${{ github.sha }}${{ matrix.artifact_suffix }}
           path: ios-artifact/
           if-no-files-found: error
           retention-days: 7
 
   kdeconnect-iphone:
-    runs-on: macos-26
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-26
+            host_arch: arm64
+            developer_dir: /Applications/Xcode_26.6.app/Contents/Developer
+            artifact_suffix: ''
+          - runner: macos-15-intel
+            host_arch: x86_64
+            developer_dir: /Applications/Xcode_26.3.app/Contents/Developer
+            artifact_suffix: '-intel'
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 40
     env:
-      KDECONNECT_COMMIT: cb745d0cce8316d59a4ae50ebb6254c1ddb3fdc7
+      DEVELOPER_DIR: ${{ matrix.developer_dir }}
+      EXPECTED_HOST_ARCH: ${{ matrix.host_arch }}
+      KDECONNECT_COMMIT: f215b9f6c29a36923492c55303441184035c2594
       PYTHONDONTWRITEBYTECODE: '1'
     steps:
       - name: Report hosted image and SDK
@@ -176,6 +216,15 @@ jobs:
         run: |
           set -euo pipefail
           printf 'Hosted image: %s %s\n' "${ImageOS:-unknown}" "${ImageVersion:-unknown}"
+          uname -m
+          if [[ "$(uname -m)" != "$EXPECTED_HOST_ARCH" ]]; then
+            echo 'The runner processor does not match this build. Check the runner label before retrying.' >&2
+            exit 1
+          fi
+          if [[ ! -d "$DEVELOPER_DIR" ]]; then
+            echo 'The selected Xcode 26 is missing. Check the runner inventory and update the explicit Xcode path.' >&2
+            exit 1
+          fi
           xcodebuild -version
           xcodebuild -showsdks
           sdk_version="$(xcrun --sdk iphoneos --show-sdk-version)"
@@ -199,15 +248,29 @@ jobs:
       - name: Keep unsigned KDE Connect IPA and hashes
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: KDEConnect-unsigned-${{ github.sha }}
+          name: KDEConnect-unsigned-${{ github.sha }}${{ matrix.artifact_suffix }}
           path: kdeconnect-artifact/
           if-no-files-found: error
           retention-days: 7
 
   cardboard-iphone:
-    runs-on: macos-26
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-26
+            host_arch: arm64
+            developer_dir: /Applications/Xcode_26.6.app/Contents/Developer
+            artifact_suffix: ''
+          - runner: macos-15-intel
+            host_arch: x86_64
+            developer_dir: /Applications/Xcode_26.3.app/Contents/Developer
+            artifact_suffix: '-intel'
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 25
     env:
+      DEVELOPER_DIR: ${{ matrix.developer_dir }}
+      EXPECTED_HOST_ARCH: ${{ matrix.host_arch }}
       CARDBOARD_COMMIT: d8ba9bce45c2325ff291dd894aa294eca4beb60a
       PYTHONDONTWRITEBYTECODE: '1'
     steps:
@@ -216,6 +279,15 @@ jobs:
         run: |
           set -euo pipefail
           printf 'Hosted image: %s %s\n' "${ImageOS:-unknown}" "${ImageVersion:-unknown}"
+          uname -m
+          if [[ "$(uname -m)" != "$EXPECTED_HOST_ARCH" ]]; then
+            echo 'The runner processor does not match this build. Check the runner label before retrying.' >&2
+            exit 1
+          fi
+          if [[ ! -d "$DEVELOPER_DIR" ]]; then
+            echo 'The selected Xcode 26 is missing. Check the runner inventory and update the explicit Xcode path.' >&2
+            exit 1
+          fi
           xcodebuild -version
           xcodebuild -showsdks
           sdk_version="$(xcrun --sdk iphoneos --show-sdk-version)"
@@ -245,7 +317,7 @@ jobs:
       - name: Keep unsigned Cardboard IPA and hashes
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: Cardboard-unsigned-${{ github.sha }}
+          name: Cardboard-unsigned-${{ github.sha }}${{ matrix.artifact_suffix }}
           path: cardboard-artifact/
           if-no-files-found: error
           retention-days: 7

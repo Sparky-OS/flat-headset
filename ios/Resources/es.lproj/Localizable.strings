@@ -8,11 +8,11 @@
 "choose_computer" = "Elija un ordenador para vincular.";
 "connecting" = "Conectando…";
 "disconnect" = "Desconectar";
-"catch_desktop" = "Recibir";
+"catch_desktop" = "Catch (atrapar)";
 "stop_session" = "Detener";
-"session_untrusted" = "Vincula este equipo antes de recibir su escritorio.";
+"session_untrusted" = "Vincula este equipo antes de usar Catch para mostrar su escritorio.";
 "session_unavailable" = "Este equipo no puede proporcionar un escritorio al visor.";
-"session_idle" = "Vinculado. Pulsa Recibir para solicitar el escritorio.";
+"session_idle" = "Vinculado. Pulsa Catch (atrapar) para solicitar el escritorio.";
 "session_waiting" = "Solicitando el escritorio…";
 "session_permission" = "Autoriza la solicitud del visor en el equipo.";
 "session_starting" = "Iniciando el escritorio…";
@@ -22,10 +22,10 @@
 "session_invalid" = "El equipo envió una sesión de escritorio no válida.";
 "session_certificate" = "El certificado del escritorio no coincide con la sesión vinculada.";
 "session_failed" = "Falló la conexión con el escritorio.";
-"session_timeout" = "La solicitud caducó. Pulsa Recibir de nuevo.";
+"session_timeout" = "La solicitud caducó. Pulsa Catch de nuevo.";
 "session_stopped" = "Sesión de escritorio detenida.";
 "waiting_picture" = "Esperando la imagen del escritorio…";
-"picture_timeout" = "No llegó ninguna imagen del escritorio. Detén la sesión y pulsa Recibir de nuevo.";
+"picture_timeout" = "No llegó ninguna imagen del escritorio. Detén la sesión y pulsa Catch de nuevo.";
 "hardware_decode_failed" = "Falló la decodificación de vídeo por hardware. ¿Continuar con decodificación por software durante esta sesión? Será más lenta y consumirá más batería.";
 "continue_software" = "Continuar con decodificación por software";
 "decoder_go_back" = "Volver";

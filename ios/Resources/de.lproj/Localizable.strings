@@ -8,11 +8,11 @@
 "choose_computer" = "Wählen Sie einen Computer zum Koppeln.";
 "connecting" = "Verbindung wird hergestellt…";
 "disconnect" = "Trennen";
-"catch_desktop" = "Empfangen";
+"catch_desktop" = "Catch (empfangen)";
 "stop_session" = "Stoppen";
-"session_untrusted" = "Koppeln Sie diesen Computer, bevor Sie seinen Desktop empfangen.";
+"session_untrusted" = "Koppeln Sie diesen Computer, bevor Sie seinen Desktop mit Catch anzeigen.";
 "session_unavailable" = "Dieser Computer kann keinen Desktop für das Headset bereitstellen.";
-"session_idle" = "Gekoppelt. Tippen Sie auf Empfangen, um den Desktop anzufordern.";
+"session_idle" = "Gekoppelt. Tippen Sie auf Catch (empfangen), um den Desktop anzufordern.";
 "session_waiting" = "Desktop wird angefordert…";
 "session_permission" = "Erlauben Sie die Headset-Anfrage am Computer.";
 "session_starting" = "Desktop wird gestartet…";
@@ -22,10 +22,10 @@
 "session_invalid" = "Der Computer hat eine ungültige Desktop-Sitzung gesendet.";
 "session_certificate" = "Das Desktop-Zertifikat stimmt nicht mit der gekoppelten Sitzung überein.";
 "session_failed" = "Die Desktop-Verbindung ist fehlgeschlagen.";
-"session_timeout" = "Die Desktop-Anfrage ist abgelaufen. Tippen Sie erneut auf Empfangen.";
+"session_timeout" = "Die Desktop-Anfrage ist abgelaufen. Tippen Sie erneut auf Catch.";
 "session_stopped" = "Desktop-Sitzung gestoppt.";
 "waiting_picture" = "Warten auf das Desktop-Bild…";
-"picture_timeout" = "Kein Desktop-Bild empfangen. Stoppen Sie die Sitzung und tippen Sie erneut auf Empfangen.";
+"picture_timeout" = "Kein Desktop-Bild empfangen. Stoppen Sie die Sitzung und tippen Sie erneut auf Catch.";
 "hardware_decode_failed" = "Die Hardware-Videodekodierung ist fehlgeschlagen. Für diese Sitzung mit Softwaredekodierung fortfahren? Sie ist langsamer und verbraucht mehr Akku.";
 "continue_software" = "Mit Softwaredekodierung fortfahren";
 "decoder_go_back" = "Zurück";

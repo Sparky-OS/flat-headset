@@ -21,9 +21,13 @@ case "$mode" in
     [[ $(uname -s) == Darwin ]] || { echo 'The iPhone core build requires the hosted Mac and its SDK.' >&2; exit 1; }
     sdk=$(xcrun --sdk iphoneos --show-sdk-path)
     cc=$(xcrun --sdk iphoneos --find clang)
+    host_cc=$(xcrun --sdk macosx --find clang)
+    host_sdk=$(xcrun --sdk macosx --show-sdk-path)
     openssl_target=ios64-xcrun
     openssl_args=(-miphoneos-version-min=16.0)
     ffmpeg_args=(--enable-cross-compile --target-os=darwin --arch=arm64 --cc="$cc"
+      --host-cc="$host_cc" "--host-cflags=-isysroot $host_sdk"
+      "--host-ldflags=-isysroot $host_sdk"
       --sysroot="$sdk" "--extra-cflags=-arch arm64 -miphoneos-version-min=16.0"
       "--extra-ldflags=-arch arm64 -miphoneos-version-min=16.0"
       --enable-videotoolbox --enable-hwaccel=h264_videotoolbox --enable-hwaccel=hevc_videotoolbox)

@@ -8,11 +8,11 @@
 "choose_computer" = "请选择要配对的计算机。";
 "connecting" = "正在连接…";
 "disconnect" = "断开连接";
-"catch_desktop" = "接收";
+"catch_desktop" = "Catch (接收)";
 "stop_session" = "停止";
-"session_untrusted" = "请先与此计算机配对，再接收其桌面。";
+"session_untrusted" = "请先与此计算机配对，再使用 Catch 显示其桌面。";
 "session_unavailable" = "此计算机无法为头戴设备提供桌面。";
-"session_idle" = "已配对。点击“接收”以请求桌面。";
+"session_idle" = "已配对。点击“Catch (接收)”以请求桌面。";
 "session_waiting" = "正在请求桌面…";
 "session_permission" = "请在计算机上允许头戴设备的请求。";
 "session_starting" = "正在启动桌面…";
@@ -22,10 +22,10 @@
 "session_invalid" = "计算机发送了无效的桌面会话。";
 "session_certificate" = "桌面证书与已配对的会话不匹配。";
 "session_failed" = "桌面连接失败。";
-"session_timeout" = "桌面请求超时。请再次点击“接收”。";
+"session_timeout" = "桌面请求超时。请再次点击“Catch”。";
 "session_stopped" = "桌面会话已停止。";
 "waiting_picture" = "正在等待桌面画面…";
-"picture_timeout" = "未收到桌面画面。请停止后再次点击“接收”。";
+"picture_timeout" = "未收到桌面画面。请停止后再次点击“Catch”。";
 "hardware_decode_failed" = "硬件视频解码失败。是否在本次会话中继续使用软件解码？速度会更慢，也会消耗更多电量。";
 "continue_software" = "继续使用软件解码";
 "decoder_go_back" = "返回";

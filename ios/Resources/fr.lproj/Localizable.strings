@@ -8,11 +8,11 @@
 "choose_computer" = "Choisissez un ordinateur à associer.";
 "connecting" = "Connexion…";
 "disconnect" = "Déconnecter";
-"catch_desktop" = "Recevoir";
+"catch_desktop" = "Catch (recevoir)";
 "stop_session" = "Arrêter";
-"session_untrusted" = "Associez cet ordinateur avant de recevoir son bureau.";
+"session_untrusted" = "Associez cet ordinateur avant d’utiliser Catch pour afficher son bureau.";
 "session_unavailable" = "Cet ordinateur ne peut pas fournir de bureau au casque.";
-"session_idle" = "Associé. Touchez Recevoir pour demander le bureau.";
+"session_idle" = "Associé. Touchez Catch (recevoir) pour demander le bureau.";
 "session_waiting" = "Demande du bureau…";
 "session_permission" = "Autorisez la demande du casque sur l’ordinateur.";
 "session_starting" = "Démarrage du bureau…";
@@ -22,10 +22,10 @@
 "session_invalid" = "L’ordinateur a envoyé une session de bureau invalide.";
 "session_certificate" = "Le certificat du bureau ne correspond pas à la session associée.";
 "session_failed" = "La connexion au bureau a échoué.";
-"session_timeout" = "La demande du bureau a expiré. Touchez à nouveau Recevoir.";
+"session_timeout" = "La demande du bureau a expiré. Touchez à nouveau Catch.";
 "session_stopped" = "Session de bureau arrêtée.";
 "waiting_picture" = "En attente de l’image du bureau…";
-"picture_timeout" = "Aucune image du bureau n’est arrivée. Arrêtez puis touchez à nouveau Recevoir.";
+"picture_timeout" = "Aucune image du bureau n’est arrivée. Arrêtez puis touchez à nouveau Catch.";
 "hardware_decode_failed" = "Le décodage vidéo matériel a échoué. Continuer avec le décodage logiciel pour cette session ? Il sera plus lent et consommera davantage de batterie.";
 "continue_software" = "Continuer avec le décodage logiciel";
 "decoder_go_back" = "Revenir";

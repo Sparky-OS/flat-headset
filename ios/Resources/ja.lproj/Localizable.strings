@@ -8,11 +8,11 @@
 "choose_computer" = "ペアリングするコンピューターを選択してください。";
 "connecting" = "接続中…";
 "disconnect" = "切断";
-"catch_desktop" = "受け取る";
+"catch_desktop" = "Catch (受け取る)";
 "stop_session" = "停止";
-"session_untrusted" = "デスクトップを受信する前に、このコンピューターとペアリングしてください。";
+"session_untrusted" = "Catch でデスクトップを表示する前に、このコンピューターとペアリングしてください。";
 "session_unavailable" = "このコンピューターはヘッドセット用のデスクトップを提供できません。";
-"session_idle" = "ペアリング済みです。「受け取る」をタップしてデスクトップを要求してください。";
+"session_idle" = "ペアリング済みです。「Catch (受け取る)」をタップしてデスクトップを要求してください。";
 "session_waiting" = "デスクトップを要求中…";
 "session_permission" = "コンピューターでヘッドセットの要求を許可してください。";
 "session_starting" = "デスクトップを起動中…";
@@ -22,10 +22,10 @@
 "session_invalid" = "コンピューターから無効なデスクトップのセッションが送信されました。";
 "session_certificate" = "デスクトップの証明書がペアリング済みのセッションと一致しません。";
 "session_failed" = "デスクトップへの接続に失敗しました。";
-"session_timeout" = "要求がタイムアウトしました。もう一度「受け取る」をタップしてください。";
+"session_timeout" = "要求がタイムアウトしました。もう一度「Catch」をタップしてください。";
 "session_stopped" = "デスクトップのセッションを停止しました。";
 "waiting_picture" = "デスクトップの画像を待っています…";
-"picture_timeout" = "デスクトップの画像が届きませんでした。停止して、もう一度「受け取る」をタップしてください。";
+"picture_timeout" = "デスクトップの画像が届きませんでした。停止して、もう一度「Catch」をタップしてください。";
 "hardware_decode_failed" = "ハードウェアによる映像のデコードに失敗しました。このセッションではソフトウェアデコードで続行しますか？処理が遅くなり、バッテリー消費が増えます。";
 "continue_software" = "ソフトウェアデコードで続行";
 "decoder_go_back" = "戻る";
