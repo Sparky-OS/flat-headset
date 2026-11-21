@@ -27,7 +27,7 @@ Movies need no PC at all on the way: the phone is also a DLNA renderer. Universa
 
 Sound stays on the PC by default and plays through its headphones or speakers.
 
-The full VR mode with head tracking is a separate project, [StereoDroid](https://github.com/Sparky-OS/stereodroid).
+The tracked function is [StereoDroidVR](https://github.com/Sparky-OS/stereodroid), built from this same Android source and reached through its own launcher entry. It shares the application identity, pairing and viewer profile with Flat Headset. The complete VR headset remains under qualification.
 
 ## The viewer
 

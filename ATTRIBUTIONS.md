@@ -61,4 +61,4 @@ The artwork is licensed CC-BY-SA-4.0 (Daniel's decision, 2026-10-14).
 
 The [MediaServer:4 and MediaRenderer:3 specifications](https://openconnectivity.org/developer/specifications/upnp-resources/upnp/mediaserver4-and-mediarenderer3/) are credited to the UPnP Forum, Open Connectivity Foundation and Digital Living Network Alliance. Implementation proofs do not imply DLNA certification.
 
-Checked 2026-10-11. The flat display and movie path have emulated proofs. Tracked StereoDroid work and physical-device qualification remain separate.
+Checked 2026-10-11. The flat display and movie path have emulated proofs. Tracked StereoDroidVR work and physical-device qualification remain separate.
