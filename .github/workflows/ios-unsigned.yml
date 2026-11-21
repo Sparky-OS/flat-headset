@@ -102,6 +102,21 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
+      - name: Prepare the hosted Metal compiler
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! xcrun --sdk iphoneos metal --version; then
+            echo 'The selected hosted Xcode needs its Metal Toolchain component. Installing it on this runner.'
+            if ! xcodebuild -downloadComponent MetalToolchain; then
+              echo 'The hosted Metal Toolchain download failed. Check the Xcode component download log and retry this job.' >&2
+              exit 1
+            fi
+          fi
+          if ! xcrun --sdk iphoneos metal --version; then
+            echo 'The selected hosted Xcode still cannot run Metal. Check its Metal Toolchain installation before rebuilding.' >&2
+            exit 1
+          fi
       - name: Fetch verified FreeRDP and codec sources
         run: python3 ios/Tools/fetch_core_sources.py "$RUNNER_TEMP/flat-headset-core-sources"
       - name: Build static iPhone core and link probe
