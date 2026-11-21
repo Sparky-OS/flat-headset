@@ -8,6 +8,7 @@ package org.kde.kdeconnect.plugins.remotedesktop
 import org.kde.kdeconnect.plugins.remotedesktop.headset.HeadsetFailure
 import org.kde.kdeconnect.plugins.remotedesktop.headset.HeadsetActivity
 import org.kde.kdeconnect.plugins.remotedesktop.headset.PanelDescriptor
+import org.kde.kdeconnect.plugins.remotedesktop.headset.HeadsetFunctions
 import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -68,6 +69,7 @@ internal fun buildFreeRdpUri(connection: RemoteDesktopPlugin.ConnectionInfo): Ur
 class RemoteDesktopActivity : BaseActivity<ActivityRemoteDesktopBinding>(), RemoteDesktopPlugin.Listener {
     override val binding: ActivityRemoteDesktopBinding by viewBinding(ActivityRemoteDesktopBinding::inflate)
 
+    private val tracked: Boolean get() = intent.getBooleanExtra(HeadsetFunctions.EXTRA_TRACKED, false)
     private var deviceId: String? = null
     private var launchedSessionId: String? = null
     private var observedDevice: Device? = null
@@ -144,7 +146,7 @@ class RemoteDesktopActivity : BaseActivity<ActivityRemoteDesktopBinding>(), Remo
         setSupportActionBar(binding.toolbarLayout.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         supportActionBar?.setDisplayShowHomeEnabled(true)
-        supportActionBar?.title = getString(R.string.open_remote_desktop)
+        supportActionBar?.title = getString(if (tracked) R.string.stereodroidvr_title else R.string.open_remote_desktop)
 
         binding.modeSpinner.adapter = ArrayAdapter(
             this,
@@ -157,7 +159,7 @@ class RemoteDesktopActivity : BaseActivity<ActivityRemoteDesktopBinding>(), Remo
                 getString(R.string.remote_desktop_mode_headset_no_lenses)
             )
         )
-        binding.modeSpinner.setSelection(0)
+        binding.modeSpinner.setSelection(if (tracked) 3 else 0)
         binding.modeSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) = updateState()
             override fun onNothingSelected(parent: AdapterView<*>?) = Unit
@@ -167,6 +169,14 @@ class RemoteDesktopActivity : BaseActivity<ActivityRemoteDesktopBinding>(), Remo
             binding.qualityValue.text = getString(R.string.remote_desktop_quality_value, value.toInt())
         }
         binding.qualitySlider.value = DEFAULT_QUALITY.toFloat()
+
+        if (tracked) {
+            binding.modeLabel.visibility = View.GONE
+            binding.modeSpinner.visibility = View.GONE
+            binding.qualityHeading.visibility = View.GONE
+            binding.qualitySlider.visibility = View.GONE
+        }
+        HeadsetFunctions.enter(this, tracked) { plugin()?.stopSession(); finish() }
 
         binding.buttonStart.setOnClickListener { requestSession() }
         binding.buttonStop.setOnClickListener { plugin()?.stopSession() }
@@ -218,6 +228,8 @@ class RemoteDesktopActivity : BaseActivity<ActivityRemoteDesktopBinding>(), Remo
         super.onStop()
     }
 
+    override fun onDestroy() { HeadsetFunctions.forget(this); super.onDestroy() }
+
     override fun onSupportNavigateUp(): Boolean {
         onBackPressedDispatcher.onBackPressed()
         return true
@@ -246,7 +258,7 @@ class RemoteDesktopActivity : BaseActivity<ActivityRemoteDesktopBinding>(), Remo
             height = metrics.heightPixels,
             scale = metrics.density.toDouble(),
             quality = binding.qualitySlider.value.toInt(),
-            panel = if (binding.modeSpinner.selectedItemPosition >= 3) {
+            panel = if (tracked) PanelDescriptor.tracked(this) else if (binding.modeSpinner.selectedItemPosition >= 3) {
                 PanelDescriptor.measure(this, binding.modeSpinner.selectedItemPosition == 4)
             } else null
         )
@@ -269,6 +281,7 @@ class RemoteDesktopActivity : BaseActivity<ActivityRemoteDesktopBinding>(), Remo
         val uri = buildFreeRdpUri(connection)
         val activity = if (connection.panel != null) HeadsetActivity::class.java else SessionActivity::class.java
         val intent = Intent(this, activity).apply {
+            putExtra(HeadsetFunctions.EXTRA_TRACKED, tracked)
             putExtra("headsetLinkFormat", connection.panel?.optString("linkFormat", "native") ?: "native")
             putExtra(HeadsetActivity.EXTRA_NO_LENSES, connection.panel?.optString("lensProfile") in listOf("none", "shinecon-fit-d"))
             action = Intent.ACTION_VIEW

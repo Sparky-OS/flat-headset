@@ -92,3 +92,5 @@ The server must allow viewing the desktop; FreeRDP shadow's `-may-view` instead 
 `StartupPrintInstrumentation` independently checks real Application startup (`-e mode startup`) and app-process print-file notifications (`-e mode print`).
 These require the debug APK's storage permissions granted in the disposable emulator and a writable `/sdcard/Download`.
 The session and print proofs do not qualify physical phones, controller input, clipboard transfer, TLS/NLA servers or physical printers.
+
+Both Flat Headset and StereoDroidVR are functions of this application, built by the same recipe. The base application ID remains `org.kde.kdeconnect_tp`; the existing debug suffix remains `.debug`. There is no second application variant. A distinct real launcher activity gives StereoDroidVR its own task affinity; the existing Flat Headset launcher, service and application label are retained. The shared session, decoder and viewer profile are not copied.

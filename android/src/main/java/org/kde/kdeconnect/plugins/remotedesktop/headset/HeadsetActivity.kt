@@ -3,6 +3,7 @@ package org.kde.kdeconnect.plugins.remotedesktop.headset
 
 import android.content.Intent
 import android.content.res.Configuration
+import android.graphics.Rect
 import android.graphics.Bitmap
 import android.os.Bundle
 import android.os.Handler
@@ -23,6 +24,7 @@ class HeadsetActivity : SessionActivity() {
     private var video: HeadsetVideo? = null
     private var pose: StereoPoseController? = null
     private var poseStatus: PoseStatusView? = null
+    private var recenterTouchTarget: View? = null
     private var waitingScene: WaitingSceneView? = null
     @Volatile private var failureResult: Intent? = null
     private var failureOverlay: View? = null
@@ -50,7 +52,8 @@ class HeadsetActivity : SessionActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val tracking = getSharedPreferences(HeadsetFitOverlay.PREFERENCES, MODE_PRIVATE).getBoolean("stereodroid-orientation", false)
+        HeadsetFunctions.watch(this, intent.getBooleanExtra(HeadsetFunctions.EXTRA_TRACKED, false)) { handleBackPressed() }
+        val tracking = intent.getBooleanExtra(HeadsetFunctions.EXTRA_TRACKED, false) || getSharedPreferences(HeadsetFitOverlay.PREFERENCES, MODE_PRIVATE).getBoolean("stereodroid-orientation", false)
         if (tracking) {
             poseStatus = PoseStatusView(this).also { status ->
                 status.setOnClickListener { pose?.requestRecenter() }
@@ -154,7 +157,29 @@ class HeadsetActivity : SessionActivity() {
         }
         panel?.submit(frame)
     }
-    override fun dispatchTouchEvent(event: MotionEvent): Boolean = true
+    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+            val bounds = Rect()
+            recenterTouchTarget = poseStatus?.takeIf {
+                it.isEnabled && it.getGlobalVisibleRect(bounds) &&
+                    bounds.contains(event.rawX.toInt(), event.rawY.toInt())
+            }
+        }
+        // Only a gesture that began on our local control reaches a child view.
+        // Never dispatch through SessionActivity: other touches remain consumed,
+        // rather than reaching FreeRDP's remote-desktop input manager.
+        recenterTouchTarget?.let { target ->
+            val location = IntArray(2)
+            target.getLocationOnScreen(location)
+            val local = MotionEvent.obtain(event)
+            local.offsetLocation(event.rawX - event.x - location[0], event.rawY - event.y - location[1])
+            try { target.dispatchTouchEvent(local) } finally { local.recycle() }
+        }
+        if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
+            recenterTouchTarget = null
+        }
+        return true
+    }
     override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean = true
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
@@ -240,7 +265,7 @@ class HeadsetActivity : SessionActivity() {
 
     override fun onResume() { super.onResume(); pose?.setResumed(true); resumed = true; if (displayConnected) armOfferDeadline(); hideSystemBars(); panel?.onResume(); waitingScene?.setResumed(true); performance?.setResumed(true); networkOverlay?.setActive(displayConnected) }
     override fun onPause() { pose?.setResumed(false); negotiationHandler.removeCallbacks(missingOffer); waitingScene?.setResumed(false); networkOverlay?.setActive(false); linkStats?.save(); resumed = false; video?.close(); performance?.setResumed(false); panel?.onPause(); super.onPause() }
-    override fun onDestroy() { pose?.close(); pose = null; negotiationHandler.removeCallbacks(missingOffer); waitingScene?.close(); waitingScene = null; video?.close(); video = null; performance?.close(); performance = null; panel?.release(); panel = null; super.onDestroy() }
+    override fun onDestroy() { pose?.close(); pose = null; negotiationHandler.removeCallbacks(missingOffer); waitingScene?.close(); waitingScene = null; video?.close(); video = null; performance?.close(); performance = null; panel?.release(); panel = null; super.onDestroy(); HeadsetFunctions.forget(this) }
 
     companion object { const val EXTRA_NO_LENSES = "headsetNoLenses" }
 }

@@ -103,6 +103,27 @@ class PanelControlServerTest {
         }
     }
 
+    @Test fun trackedHeadsetIgnoresStaticLinkPreferences() {
+        Robolectric.buildActivity(Activity::class.java).setup().use { controller ->
+            val activity = controller.get()
+            for (format in HeadsetLink.formats) {
+                activity.getSharedPreferences(HeadsetFitOverlay.PREFERENCES, Activity.MODE_PRIVATE)
+                    .edit().putString(HeadsetLink.PREFERENCE, format).commit()
+                val panel = PanelDescriptor.tracked(activity)
+                assertEquals(HeadsetLink.HALF_SBS_720, panel.getString("linkFormat"))
+                assertEquals("orientation", panel.getString("tracking"))
+                assertEquals(true, panel.getBoolean("splitEye"))
+                val flat = PanelDescriptor.measure(activity, true)
+                assertEquals(false, flat.has("tracking"))
+                assertTrue(flat.getString("name").startsWith("Flat Headset ("))
+                assertTrue(panel.getString("name").startsWith("StereoDroidVR ("))
+                assertEquals(flat.getString("identity"), panel.getString("identity"))
+                assertEquals(format, activity.getSharedPreferences(HeadsetFitOverlay.PREFERENCES, Activity.MODE_PRIVATE)
+                    .getString(HeadsetLink.PREFERENCE, null))
+            }
+        }
+    }
+
     @Test fun unpairedControlCannotReadPanel() {
         Robolectric.buildActivity(Activity::class.java).setup().use { controller ->
             val activity = controller.get()

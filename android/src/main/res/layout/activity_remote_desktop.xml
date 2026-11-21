@@ -46,6 +46,7 @@ SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
+                android:id="@+id/mode_label"
                 android:labelFor="@id/mode_spinner"
                 android:text="@string/remote_desktop_mode"
                 android:textAppearance="?attr/textAppearanceLabelLarge" />
@@ -72,6 +73,7 @@ SPDX-License-Identifier: GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted
                 android:minHeight="48dp" />
 
             <LinearLayout
+                android:id="@+id/quality_heading"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"

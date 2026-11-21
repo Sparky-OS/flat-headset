@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="headset_wait_for_computer">Prepararse para Throw (lanzar)</string>
+    <string name="headset_waiting">Listo para Throw. Autoriza este visor en el ordenador.</string>
+    <string name="headset_stop">Detener Throw</string>
+    <string name="headset_link_title">Tamaño de imagen de Throw (lanzar)</string>
+    <string name="headset_throw_connecting">Esperando Throw…</string>
+    <string name="headset_throw_reconnecting">Esperando el próximo Throw…</string>
+</resources>

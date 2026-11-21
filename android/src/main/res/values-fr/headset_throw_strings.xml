@@ -9,9 +9,9 @@
     <string name="headset_alignment">Afficher la ligne centrale d’alignement et la flèche vers le bas</string>
     <string name="headset_title">Flat Headset</string>
     <string name="headset_discovery_description">Associez ce téléphone à l’ordinateur dans KDE Connect. Connectez-les au même Wi-Fi, au point d’accès de l’ordinateur ou par partage USB, puis préparez le téléphone ici. Le son et les commandes restent sur l’ordinateur ; les touches de volume du téléphone règlent la luminosité.</string>
-    <string name="headset_wait_for_computer">Préparer la réception du lancer</string>
-    <string name="headset_waiting">Prêt pour le lancer. Autorisez ce casque sur l’ordinateur.</string>
-    <string name="headset_stop">Arrêter le lancer</string>
+    <string name="headset_wait_for_computer">Préparer Throw (envoyer)</string>
+    <string name="headset_waiting">Prêt pour Throw. Autorisez ce casque sur l’ordinateur.</string>
+    <string name="headset_stop">Arrêter Throw</string>
     <string name="headset_upnp_android_version">La découverte autonome nécessite Android 7 ou ultérieur. Le récepteur RDP associé reste disponible.</string>
     <string name="headset_discovery_failed">Impossible de démarrer la découverte sur ce réseau. Vérifiez la connexion et réessayez.</string>
     <string name="headset_scan_viewer">Scanner le code QR du casque</string>
@@ -22,7 +22,7 @@
     <string name="headset_correction_fitted">Shinecon ajusté (D)</string>
     <string name="headset_correction_profile">Profil QR du casque</string>
     <string name="headset_correction_hint">Le réglage correspond au test D. Gardez la même position du téléphone, le même écartement des lentilles et la même mise au point. Utilisez un film ou un flux ordinaire sans correction.</string>
-    <string name="headset_throw_connecting">En attente du lancer…</string>
-    <string name="headset_throw_reconnecting">En attente du prochain lancer…</string>
+    <string name="headset_throw_connecting">En attente de Throw…</string>
+    <string name="headset_throw_reconnecting">En attente du prochain Throw…</string>
     <string name="headset_wait_reduce_motion">Réduire les mouvements pendant l’attente</string>
 </resources>

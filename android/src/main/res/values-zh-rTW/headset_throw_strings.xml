@@ -9,9 +9,9 @@
     <string name="headset_alignment">顯示中央對齊線和向下箭頭</string>
     <string name="headset_title">Flat Headset</string>
     <string name="headset_discovery_description">請先在 KDE Connect 中將此手機與電腦配對。將它們連接到同一 Wi-Fi、電腦熱點或 USB 網路共用，然後在這裡準備接收。聲音和輸入留在電腦上；手機音量鍵用來調整亮度。</string>
-    <string name="headset_wait_for_computer">準備接收投送</string>
-    <string name="headset_waiting">已準備好接收投送。請在電腦上核准此頭戴裝置。</string>
-    <string name="headset_stop">停止投送</string>
+    <string name="headset_wait_for_computer">準備 Throw (傳送)</string>
+    <string name="headset_waiting">已準備好接收 Throw。請在電腦上核准此頭戴裝置。</string>
+    <string name="headset_stop">停止 Throw</string>
     <string name="headset_upnp_android_version">獨立探索需要 Android 7 或更新版本。已配對的 RDP 接收器仍可使用。</string>
     <string name="headset_discovery_failed">無法在此網路上啟動探索。請檢查連線後重試。</string>
     <string name="headset_scan_viewer">掃描眼鏡 QR 碼</string>
@@ -22,7 +22,7 @@
     <string name="headset_correction_fitted">Shinecon 調整設定（D）</string>
     <string name="headset_correction_profile">眼鏡 QR 碼設定</string>
     <string name="headset_correction_hint">此設定對應觀看測試 D。請保持相同的手機位置、鏡片間距和焦距。使用一般的、未經校正的影片或串流。</string>
-    <string name="headset_throw_connecting">正在等待投送…</string>
-    <string name="headset_throw_reconnecting">正在等待下一次投送…</string>
+    <string name="headset_throw_connecting">正在等待 Throw…</string>
+    <string name="headset_throw_reconnecting">正在等待下一次 Throw…</string>
     <string name="headset_wait_reduce_motion">等待時減少動態效果</string>
 </resources>

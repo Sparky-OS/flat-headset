@@ -175,6 +175,7 @@ class StandaloneHeadsetActivity : AppCompatActivity() {
             })
         }
         setContentView(FrameLayout(this).apply { addView(controls) })
+        HeadsetFunctions.enter(this, false) { stopSharing(); finish() }
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 val failure = pendingFailure
@@ -350,6 +351,7 @@ class StandaloneHeadsetActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        HeadsetFunctions.forget(this)
         waitingScene?.close()
         networkCallback?.let { getSystemService(ConnectivityManager::class.java).unregisterNetworkCallback(it) }
         stopSharing()

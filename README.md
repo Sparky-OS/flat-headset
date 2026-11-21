@@ -81,3 +81,5 @@ Flat Headset is part of [Sparky Stereo OS](https://github.com/Sparky-OS/sparky-s
 Sparky Stereo OS, Daniel Ramos's edition of SparkyLinux (by Paweł "pavroo" Pijanowski).
 
 Licence: GPL-2.0-only OR GPL-3.0-only OR LicenseRef-KDE-Accepted-GPL, the licence of KDE Connect for Android, so the code can go upstream to KDE unchanged (texts in `LICENSES/`).
+
+The Android application also has a **StereoDroidVR** launcher for its tracked PC headset function. Both entries use the same KDE Connect identity, certificate, pairing and stored viewer profile. Open StereoDroidVR, choose a paired, reachable computer, then connect and approve its session on that computer. Opening the other function ends the previous session; it does not transfer a live session. Flat Headset keeps its existing entry, connection choices and optional orientation preference. StereoDroidVR requests orientation tracking over the picture’s RDP connection and always uses the tracked half-side-by-side link.
