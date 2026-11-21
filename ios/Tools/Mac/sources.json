@@ -1,0 +1,12 @@
+{
+  "repositories": {
+    "kdeconnect-ios": "57d3725b5f76f71c5758dd10a0648d4d356fa476",
+    "cardboard": "d8ba9bce45c2325ff291dd894aa294eca4beb60a",
+    "flat-headset": "4804c5190271900d9996e9fa810163fc59f6fd42"
+  },
+  "ios-deploy": {
+    "commit": "ed7de7792d28a5110242748649047a95c95ea917",
+    "url": "https://codeload.github.com/ios-control/ios-deploy/tar.gz/ed7de7792d28a5110242748649047a95c95ea917",
+    "sha256": "f6d1143493821d99e8aeb7b27caf1ad343733000ed8fa6b13c900d1eac0cffe3"
+  }
+}

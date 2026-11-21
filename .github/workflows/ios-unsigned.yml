@@ -223,7 +223,7 @@ jobs:
     env:
       DEVELOPER_DIR: ${{ matrix.developer_dir }}
       EXPECTED_HOST_ARCH: ${{ matrix.host_arch }}
-      KDECONNECT_COMMIT: f215b9f6c29a36923492c55303441184035c2594
+      KDECONNECT_COMMIT: 57d3725b5f76f71c5758dd10a0648d4d356fa476
       PYTHONDONTWRITEBYTECODE: '1'
     steps:
       - name: Report hosted image and SDK
@@ -335,4 +335,78 @@ jobs:
           name: Cardboard-unsigned-${{ github.sha }}${{ matrix.artifact_suffix }}
           path: cardboard-artifact/
           if-no-files-found: error
+          retention-days: 7
+
+  mac-session-intel:
+    runs-on: macos-15-intel
+    timeout-minutes: 60
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Report the Intel session host
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'Hosted image: %s %s\n' "${ImageOS:-unknown}" "${ImageVersion:-unknown}"
+          uname -m
+          test "$(uname -m)" = x86_64
+          xcodebuild -version
+          xcodebuild -showsdks
+          if ! xcrun --sdk iphoneos metal --version; then
+            xcodebuild -downloadComponent MetalToolchain || { echo 'Metal Toolchain installation failed; inspect the component log and retry.' >&2; exit 1; }
+          fi
+          xcrun --sdk iphoneos metal --version
+      - name: Check out the session helper
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Check the session failure branches without a phone
+        shell: bash
+        run: python3 ios/Tests/MacSessionTest.py
+      - name: Print the installed command documentation
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/mac-session-manuals"
+          python3 - "$RUNNER_TEMP/mac-session-manuals" <<'PYCODE'
+          from pathlib import Path
+          import os, subprocess, sys
+          folder = Path(sys.argv[1])
+          commands = {
+              'xcodebuild': ['xcodebuild', '-help'],
+              'devicectl': ['xcrun', 'devicectl', 'help'],
+              'xcdevice': ['xcrun', 'xcdevice', '--help'],
+              'xcresulttool': ['xcrun', 'xcresulttool', 'help'],
+              'security': ['man', 'security'],
+              'codesign': ['man', 'codesign'],
+          }
+          for name, command in commands.items():
+              result = subprocess.run(command, capture_output=True, env=dict(os.environ, MANPAGER='cat'))
+              output = result.stdout + result.stderr
+              (folder / (name + '.txt')).write_bytes(output)
+              print(name, 'documentation command exit:', result.returncode)
+              if not output:
+                  sys.exit('No documentation output for ' + name + '; inspect the selected Xcode tools.')
+          PYCODE
+      - name: Build all three pinned sources through the unsigned session path
+        shell: bash
+        run: bash ios/Tools/Mac/first-session.sh --unsigned --work "$RUNNER_TEMP/mac-session"
+      - name: Keep the session IPAs, checksums and command documentation
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: Mac-session-unsigned-${{ github.sha }}-intel
+          path: |
+            ${{ runner.temp }}/mac-session/session-*/*-unsigned.ipa
+            ${{ runner.temp }}/mac-session/session-*/*-unsigned.sha256
+            ${{ runner.temp }}/mac-session-manuals/
+          if-no-files-found: error
+          retention-days: 7
+      - name: Keep build logs if the session proof fails
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: Mac-session-build-logs-${{ github.sha }}-intel
+          path: ${{ runner.temp }}/mac-session/session-*/*.log
+          if-no-files-found: ignore
           retention-days: 7
