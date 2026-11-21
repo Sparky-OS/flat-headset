@@ -39,7 +39,7 @@ class TrackedHeadsetActivity : AppCompatActivity() {
             addView(TextView(this@TrackedHeadsetActivity).apply { setText(R.string.headset_pair_first) })
             addView(devices)
             addView(Button(this@TrackedHeadsetActivity).apply {
-                setText(R.string.app_name)
+                setText(R.string.kde_connect)
                 setOnClickListener { startActivity(Intent(this@TrackedHeadsetActivity, MainActivity::class.java)) }
             })
         }
